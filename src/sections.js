@@ -9,7 +9,10 @@ function modelUrl(relativeFromSrc) {
 
 export const MODEL_PARTIE1_CONE = modelUrl("../docs/models/Meshy_AI_Earth_on_a_Cone_0511114642_texture.glb")
 
-export const MODEL_PARTIE1_EDGE = modelUrl("../docs/models/Meshy_AI_Edge_of_the_World_0511114634_texture.glb")
+/** FBX + textures : tout le contenu du dossier Meshy doit rester dans ce répertoire (chemins relatifs). */
+export const MODEL_PARTIE1_EDGE = modelUrl(
+  "../docs/models/Meshy_AI_Edge_of_the_World_0511163858_texture_fbx/Meshy_AI_Edge_of_the_World_0511163858_texture.fbx"
+)
 
 export const MODEL_EARTH_2K = modelUrl("../docs/models/Earth 2K.obj")
 
