@@ -217,7 +217,10 @@ lastTextKey = k0.textSection
 textOverlay.classList.add("is-visible")
 updateUiFromScroll(0, 0)
 
-preloadUrls(THREE, ALL_MODEL_URLS).then(() => setEarthModel(MODEL_PARTIE1_CONE))
+// Affiche le modèle initial dès son chargement, sans attendre les autres
+void setEarthModel(MODEL_PARTIE1_CONE)
+// Précharge les autres modèles en arrière-plan pour des transitions fluides
+void preloadUrls(THREE, ALL_MODEL_URLS.filter(u => u !== MODEL_PARTIE1_CONE))
 
 function animate() {
   requestAnimationFrame(animate)

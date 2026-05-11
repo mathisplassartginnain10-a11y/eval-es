@@ -33,7 +33,7 @@ export const KEYFRAMES = [
     scrollStart: 1,
     camera: { x: 3, y: -1, z: 7 },
     target: { x: 0, y: 0, z: 0 },
-    modelFile: MODEL_EARTH_2K,
+    modelFile: MODEL_PARTIE1_EDGE,
     modelPos: { x: 0, y: 0, z: 0 },
     modelScale: 1.6,
     textSection: "nonRonde"
