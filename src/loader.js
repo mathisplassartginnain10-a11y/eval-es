@@ -14,7 +14,23 @@ function createFallbackMesh(THREE) {
   })
   const mesh = new THREE.Mesh(fallbackGeo, fallbackMat)
   mesh.name = "FallbackEarth"
+  mesh.userData.isFallback = true
   return mesh
+}
+
+/** Centre le modèle à l’origine et met sa plus grande dimension ≈ 2×targetRadius (visible avec la caméra actuelle). */
+function frameModel(root, THREE, targetRadius = 1.7) {
+  if (root.userData?.isFallback) return
+  root.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(root)
+  if (box.isEmpty()) return
+  const center = box.getCenter(new THREE.Vector3())
+  const size = box.getSize(new THREE.Vector3())
+  const maxDim = Math.max(size.x, size.y, size.z)
+  if (maxDim < 1e-9) return
+  const s = (2 * targetRadius) / maxDim
+  root.position.sub(center)
+  root.scale.setScalar(s)
 }
 
 function normalizeTreeMaterials(root, THREE) {
@@ -65,11 +81,15 @@ function loadObjWithMtl(THREE, url) {
           file,
           (group) => {
             normalizeTreeMaterials(group, THREE)
+            frameModel(group, THREE)
             modelCache.set(url, group)
             resolve(group.clone(true))
           },
           undefined,
-          () => resolve(createFallbackMesh(THREE))
+          (err) => {
+            console.warn("[loader] OBJ", url, err)
+            resolve(createFallbackMesh(THREE))
+          }
         )
       },
       undefined,
@@ -80,11 +100,15 @@ function loadObjWithMtl(THREE, url) {
           file,
           (group) => {
             normalizeTreeMaterials(group, THREE)
+            frameModel(group, THREE)
             modelCache.set(url, group)
             resolve(group.clone(true))
           },
           undefined,
-          () => resolve(createFallbackMesh(THREE))
+          (err) => {
+            console.warn("[loader] OBJ (sans MTL)", url, err)
+            resolve(createFallbackMesh(THREE))
+          }
         )
       }
     )
@@ -112,11 +136,13 @@ export async function loadEarthModel(THREE, url) {
       (gltf) => {
         const root = gltf.scene || gltf.scenes[0]
         normalizeTreeMaterials(root, THREE)
+        frameModel(root, THREE)
         modelCache.set(url, root)
         resolve(root.clone(true))
       },
       undefined,
-      () => {
+      (err) => {
+        console.warn("[loader] GLB/GLTF", url, err)
         resolve(createFallbackMesh(THREE))
       }
     )

@@ -1,24 +1,23 @@
 /**
- * Chemins des modèles 3D (chemins relatifs — GitHub Pages).
- *
- * Partie 1 (intro, premier panneau) : deux GLB Meshy — bascule au scroll dans scroll.js.
- * Partie 2 et suivantes : Earth 2K (.obj + .mtl dans le même dossier).
+ * Chemins des modèles — URLs absolues via import.meta.url (obligatoire sur GitHub Pages
+ * quand l’URL est /eval-es sans slash final : ./docs/... ne doit pas devenir /docs/...).
  */
 
-export const MODEL_PARTIE1_CONE =
-  "./docs/models/Meshy_AI_Earth_on_a_Cone_0511114642_texture.glb"
+function modelUrl(relativeFromSrc) {
+  return new URL(relativeFromSrc, import.meta.url).href
+}
 
-export const MODEL_PARTIE1_EDGE =
-  "./docs/models/Meshy_AI_Edge_of_the_World_0511114634_texture.glb"
+export const MODEL_PARTIE1_CONE = modelUrl("../docs/models/Meshy_AI_Earth_on_a_Cone_0511114642_texture.glb")
 
-export const MODEL_EARTH_2K = "./docs/models/Earth 2K.obj"
+export const MODEL_PARTIE1_EDGE = modelUrl("../docs/models/Meshy_AI_Edge_of_the_World_0511114634_texture.glb")
+
+export const MODEL_EARTH_2K = modelUrl("../docs/models/Earth 2K.obj")
 
 /** Tous les fichiers à précharger au démarrage */
 export const ALL_MODEL_URLS = [MODEL_PARTIE1_CONE, MODEL_PARTIE1_EDGE, MODEL_EARTH_2K]
 
 /**
  * Keyframes de la timeline scroll — positions caméra / cible / modèle.
- * Les modelFile servent au préchargement et aux segments autres que l’étape 0 (deux modèles).
  */
 export const KEYFRAMES = [
   {

@@ -2,6 +2,16 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
+  <script>
+    (function () {
+      var p = location.pathname.replace(/\/index\.html?$/i, "");
+      if (!p.endsWith("/")) p += "/";
+      if (p === "//") p = "/";
+      var b = document.createElement("base");
+      b.href = p;
+      document.head.appendChild(b);
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>La Terre est-elle ronde ? — Exposé ES</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
