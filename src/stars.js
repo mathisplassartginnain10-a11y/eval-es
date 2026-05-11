@@ -40,6 +40,7 @@ export function createStarField(scene, THREE, motionRef) {
       uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
     },
     vertexShader: `
+      uniform float uPixelRatio;
       attribute float aSize;
       attribute float aOpacity;
       varying float vOpacity;
