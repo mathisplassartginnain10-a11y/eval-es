@@ -38,7 +38,7 @@ export const KEYFRAMES = [
     textSection: "step02",
     media: {
       type: "video",
-      path: "videos/terre_aplatie/vidéo terre_plate.mp4",
+      path: "videos/terre_aplatie/vidéo terre_aplatie.mp4",
       loop: true
     }
   },
