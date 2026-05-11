@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Terre est-elle ronde ? — Exposé ES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script>
+    gsap.registerPlugin(ScrollTrigger);
+  </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div class="nebula-bg" aria-hidden="true"></div>
+    <canvas id="webgl" aria-label="Scène 3D interactive"></canvas>
+
+    <div class="progress-track" aria-hidden="true">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <nav class="section-dots" aria-label="Sections de l'exposé">
+      <button type="button" class="section-dot is-active" data-section="0" aria-current="true" title="Introduction"></button>
+      <button type="button" class="section-dot" data-section="1" title="La Terre n'est pas ronde"></button>
+      <button type="button" class="section-dot" data-section="2" title="La Terre est ronde"></button>
+      <button type="button" class="section-dot" data-section="3" title="Conclusion"></button>
+    </nav>
+
+    <div class="text-overlay" id="text-overlay">
+      <p class="text-overlay__kicker" id="text-kicker"></p>
+      <h1 class="text-overlay__title" id="text-title"></h1>
+      <p class="text-overlay__subtitle" id="text-subtitle"></p>
+      <div class="text-overlay__body" id="text-body"></div>
+      <p class="text-overlay__credit" id="text-credit" hidden></p>
+    </div>
+
+    <p class="section-label" id="section-label" aria-live="polite" aria-atomic="true"></p>
+
+    <div class="scroll-hint" id="scroll-hint" aria-hidden="true">
+      <span class="scroll-hint__arrow">↓</span>
+      <span class="scroll-hint__label">Faire défiler</span>
+    </div>
+  </div>
+
+  <div id="scroll-root" class="scroll-root">
+    <section class="scroll-panel" data-index="0" aria-label="Section 1"></section>
+    <section class="scroll-panel" data-index="1" aria-label="Section 2"></section>
+    <section class="scroll-panel" data-index="2" aria-label="Section 3"></section>
+    <section class="scroll-panel" data-index="3" aria-label="Section 4"></section>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
