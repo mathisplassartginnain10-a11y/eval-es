@@ -1,32 +1,36 @@
-# Blender MTL File: 'Earth 2K.blend'
-# Material Count: 3
+# Textures incluses dans le dépôt (dossier Textures/) — chemins relatifs à ce fichier.
+# Obligatoire pour un rendu correct de Earth 2K sur GitHub Pages.
 
 newmtl Atmosphere
 Ns 96.078431
 Ka 1.000000 1.000000 1.000000
-Kd 0.640000 0.640000 0.640000
-Ks 0.500000 0.500000 0.500000
+Kd 0.720000 0.820000 1.000000
+Ks 0.300000 0.300000 0.300000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
-d 1.000000
-illum 2
+d 0.150000
+illum 4
+map_Kd Textures/Clouds_2K.png
 
 newmtl Clouds
 Ns 96.078431
 Ka 1.000000 1.000000 1.000000
-Kd 0.640000 0.640000 0.640000
-Ks 0.500000 0.500000 0.500000
+Kd 1.000000 1.000000 1.000000
+Ks 0.200000 0.200000 0.200000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
-d 1.000000
-illum 2
+d 0.900000
+illum 4
+map_Kd Textures/Clouds_2K.png
 
 newmtl Earth
 Ns 96.078431
 Ka 1.000000 1.000000 1.000000
-Kd 0.640000 0.640000 0.640000
-Ks 0.500000 0.500000 0.500000
+Kd 0.800000 0.800000 0.800000
+Ks 0.150000 0.150000 0.150000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
+map_Kd Textures/Diffuse_2K.png
+map_Bump Textures/Bump_2K.png

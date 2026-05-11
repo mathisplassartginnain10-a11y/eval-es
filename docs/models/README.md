@@ -11,7 +11,7 @@ Chemins **relatifs** (compatible GitHub Pages). Les noms ci-dessous doivent **co
 | `Earth 2K.obj` | **Partie 2** et suivantes | Globe pour « pas ronde », « ronde » et conclusion |
 | `Earth 2K.mtl` | (avec l’OBJ) | Matériaux — même dossier que l’OBJ |
 
-Si tu ajoutes des textures référencées dans le `.mtl` (ex. dossier `Textures/`), place-les aux chemins indiqués dans le fichier MTL.
+Le fichier **`Earth 2K.mtl`** référence **obligatoirement** les PNG dans `Textures/` (`Diffuse_2K`, `Bump_2K`, `Clouds_2K`). Ils sont versionnés dans le dépôt même si c’est lourd, pour que le globe s’affiche correctement en ligne.
 
 ## Si un fichier manque
 

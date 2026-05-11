@@ -24,7 +24,11 @@ function normalizeTreeMaterials(root, THREE) {
       child.receiveShadow = false
       const mats = Array.isArray(child.material) ? child.material : [child.material]
       for (const m of mats) {
-        if (m && m.map) m.map.colorSpace = THREE.SRGBColorSpace
+        if (!m) continue
+        if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
+        if (m.emissiveMap) m.emissiveMap.colorSpace = THREE.SRGBColorSpace
+        if (m.bumpMap) m.bumpMap.colorSpace = THREE.LinearSRGBColorSpace
+        if (m.transparent) m.depthWrite = false
       }
     }
   })
