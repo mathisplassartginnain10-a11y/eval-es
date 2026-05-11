@@ -4,30 +4,28 @@
   <meta charset="UTF-8" />
   <script>
     (function () {
-      var p = location.pathname.replace(/\/index\.html?$/i, "");
-      if (!p.endsWith("/")) p += "/";
-      if (p === "//") p = "/";
+      var host = location.hostname;
+      var path = location.pathname.replace(/\/index\.html?$/i, "");
+      if (!path.endsWith("/")) path += "/";
+      if (path === "//") path = "/";
+      var local = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+      if (local && /^\/eval-es\//.test(path)) path = "/";
       var b = document.createElement("base");
-      b.href = p;
+      b.href = path;
       document.head.appendChild(b);
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>La Terre est-elle ronde ? — Exposé ES</title>
+  <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-  <script>
-    gsap.registerPlugin(ScrollTrigger);
-  </script>
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/+esm"
     }
   }
   </script>
@@ -35,43 +33,44 @@
 <body>
   <div id="app">
     <div class="nebula-bg" aria-hidden="true"></div>
-    <canvas id="webgl" aria-label="Scène 3D interactive"></canvas>
+
+    <!-- Média uniquement dans la moitié droite (le texte reste à gauche, z-index plus haut) -->
+    <div class="stage-media-wrap" aria-hidden="true">
+      <video
+        id="stage-video"
+        class="stage-video"
+        aria-label="Vidéo de l’exposé"
+        muted
+        playsinline
+      ></video>
+      <img id="stage-image" class="stage-image" alt="" hidden decoding="async" />
+    </div>
 
     <div class="progress-track" aria-hidden="true">
       <div class="progress-bar" id="progress-bar"></div>
     </div>
 
-    <nav class="section-dots" aria-label="Sections de l'exposé">
-      <button type="button" class="section-dot is-active" data-section="0" aria-current="true" title="Introduction"></button>
-      <button type="button" class="section-dot" data-section="1" title="La Terre n'est pas ronde"></button>
-      <button type="button" class="section-dot" data-section="2" title="La Terre est ronde"></button>
-      <button type="button" class="section-dot" data-section="3" title="Conclusion"></button>
-    </nav>
+    <nav class="section-dots" id="section-dots" aria-label="Sections de l'exposé"></nav>
 
-    <div class="text-overlay" id="text-overlay">
+    <div class="text-overlay text-overlay--apple" id="text-overlay">
       <p class="text-overlay__kicker" id="text-kicker"></p>
       <h1 class="text-overlay__title" id="text-title"></h1>
-      <p class="text-overlay__subtitle" id="text-subtitle"></p>
+      <p class="text-overlay__subtitle" id="text-subtitle" hidden></p>
       <div class="text-overlay__body" id="text-body"></div>
       <p class="text-overlay__credit" id="text-credit" hidden></p>
     </div>
 
     <p class="section-label" id="section-label" aria-live="polite" aria-atomic="true"></p>
 
-    <p class="step-indicator" id="step-indicator" aria-live="polite" aria-atomic="true">Étape 1 / 4</p>
+    <p class="step-indicator" id="step-indicator" aria-live="polite" aria-atomic="true"></p>
 
     <div class="scroll-hint" id="scroll-hint" aria-hidden="true">
       <span class="scroll-hint__arrow">↓</span>
-      <span class="scroll-hint__label">Glisser · une étape à la fois</span>
+      <span class="scroll-hint__label">Glisser ≥ 60 px · une étape à la fois</span>
     </div>
   </div>
 
-  <div id="scroll-root" class="scroll-root">
-    <section class="scroll-panel" data-index="0" aria-label="Section 1"></section>
-    <section class="scroll-panel" data-index="1" aria-label="Section 2"></section>
-    <section class="scroll-panel" data-index="2" aria-label="Section 3"></section>
-    <section class="scroll-panel" data-index="3" aria-label="Section 4"></section>
-  </div>
+  <div id="scroll-root" class="scroll-root"></div>
 
   <script type="module" src="./main.js"></script>
 </body>

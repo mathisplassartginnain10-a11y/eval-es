@@ -1,64 +1,66 @@
 /**
- * Chemins des modèles — URLs absolues via import.meta.url (obligatoire sur GitHub Pages
- * quand l’URL est /eval-es sans slash final : ./docs/... ne doit pas devenir /docs/...).
+ * Chaque étape : choix dans `media` :
+ * - `{ type: "image", file: "01.jpg" }` → image fixe jusqu’au prochain swipe.
+ * - `{ type: "video", file: "02.mp4" }` → vidéo qui joue sur cette étape (ne repart pas de 0 tant que le fichier ne change pas).
+ * - `loop: true` → la vidéo boucle tant que tu ne swipes pas.
+ * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
+ *
+ * Fichiers :
+ * - `file` → `docs/media/<file>` (ex. `01.mp4`)
+ * - `path` → `docs/<path>` si tu veux un autre dossier (prioritaire sur `file`)
  */
 
-function modelUrl(relativeFromSrc) {
-  return new URL(relativeFromSrc, import.meta.url).href
+function docsUrl(relativePathUnderDocs) {
+  const p = String(relativePathUnderDocs).replace(/^\/+/, "")
+  return new URL(`../docs/${p}`, import.meta.url).href
 }
 
-export const MODEL_PARTIE1_CONE = modelUrl("../docs/models/Meshy_AI_Earth_on_a_Cone_0511114642_texture.glb")
+/**
+ * @typedef {{
+ *   type: "image" | "video",
+ *   file?: string,
+ *   path?: string,
+ *   loop?: boolean,
+ *   restartOnReenter?: boolean
+ * }} MediaSpec
+ */
 
-/** FBX + textures : tout le contenu du dossier Meshy doit rester dans ce répertoire (chemins relatifs). */
-export const MODEL_PARTIE1_EDGE = modelUrl(
-  "../docs/models/Meshy_AI_Edge_of_the_World_0511163858_texture_fbx/Meshy_AI_Edge_of_the_World_0511163858_texture.fbx"
-)
-
-export const MODEL_EARTH_2K = modelUrl("../docs/models/Earth 2K.obj")
-
-/** Tous les fichiers à précharger au démarrage */
-export const ALL_MODEL_URLS = [MODEL_PARTIE1_CONE, MODEL_PARTIE1_EDGE, MODEL_EARTH_2K]
+/** @typedef {{ scrollIndex: number, textSection: string, media: MediaSpec }} SectionKeyframe */
 
 /**
- * Keyframes de la timeline scroll — positions caméra / cible / modèle.
+ * Défaut : 10 vidéos. Remplace une ligne par `{ type: "image", file: "intro.png" }` pour une diapo fixe.
+ * @type {SectionKeyframe[]}
  */
 export const KEYFRAMES = [
+  { scrollIndex: 0, textSection: "step01", media: { type: "video", file: "01.mp4" } },
   {
-    scrollStart: 0,
-    camera: { x: 0, y: 2, z: 10 },
-    target: { x: 0, y: 0, z: 0 },
-    modelFile: MODEL_PARTIE1_CONE,
-    modelPos: { x: 0, y: 0, z: 0 },
-    modelScale: 1.4,
-    textSection: "intro"
+    scrollIndex: 1,
+    textSection: "step02",
+    media: {
+      type: "video",
+      path: "videos/terre_aplatie/vidéo terre_plate.mp4",
+      loop: true
+    }
   },
-  {
-    scrollStart: 1,
-    camera: { x: 3, y: -1, z: 7 },
-    target: { x: 0, y: 0, z: 0 },
-    modelFile: MODEL_PARTIE1_EDGE,
-    modelPos: { x: 0, y: 0, z: 0 },
-    modelScale: 1.6,
-    textSection: "nonRonde"
-  },
-  {
-    scrollStart: 2,
-    camera: { x: -4, y: 1, z: 6 },
-    target: { x: 0, y: 0, z: 0 },
-    modelFile: MODEL_EARTH_2K,
-    modelPos: { x: 0, y: 0, z: 0 },
-    modelScale: 1.4,
-    textSection: "ronde"
-  },
-  {
-    scrollStart: 3,
-    camera: { x: 0, y: 3, z: 18 },
-    target: { x: 0, y: 0, z: 0 },
-    modelFile: MODEL_EARTH_2K,
-    modelPos: { x: 0, y: 0, z: 0 },
-    modelScale: 1.0,
-    textSection: "conclusion"
-  }
+  { scrollIndex: 2, textSection: "step03", media: { type: "video", file: "03.mp4" } },
+  { scrollIndex: 3, textSection: "step04", media: { type: "video", file: "04.mp4" } },
+  { scrollIndex: 4, textSection: "step05", media: { type: "video", file: "05.mp4" } },
+  { scrollIndex: 5, textSection: "step06", media: { type: "video", file: "06.mp4" } },
+  { scrollIndex: 6, textSection: "step07", media: { type: "video", file: "07.mp4" } },
+  { scrollIndex: 7, textSection: "step08", media: { type: "video", file: "08.mp4" } },
+  { scrollIndex: 8, textSection: "step09", media: { type: "video", file: "09.mp4" } },
+  { scrollIndex: 9, textSection: "step10", media: { type: "video", file: "10.mp4" } }
 ]
+
+export function keyframeToSlideMedia(kf) {
+  const m = kf.media
+  const rel = m.path ?? (m.file ? `media/${m.file}` : "")
+  return {
+    type: m.type,
+    url: rel ? docsUrl(rel) : "",
+    loop: m.loop,
+    restartOnReenter: m.restartOnReenter
+  }
+}
 
 export const SECTION_COUNT = KEYFRAMES.length

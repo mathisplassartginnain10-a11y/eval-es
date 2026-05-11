@@ -1,10 +1,6 @@
-import * as THREE from "three"
-import { createScene } from "./src/scene.js"
-import { createStarField } from "./src/stars.js"
-import { loadEarthModel, preloadForSections, preloadUrls } from "./src/loader.js"
-import { createPostProcessing } from "./src/postfx.js"
-import { initScroll, scrollToSection, lerp, SECTION_COUNT } from "./src/scroll.js"
-import { KEYFRAMES, ALL_MODEL_URLS, MODEL_PARTIE1_CONE } from "./src/sections.js"
+import { createSlideStage } from "./src/slideStage.js"
+import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
+import { KEYFRAMES, keyframeToSlideMedia } from "./src/sections.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 
 const motionRef = {
@@ -15,7 +11,6 @@ window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change",
   motionRef.reduced = e.matches
 })
 
-const canvas = document.getElementById("webgl")
 const progressBar = document.getElementById("progress-bar")
 const textOverlay = document.getElementById("text-overlay")
 const textKicker = document.getElementById("text-kicker")
@@ -26,35 +21,66 @@ const textCredit = document.getElementById("text-credit")
 const sectionLabelEl = document.getElementById("section-label")
 const stepIndicatorEl = document.getElementById("step-indicator")
 const scrollHint = document.getElementById("scroll-hint")
-const dots = [...document.querySelectorAll(".section-dot")]
+const dotsNav = document.getElementById("section-dots")
+const scrollRoot = document.getElementById("scroll-root")
+const stageVideo = document.querySelector("#stage-video")
+const stageImage = document.querySelector("#stage-image")
 
-const ctx = createScene(canvas)
-const stars = createStarField(ctx.scene, THREE, motionRef)
-const postFx = createPostProcessing(ctx.scene, ctx.camera, ctx.renderer)
-
-{
-  const phGeom = new THREE.SphereGeometry(0.55, 28, 28)
-  const phMat = new THREE.MeshBasicMaterial({ color: 0x5588dd })
-  const placeholder = new THREE.Mesh(phGeom, phMat)
-  placeholder.name = "load-placeholder"
-  ctx.earthHolder.add(placeholder)
+if (!stageVideo || !stageImage) {
+  throw new Error("Éléments #stage-video et #stage-image requis (index.html).")
 }
 
+const slideStage = createSlideStage(stageVideo, stageImage, { reducedMotion: motionRef.reduced })
+
+function buildScrollShell() {
+  dotsNav.replaceChildren()
+  scrollRoot.replaceChildren()
+
+  for (let i = 0; i < SECTION_COUNT; i++) {
+    const label = SECTION_LABELS[i] ?? `Étape ${i + 1}`
+
+    const dot = document.createElement("button")
+    dot.type = "button"
+    dot.className = "section-dot" + (i === 0 ? " is-active" : "")
+    dot.dataset.section = String(i)
+    dot.title = label
+    dot.setAttribute("aria-label", label)
+    if (i === 0) dot.setAttribute("aria-current", "true")
+    dotsNav.appendChild(dot)
+
+    const panel = document.createElement("section")
+    panel.className = "scroll-panel"
+    panel.dataset.index = String(i)
+    panel.setAttribute("aria-label", label)
+    scrollRoot.appendChild(panel)
+  }
+}
+
+buildScrollShell()
+const dots = [...document.querySelectorAll(".section-dot")]
+
 let lastTextKey = null
-let modelRequestId = 0
-let lastModelUrl = null
-let lastPreloadSection = -1
-let liveSectionIndex = 0
-/** @type {{ refresh: () => void, kill: () => void } | null} */
-let scrollNav = null
+/** @type {ReturnType<initScroll> | null} */
+let scrollApi = null
 
 function fillTextContent(key) {
   const block = CONTENT[key]
   if (!block) return
 
-  textKicker.textContent = "Exposé — Enseignement scientifique"
-  textTitle.textContent = block.titre
-  textSubtitle.textContent = block.sousTitre
+  const rub = typeof block.rubrique === "string" ? block.rubrique.trim() : ""
+  textKicker.textContent = rub
+  textKicker.hidden = !rub
+
+  const titreLines = String(block.titre ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+  textTitle.innerHTML = titreLines.map((line) => escapeHtml(line)).join("<br />")
+
+  const st = typeof block.sousTitre === "string" ? block.sousTitre.trim() : ""
+  textSubtitle.textContent = st
+  textSubtitle.hidden = !st
+
   textBody.innerHTML = block.paragraphes.map((p) => `<p>${escapeHtml(p)}</p>`).join("")
 
   if (block.credit) {
@@ -90,16 +116,13 @@ function applyTextIfChanged(textKey) {
   fillTextContent(textKey)
 }
 
-async function setEarthModel(url) {
-  const req = ++modelRequestId
-  const root = await loadEarthModel(THREE, url)
-  if (req !== modelRequestId) return
-  ctx.earthHolder.clear()
-  ctx.earthHolder.add(root)
+function applySlideForIndex(index) {
+  const kf = KEYFRAMES[index]
+  slideStage.apply(keyframeToSlideMedia(kf))
 }
 
-function updateUiFromScroll(progress, sectionIndex) {
-  progressBar.style.width = `${progress * 100}%`
+function updateUi(sectionIndex) {
+  progressBar.style.width = `${((sectionIndex + 1) / SECTION_COUNT) * 100}%`
 
   dots.forEach((d, i) => {
     d.classList.toggle("is-active", i === sectionIndex)
@@ -107,127 +130,59 @@ function updateUiFromScroll(progress, sectionIndex) {
   })
 
   sectionLabelEl.textContent = SECTION_LABELS[sectionIndex] ?? ""
-
   if (stepIndicatorEl) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
-
   scrollHint.classList.toggle("is-hidden", sectionIndex !== 0)
 }
 
-function handleScrollState(s) {
-  const { from, to, easedT, modelUrl, textKey, progress, sectionIndex } = s
+const k0 = KEYFRAMES[0]
+fillTextContent(k0.textSection)
+lastTextKey = k0.textSection
+textOverlay.classList.add("is-visible")
+updateUi(0)
+applySlideForIndex(0)
 
-  liveSectionIndex = sectionIndex
-
-  const cx = lerp(from.camera.x, to.camera.x, easedT)
-  const cy = lerp(from.camera.y, to.camera.y, easedT)
-  const cz = lerp(from.camera.z, to.camera.z, easedT)
-  const tx = lerp(from.target.x, to.target.x, easedT)
-  const ty = lerp(from.target.y, to.target.y, easedT)
-  const tz = lerp(from.target.z, to.target.z, easedT)
-
-  ctx.camera.position.set(cx, cy, cz)
-  ctx.camera.lookAt(tx, ty, tz)
-
-  const mx = lerp(from.modelPos.x, to.modelPos.x, easedT)
-  const my = lerp(from.modelPos.y, to.modelPos.y, easedT)
-  const mz = lerp(from.modelPos.z, to.modelPos.z, easedT)
-  const ms = lerp(from.modelScale, to.modelScale, easedT)
-
-  ctx.earthHolder.position.set(mx, my, mz)
-  ctx.earthHolder.scale.setScalar(ms)
-
-  if (modelUrl !== lastModelUrl) {
-    lastModelUrl = modelUrl
-    void setEarthModel(modelUrl)
+scrollApi = initScroll({
+  reducedMotion: motionRef.reduced,
+  onTransitionStart: (idx, kf) => {
+    applySlideForIndex(idx)
+    applyTextIfChanged(kf.textSection)
+  },
+  onTransitionComplete: () => {},
+  onProgressUi: (idx) => {
+    updateUi(idx)
   }
-
-  applyTextIfChanged(textKey)
-  updateUiFromScroll(progress, sectionIndex)
-
-  if (sectionIndex !== lastPreloadSection) {
-    lastPreloadSection = sectionIndex
-    const nextIdx = Math.min(sectionIndex + 1, SECTION_COUNT - 1)
-    preloadForSections(THREE, KEYFRAMES, [sectionIndex, nextIdx])
-  }
-}
-
-function onResize() {
-  ctx.onResize()
-  stars.updateOnResize()
-  if (postFx) postFx.setSize(window.innerWidth, window.innerHeight)
-  scrollNav?.refresh()
-}
-
-window.addEventListener("resize", onResize)
+})
 
 dots.forEach((btn) => {
   btn.addEventListener("click", () => {
     const idx = Number.parseInt(btn.dataset.section, 10)
-    scrollToSection(idx, motionRef.reduced)
+    scrollToSection(idx, motionRef.reduced, scrollApi)
   })
 })
 
-/* Avant ScrollTrigger : évite un setEarthModel inutile quand lastModelUrl est encore null */
-lastModelUrl = MODEL_PARTIE1_CONE
-
-scrollNav = initScroll({
-  reducedMotion: motionRef.reduced,
-  onScrollState: handleScrollState
-})
-
 window.addEventListener("load", () => {
-  scrollNav?.refresh()
+  scrollApi?.refresh()
 })
-
-function goSection(delta) {
-  const next = Math.max(0, Math.min(SECTION_COUNT - 1, liveSectionIndex + delta))
-  scrollToSection(next, motionRef.reduced)
-}
 
 window.addEventListener("keydown", (e) => {
   if (e.defaultPrevented) return
   const t = e.target
   if (t && (t.isContentEditable || (t.closest && t.closest("input, textarea, select")))) return
+  if (scrollApi?.isLocked?.()) return
 
   if (e.key === "ArrowDown" || e.key === "PageDown") {
     e.preventDefault()
-    goSection(1)
+    scrollApi?.stepBy(1)
   } else if (e.key === "ArrowUp" || e.key === "PageUp") {
     e.preventDefault()
-    goSection(-1)
+    scrollApi?.stepBy(-1)
   } else if (e.key === "Home") {
     e.preventDefault()
-    scrollToSection(0, motionRef.reduced)
+    scrollToSection(0, motionRef.reduced, scrollApi)
   } else if (e.key === "End") {
     e.preventDefault()
-    scrollToSection(SECTION_COUNT - 1, motionRef.reduced)
+    scrollToSection(SECTION_COUNT - 1, motionRef.reduced, scrollApi)
   }
 })
-
-const k0 = KEYFRAMES[0]
-ctx.camera.position.set(k0.camera.x, k0.camera.y, k0.camera.z)
-ctx.camera.lookAt(k0.target.x, k0.target.y, k0.target.z)
-ctx.earthHolder.position.set(k0.modelPos.x, k0.modelPos.y, k0.modelPos.z)
-ctx.earthHolder.scale.setScalar(k0.modelScale)
-
-fillTextContent(k0.textSection)
-lastTextKey = k0.textSection
-textOverlay.classList.add("is-visible")
-updateUiFromScroll(0, 0)
-
-// Affiche le modèle initial dès son chargement, sans attendre les autres
-void setEarthModel(MODEL_PARTIE1_CONE)
-// Précharge les autres modèles en arrière-plan pour des transitions fluides
-void preloadUrls(THREE, ALL_MODEL_URLS.filter(u => u !== MODEL_PARTIE1_CONE))
-
-function animate() {
-  requestAnimationFrame(animate)
-  if (!motionRef.reduced) ctx.earthHolder.rotation.y += 0.0015
-  stars.update()
-  if (postFx) postFx.render()
-  else ctx.renderer.render(ctx.scene, ctx.camera)
-}
-
-animate()

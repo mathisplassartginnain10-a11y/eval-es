@@ -1,24 +1,22 @@
 # Modèles 3D
 
-Chemins **relatifs** (compatible GitHub Pages). Les noms ci-dessous doivent **correspondre exactement** au code dans `src/sections.js` (ou adaptez ce fichier).
+Le site charge les fichiers **tels qu’ils sont rangés** sous `docs/models/` (voir `src/sections.js`).
 
-## Fichiers utilisés par le site
+## Dossiers utilisés
 
-| Fichier | Partie | Rôle |
-|---------|--------|------|
-| `Meshy_AI_Earth_on_a_Cone_0511114642_texture.glb` | **Partie 1** (intro) | 1ᵉʳ modèle — première moitié du défilement de l’étape 1 |
-| Dossier `Meshy_AI_Edge_of_the_World_0511163858_texture_fbx/` (`.fbx` + textures au même niveau) | **Partie 1** | 2ᵉ modèle — fichier attendu : `Meshy_AI_Edge_of_the_World_0511163858_texture.fbx` |
-| `Earth 2K.obj` | **Partie 2** et suivantes | Globe pour « pas ronde », « ronde » et conclusion |
-| `Earth 2K.mtl` | (avec l’OBJ) | Matériaux — même dossier que l’OBJ |
+| Dossier | Fichier chargé | Sections |
+|---------|----------------|----------|
+| **`terre_triangle/`** | `Meshy_AI_Earth_on_a_Cone_0511170434_texture.fbx` (+ PNG à côté) | Introduction |
+| **`terre_aplatie/`** | `terre_aplatie.fbx` (+ PNG à côté) | La Terre n'est pas ronde |
+| **`terre_sphère/`** | `Earth 2K.fbx` (ou `Earth 2K.obj` + `Earth 2K.mtl`) | La Terre est ronde, Conclusion |
+| **Racine `docs/models/`** | `Meshy_AI_Earth_on_a_Cone_0511114642_texture.glb` (optionnel) | — |
 
-Le fichier **`Earth 2K.mtl`** référence **obligatoirement** les PNG dans `Textures/` (`Diffuse_2K`, `Bump_2K`, `Clouds_2K`). Ils sont versionnés dans le dépôt même si c’est lourd, pour que le globe s’affiche correctement en ligne.
+Les textures du globe **Earth 2K** sont dans **`docs/models/Textures/`** (chemins relatifs corrigés dans `terre_sphère/Earth 2K.mtl`).
 
 ## Si un fichier manque
 
-Le chargeur affiche une **sphère bleue** de secours pour ce modèle.
+Le chargeur affiche une **sphère bleue** de secours.
 
 ## Formats
 
-- **`.glb`** : chargés via `GLTFLoader`
-- **`.fbx`** : chargés via `FBXLoader` (textures externes = même dossier que le `.fbx`)
-- **`.obj` + `.mtl`** : chargés via `OBJLoader` + `MTLLoader`
+`.fbx` (FBXLoader), `.obj` + `.mtl` (OBJLoader + MTLLoader), `.glb` / `.gltf` (GLTFLoader) — voir `src/loader.js`.

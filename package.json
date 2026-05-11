@@ -1,0 +1,9 @@
+{
+  "name": "es-expose-terre",
+  "private": true,
+  "type": "module",
+  "description": "Exposé ES — Three.js en importmap ; fflate listé pour les workflows avec bundler (FBXLoader embarque fflate via three/addons en CDN).",
+  "dependencies": {
+    "fflate": "^0.8.2"
+  }
+}

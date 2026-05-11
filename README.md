@@ -1,42 +1,31 @@
 # Exposé ES — « La Terre est-elle ronde ? »
 
-Site web **immersif** (Three.js + GSAP ScrollTrigger) servant de support à un exposé oral. La navigation se fait au **défilement** : la caméra se déplace dans une scène 3D continue.
+Site **vidéo plein écran** avec **~10 étapes**, navigation **molette / swipe / clavier / points**, et texte superposé. **GSAP** gère le verrouillage court entre les transitions.
 
 ## Lancer en local
-
-À la racine du projet :
 
 ```bash
 npx serve .
 ```
 
-Ouvrez l’URL indiquée (souvent `http://localhost:3000`). Les modules ES et les CDN nécessitent un **serveur HTTP** (pas d’ouverture directe en `file://`).
+Les modules ES nécessitent un **serveur HTTP** (pas `file://`).
 
-## GitHub Pages
+## Médias (image ou vidéo)
 
-- `index.html` est à la racine.
-- Aucune étape de build : fichiers statiques + `importmap` (Three.js r160) et scripts GSAP (UMD) pour ScrollTrigger.
-- Les chemins vers les modèles sont **relatifs** (`./docs/models/...`).
+Fichiers dans **`docs/media/`** — voir `docs/media/README.md`. Le type par étape (**image fixe** ou **vidéo** qui joue jusqu’au swipe suivant, option **boucle**) est défini dans **`src/sections.js`** (`KEYFRAMES[].media`).
 
-## Contenu texte
+## Texte
 
-Tout le texte est centralisé dans **`src/content.js`**. Remplissez les titres, sous-titres et paragraphes sans modifier le reste du code.
-
-## Modèles 3D
-
-Voir **`docs/models/README.md`**. Fichiers attendus : `terre_sphere.glb`, `terre_aplatie.glb`. En cas d’absence, une sphère de secours s’affiche.
+**`src/content.js`** — clés `step01` … `step10`.
 
 ## Structure
 
-- `main.js` — orchestration
-- `src/scene.js` — scène, lumières, renderer
-- `src/stars.js` — étoiles procédurales + parallaxe souris
-- `src/loader.js` — GLTFLoader + fallback
-- `src/scroll.js` — ScrollTrigger
-- `src/sections.js` — keyframes caméra / modèles
-- `src/postfx.js` — bloom + vignette
-- `style.css` — UI et fond nébuleuse
+- `main.js` — UI, vidéo, navigation
+- `src/slideStage.js` — image fixe ou vidéo par étape
+- `src/scroll.js` — wheel / touch / verrou
+- `src/sections.js` — 10 étapes (fichiers vidéo + clés texte)
+- `style.css` — calques vidéo + overlay
 
 ## Accessibilité
 
-Le site respecte `prefers-reduced-motion` (animations et parallaxe atténuées ou désactivées).
+`prefers-reduced-motion` : la vidéo ne démarre pas en lecture automatique (image / première frame selon navigateur).

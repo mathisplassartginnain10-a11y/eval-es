@@ -1,111 +1,134 @@
-/* global gsap, ScrollTrigger */
+import gsap from "gsap"
+import { KEYFRAMES, SECTION_COUNT } from "./sections.js"
 
-import {
-  KEYFRAMES,
-  SECTION_COUNT,
-  MODEL_PARTIE1_CONE,
-  MODEL_PARTIE1_EDGE
-} from "./sections.js"
+const ANIM_DURATION_S = 0.025
+const PAUSE_AFTER_MS = 20
+const SWIPE_PX = 60
+const WHEEL_ACCUM_PX = 60
 
-const G = globalThis
-
-function ensureGsap() {
-  if (!G.gsap || !G.ScrollTrigger) {
-    throw new Error("GSAP et ScrollTrigger doivent être chargés avant le module principal (voir index.html).")
-  }
-  return { gsap: G.gsap, ScrollTrigger: G.ScrollTrigger }
-}
-
-function lerp(a, b, t) {
+export function lerp(a, b, t) {
   return a + (b - a) * t
 }
 
 /**
- * Initialise ScrollTrigger et envoie l'état interpolé à chaque mise à jour.
+ * Navigation une étape à la fois (molette, swipe, clavier via main).
+ * Verrou court pendant la transition — les médias sont pilotés dans les callbacks.
  */
-export function initScroll({ reducedMotion, onScrollState }) {
-  const { gsap: gs, ScrollTrigger: ST } = ensureGsap()
+export function initScroll({ reducedMotion, onTransitionStart, onTransitionComplete, onProgressUi }) {
+  let currentIndex = 0
+  let locked = false
+  let wheelSum = 0
+  let touchY0 = 0
+  /** @type { gsap.core.Timeline | null } */
+  let timeline = null
 
-  const ease = gs.parseEase("power3.inOut")
+  const tick = { _: 0 }
 
-  const st = ST.create({
-    start: 0,
-    end: "max",
-    scrub: reducedMotion ? 0 : 1,
-    onUpdate: (self) => {
-      const p = self.progress
-      const n = SECTION_COUNT
-      const x = p * n
-      const idx = Math.min(Math.floor(x), n - 1)
-      const frac = x - idx
+  function setBodyLock(on) {
+    document.body.classList.toggle("scroll-locked", on)
+  }
 
-      let from = KEYFRAMES[idx]
-      let to = KEYFRAMES[Math.min(idx + 1, n - 1)]
-      let t = 0
+  function syncScrollDom(index) {
+    const panels = document.querySelectorAll("#scroll-root .scroll-panel")
+    const p = panels[index]
+    if (p) window.scrollTo({ top: p.offsetTop, behavior: "auto" })
+  }
 
-      if (idx < n - 1) {
-        t = ease(frac)
-      } else {
-        from = KEYFRAMES[n - 1]
-        to = KEYFRAMES[n - 1]
-        t = 0
+  function runToSection(nextIndex) {
+    if (locked) return
+    const n = SECTION_COUNT
+    const targetIdx = Math.max(0, Math.min(nextIndex, n - 1))
+    if (targetIdx === currentIndex) return
+
+    const kf = KEYFRAMES[targetIdx]
+    const dur = reducedMotion ? 0.01 : ANIM_DURATION_S
+    const pauseMs = reducedMotion ? 0 : PAUSE_AFTER_MS
+
+    locked = true
+    wheelSum = 0
+    setBodyLock(true)
+    if (timeline) timeline.kill()
+
+    onTransitionStart(targetIdx, kf)
+    onProgressUi(targetIdx)
+
+    tick._ = 0
+    timeline = gsap.timeline({
+      defaults: { duration: dur, ease: "power3.inOut" },
+      onComplete: () => {
+        currentIndex = targetIdx
+        gsap.delayedCall(pauseMs / 1000, () => {
+          locked = false
+          setBodyLock(false)
+          syncScrollDom(targetIdx)
+          onTransitionComplete(targetIdx, kf)
+        })
       }
+    })
+    timeline.to(tick, { _: 1 }, 0)
+  }
 
-      let modelUrl = from.modelFile
-      if (idx === 0) {
-        /* Partie 1 : deux modèles sur le premier panneau (moitié / moitié au scroll) */
-        modelUrl = frac < 0.5 ? MODEL_PARTIE1_CONE : MODEL_PARTIE1_EDGE
-      } else if (idx < n - 1) {
-        const a = from.modelFile
-        const b = to.modelFile
-        modelUrl = a === b ? a : frac < 0.5 ? a : b
-      }
-
-      const textKey =
-        idx === 0
-          ? from.textSection
-          : idx < n - 1
-            ? frac < 0.5
-              ? from.textSection
-              : to.textSection
-            : from.textSection
-
-      onScrollState({
-        progress: p,
-        sectionIndex: idx,
-        localFrac: frac,
-        easedT: t,
-        from,
-        to,
-        modelUrl,
-        textKey
-      })
+  function onWheel(e) {
+    if (locked) {
+      e.preventDefault()
+      return
     }
-  })
+    wheelSum += e.deltaY
+    if (wheelSum >= WHEEL_ACCUM_PX) {
+      wheelSum = 0
+      runToSection(currentIndex + 1)
+    } else if (wheelSum <= -WHEEL_ACCUM_PX) {
+      wheelSum = 0
+      runToSection(currentIndex - 1)
+    }
+  }
 
-  ST.refresh()
+  window.addEventListener("wheel", onWheel, { passive: false })
+
+  window.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches[0]) touchY0 = e.touches[0].clientY
+    },
+    { passive: true }
+  )
+
+  window.addEventListener(
+    "touchend",
+    (e) => {
+      if (locked || !e.changedTouches[0]) return
+      const dy = touchY0 - e.changedTouches[0].clientY
+      if (dy > SWIPE_PX) runToSection(currentIndex + 1)
+      else if (dy < -SWIPE_PX) runToSection(currentIndex - 1)
+    },
+    { passive: true }
+  )
 
   return {
-    refresh: () => ST.refresh(),
-    kill: () => st.kill()
+    refresh: () => syncScrollDom(currentIndex),
+    stepBy(delta) {
+      if (locked) return
+      runToSection(currentIndex + delta)
+    },
+    goToIndex(i) {
+      runToSection(i)
+    },
+    getIndex: () => currentIndex,
+    isLocked: () => locked
   }
 }
 
-/**
- * Aligne le scroll sur le début du panneau d'index donné.
- */
-export function scrollToSection(index, reducedMotion) {
-  const n = SECTION_COUNT
-  const i = Math.max(0, Math.min(index, n - 1))
-  const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+/** @param {{ goToIndex: (i: number) => void } | null} api */
+export function scrollToSection(index, reducedMotion, api) {
+  const i = Math.max(0, Math.min(index, SECTION_COUNT - 1))
+  if (api?.goToIndex) {
+    api.goToIndex(i)
+    return
+  }
   const panels = document.querySelectorAll("#scroll-root .scroll-panel")
-  const panel = panels[i]
-  const targetTop = panel ? panel.offsetTop : i * window.innerHeight
-  const y = Math.min(Math.max(0, targetTop), maxY)
-  window.scrollTo({
-    top: y,
-    behavior: reducedMotion ? "auto" : "smooth"
-  })
+  const p = panels[i]
+  const y = p ? p.offsetTop : i * window.innerHeight
+  window.scrollTo({ top: y, behavior: reducedMotion ? "auto" : "smooth" })
 }
 
-export { SECTION_COUNT, lerp }
+export { SECTION_COUNT }
