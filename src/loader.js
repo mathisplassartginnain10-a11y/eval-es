@@ -68,9 +68,12 @@ function normalizeTreeMaterials(root, THREE) {
           color: m.color.clone(),
           emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0x000000),
           emissiveIntensity: typeof m.emissiveIntensity === "number" ? m.emissiveIntensity : 0,
+          emissiveMap: m.emissiveMap,
           map: m.map,
           bumpMap: m.bumpMap,
           bumpScale: m.bumpScale ?? 1,
+          normalMap: m.normalMap,
+          normalScale: m.normalScale ? m.normalScale.clone() : new THREE.Vector2(1, 1),
           transparent: m.transparent,
           opacity: m.opacity,
           alphaTest: m.alphaTest,
@@ -92,6 +95,10 @@ function normalizeTreeMaterials(root, THREE) {
       if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
       if (m.emissiveMap) m.emissiveMap.colorSpace = THREE.SRGBColorSpace
       if (m.bumpMap) m.bumpMap.colorSpace = THREE.LinearSRGBColorSpace
+      if (m.normalMap) m.normalMap.colorSpace = THREE.LinearSRGBColorSpace
+      if (m.roughnessMap) m.roughnessMap.colorSpace = THREE.LinearSRGBColorSpace
+      if (m.metalnessMap) m.metalnessMap.colorSpace = THREE.LinearSRGBColorSpace
+      if (m.aoMap) m.aoMap.colorSpace = THREE.LinearSRGBColorSpace
       if (m.transparent) m.depthWrite = false
     }
   })
