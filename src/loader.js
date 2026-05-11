@@ -1,8 +1,29 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js"
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js"
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js"
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js"
+import { STLLoader } from "three/addons/loaders/STLLoader.js"
+import { PLYLoader } from "three/addons/loaders/PLYLoader.js"
+import { ColladaLoader } from "three/addons/loaders/ColladaLoader.js"
+import { VRMLLoader } from "three/addons/loaders/VRMLLoader.js"
+import { ThreeMFLoader } from "three/addons/loaders/3MFLoader.js"
+import { PCDLoader } from "three/addons/loaders/PCDLoader.js"
 
 const modelCache = new Map()
+
+/** Même version que l’importmap `index.html` — décodeurs Draco pour GLB/GLTF compressés. */
+const DRACO_DECODER_BASE =
+  "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/"
+
+let dracoLoaderSingleton = null
+function ensureDracoLoader() {
+  if (!dracoLoaderSingleton) {
+    dracoLoaderSingleton = new DRACOLoader()
+    dracoLoaderSingleton.setDecoderPath(DRACO_DECODER_BASE)
+  }
+  return dracoLoaderSingleton
+}
 
 function createFallbackMesh(THREE) {
   const fallbackGeo = new THREE.SphereGeometry(1.5, 64, 64)
@@ -88,6 +109,54 @@ function splitDirAndFile(url) {
   return { dir: clean.slice(0, i + 1), file: clean.slice(i + 1) }
 }
 
+function urlExtension(url) {
+  const file = splitDirAndFile(url).file
+  const dot = file.lastIndexOf(".")
+  if (dot < 0) return ""
+  return file.slice(dot + 1).toLowerCase()
+}
+
+/**
+ * BufferGeometry (STL / PLY) → groupe avec Mesh ou Points.
+ */
+function bufferGeometryToRoot(THREE, geometry, label) {
+  const root = new THREE.Group()
+  root.name = label
+  const idx = geometry.getIndex()
+  const hasFaces = idx !== null && idx.count > 0
+  if (hasFaces) {
+    if (!geometry.attributes.normal) geometry.computeVertexNormals()
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.7,
+      metalness: 0.06,
+      vertexColors: !!geometry.attributes.color,
+      side: THREE.DoubleSide
+    })
+    root.add(new THREE.Mesh(geometry, mat))
+  } else {
+    const mat = new THREE.PointsMaterial({
+      size: 0.02,
+      sizeAttenuation: true,
+      vertexColors: !!geometry.attributes.color,
+      color: geometry.attributes.color ? 0xffffff : 0x88bbff
+    })
+    root.add(new THREE.Points(geometry, mat))
+  }
+  return root
+}
+
+function finalizeLoadedRoot(THREE, url, root, formatLabel) {
+  normalizeTreeMaterials(root, THREE)
+  frameModel(root, THREE)
+  if (!hasGeometry(root, THREE)) {
+    console.warn(`[loader] ${formatLabel} géométrie vide, fallback:`, url)
+    return createFallbackMesh(THREE)
+  }
+  modelCache.set(url, root)
+  return root.clone(true)
+}
+
 /**
  * Charge un .obj + .mtl (même dossier, même nom de base).
  */
@@ -111,15 +180,7 @@ function loadObjWithMtl(THREE, url) {
         objLoader.load(
           file,
           (group) => {
-            normalizeTreeMaterials(group, THREE)
-            frameModel(group, THREE)
-            if (!hasGeometry(group, THREE)) {
-              console.warn("[loader] OBJ géométrie vide, fallback:", url)
-              resolve(createFallbackMesh(THREE))
-              return
-            }
-            modelCache.set(url, group)
-            resolve(group.clone(true))
+            resolve(finalizeLoadedRoot(THREE, url, group, "OBJ"))
           },
           undefined,
           (err) => {
@@ -135,15 +196,7 @@ function loadObjWithMtl(THREE, url) {
         objLoader.load(
           file,
           (group) => {
-            normalizeTreeMaterials(group, THREE)
-            frameModel(group, THREE)
-            if (!hasGeometry(group, THREE)) {
-              console.warn("[loader] OBJ (sans MTL) géométrie vide, fallback:", url)
-              resolve(createFallbackMesh(THREE))
-              return
-            }
-            modelCache.set(url, group)
-            resolve(group.clone(true))
+            resolve(finalizeLoadedRoot(THREE, url, group, "OBJ (sans MTL)"))
           },
           undefined,
           (err) => {
@@ -156,35 +209,80 @@ function loadObjWithMtl(THREE, url) {
   })
 }
 
-/**
- * Charge un GLB/GLTF ou un OBJ+MTL ; sphère de secours si absent ou erreur.
- */
-export async function loadEarthModel(THREE, url) {
-  if (modelCache.has(url)) {
-    return modelCache.get(url).clone(true)
-  }
+function loadWithPathLoader(THREE, url, LoaderClass, formatLabel, onLoaded) {
+  const { dir, file } = splitDirAndFile(url)
+  const loader = new LoaderClass()
+  loader.setPath(dir)
+  return new Promise((resolve) => {
+    loader.load(
+      file,
+      (data) => {
+        try {
+          const root = onLoaded(data)
+          resolve(finalizeLoadedRoot(THREE, url, root, formatLabel))
+        } catch (e) {
+          console.warn(`[loader] ${formatLabel} parse`, url, e)
+          resolve(createFallbackMesh(THREE))
+        }
+      },
+      undefined,
+      (err) => {
+        console.warn(`[loader] ${formatLabel}`, url, err)
+        resolve(createFallbackMesh(THREE))
+      }
+    )
+  })
+}
 
-  const pathLower = url.split("?")[0].toLowerCase()
-  if (pathLower.endsWith(".obj")) {
-    return loadObjWithMtl(THREE, url)
-  }
+function loadFbx(THREE, url) {
+  return loadWithPathLoader(THREE, url, FBXLoader, "FBX", (root) => root)
+}
 
+function loadStl(THREE, url) {
+  return loadWithPathLoader(THREE, url, STLLoader, "STL", (geometry) =>
+    bufferGeometryToRoot(THREE, geometry, "STL")
+  )
+}
+
+function loadPly(THREE, url) {
+  return loadWithPathLoader(THREE, url, PLYLoader, "PLY", (geometry) =>
+    bufferGeometryToRoot(THREE, geometry, "PLY")
+  )
+}
+
+function loadCollada(THREE, url) {
+  return loadWithPathLoader(THREE, url, ColladaLoader, "Collada", (collada) => collada.scene)
+}
+
+function loadVrml(THREE, url) {
+  return loadWithPathLoader(THREE, url, VRMLLoader, "VRML", (scene) => scene)
+}
+
+function load3mf(THREE, url) {
+  return loadWithPathLoader(THREE, url, ThreeMFLoader, "3MF", (group) => group)
+}
+
+function loadPcd(THREE, url) {
+  return loadWithPathLoader(THREE, url, PCDLoader, "PCD", (points) => {
+    const root = new THREE.Group()
+    root.name = "PCD"
+    root.add(points)
+    return root
+  })
+}
+
+function loadGltf(THREE, url) {
+  const { dir, file } = splitDirAndFile(url)
   const loader = new GLTFLoader()
+  loader.setPath(dir)
+  loader.setDRACOLoader(ensureDracoLoader())
 
   return new Promise((resolve) => {
     loader.load(
-      url,
+      file,
       (gltf) => {
         const root = gltf.scene || gltf.scenes[0]
-        normalizeTreeMaterials(root, THREE)
-        frameModel(root, THREE)
-        if (!hasGeometry(root, THREE)) {
-          console.warn("[loader] GLB géométrie vide, fallback:", url)
-          resolve(createFallbackMesh(THREE))
-          return
-        }
-        modelCache.set(url, root)
-        resolve(root.clone(true))
+        resolve(finalizeLoadedRoot(THREE, url, root, "GLB/GLTF"))
       },
       undefined,
       (err) => {
@@ -193,6 +291,45 @@ export async function loadEarthModel(THREE, url) {
       }
     )
   })
+}
+
+/**
+ * Charge un fichier 3D selon l’extension : glTF/GLB (Draco si besoin), FBX, OBJ+MTL,
+ * STL, PLY, Collada (.dae), VRML (.wrl / .vrml), 3MF, PCD. Défaut : glTF.
+ */
+export async function loadEarthModel(THREE, url) {
+  if (modelCache.has(url)) {
+    return modelCache.get(url).clone(true)
+  }
+
+  const ext = urlExtension(url)
+
+  switch (ext) {
+    case "obj":
+      return loadObjWithMtl(THREE, url)
+    case "fbx":
+      return loadFbx(THREE, url)
+    case "stl":
+      return loadStl(THREE, url)
+    case "ply":
+      return loadPly(THREE, url)
+    case "dae":
+      return loadCollada(THREE, url)
+    case "wrl":
+    case "vrml":
+      return loadVrml(THREE, url)
+    case "3mf":
+      return load3mf(THREE, url)
+    case "pcd":
+      return loadPcd(THREE, url)
+    case "gltf":
+    case "glb":
+    default:
+      if (ext && !["gltf", "glb"].includes(ext)) {
+        console.warn("[loader] extension non reconnue, tentative glTF:", ext, url)
+      }
+      return loadGltf(THREE, url)
+  }
 }
 
 /**
