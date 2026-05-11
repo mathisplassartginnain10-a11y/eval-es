@@ -169,6 +169,9 @@ dots.forEach((btn) => {
   })
 })
 
+/* Avant ScrollTrigger : évite un setEarthModel inutile quand lastModelUrl est encore null */
+lastModelUrl = MODEL_PARTIE1_CONE
+
 scrollNav = initScroll({
   reducedMotion: motionRef.reduced,
   onScrollState: handleScrollState
@@ -214,7 +217,6 @@ lastTextKey = k0.textSection
 textOverlay.classList.add("is-visible")
 updateUiFromScroll(0, 0)
 
-lastModelUrl = MODEL_PARTIE1_CONE
 preloadUrls(THREE, ALL_MODEL_URLS).then(() => setEarthModel(MODEL_PARTIE1_CONE))
 
 function animate() {
