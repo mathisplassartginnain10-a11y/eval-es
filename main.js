@@ -32,6 +32,14 @@ const ctx = createScene(canvas)
 const stars = createStarField(ctx.scene, THREE, motionRef)
 const postFx = createPostProcessing(ctx.scene, ctx.camera, ctx.renderer)
 
+{
+  const phGeom = new THREE.SphereGeometry(0.55, 28, 28)
+  const phMat = new THREE.MeshBasicMaterial({ color: 0x5588dd })
+  const placeholder = new THREE.Mesh(phGeom, phMat)
+  placeholder.name = "load-placeholder"
+  ctx.earthHolder.add(placeholder)
+}
+
 let lastTextKey = null
 let modelRequestId = 0
 let lastModelUrl = null

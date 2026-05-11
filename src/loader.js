@@ -35,17 +35,43 @@ function frameModel(root, THREE, targetRadius = 1.7) {
 
 function normalizeTreeMaterials(root, THREE) {
   root.traverse((child) => {
-    if (child.isMesh) {
-      child.castShadow = false
-      child.receiveShadow = false
-      const mats = Array.isArray(child.material) ? child.material : [child.material]
-      for (const m of mats) {
-        if (!m) continue
-        if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
-        if (m.emissiveMap) m.emissiveMap.colorSpace = THREE.SRGBColorSpace
-        if (m.bumpMap) m.bumpMap.colorSpace = THREE.LinearSRGBColorSpace
-        if (m.transparent) m.depthWrite = false
+    if (!child.isMesh) return
+    child.castShadow = false
+    child.receiveShadow = false
+
+    const list = Array.isArray(child.material) ? child.material : [child.material]
+    const upgraded = list.map((m) => {
+      if (!m) return m
+      if (m.isMeshPhongMaterial) {
+        const std = new THREE.MeshStandardMaterial({
+          color: m.color.clone(),
+          emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0x000000),
+          emissiveIntensity: typeof m.emissiveIntensity === "number" ? m.emissiveIntensity : 0,
+          map: m.map,
+          bumpMap: m.bumpMap,
+          bumpScale: m.bumpScale ?? 1,
+          transparent: m.transparent,
+          opacity: m.opacity,
+          alphaTest: m.alphaTest,
+          side: m.side,
+          roughness: m.transparent ? 0.35 : 0.82,
+          metalness: 0.04,
+          depthWrite: m.transparent ? false : true
+        })
+        m.dispose()
+        return std
       }
+      return m
+    })
+    child.material = upgraded.length === 1 ? upgraded[0] : upgraded
+
+    const mats = Array.isArray(child.material) ? child.material : [child.material]
+    for (const m of mats) {
+      if (!m) continue
+      if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
+      if (m.emissiveMap) m.emissiveMap.colorSpace = THREE.SRGBColorSpace
+      if (m.bumpMap) m.bumpMap.colorSpace = THREE.LinearSRGBColorSpace
+      if (m.transparent) m.depthWrite = false
     }
   })
 }

@@ -17,12 +17,12 @@ export function createPostProcessing(scene, camera, renderer) {
     composer.addPass(renderPass)
 
     const resolution = new THREE.Vector2(w, h)
-    const bloom = new UnrealBloomPass(resolution, 1.4, 0.8, 0.2)
+    const bloom = new UnrealBloomPass(resolution, 0.35, 0.45, 0.82)
     composer.addPass(bloom)
 
     const vignettePass = new ShaderPass(VignetteShader)
-    if (vignettePass.uniforms.offset) vignettePass.uniforms.offset.value = 0.5
-    if (vignettePass.uniforms.darkness) vignettePass.uniforms.darkness.value = 0.7
+    if (vignettePass.uniforms.offset) vignettePass.uniforms.offset.value = 0.55
+    if (vignettePass.uniforms.darkness) vignettePass.uniforms.darkness.value = 0.32
     composer.addPass(vignettePass)
 
     function setSize(width, height) {
