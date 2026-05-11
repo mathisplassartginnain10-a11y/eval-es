@@ -1,10 +1,10 @@
 import * as THREE from "three"
 import { createScene } from "./src/scene.js"
 import { createStarField } from "./src/stars.js"
-import { loadEarthModel, preloadForSections } from "./src/loader.js"
+import { loadEarthModel, preloadForSections, preloadUrls } from "./src/loader.js"
 import { createPostProcessing } from "./src/postfx.js"
 import { initScroll, scrollToSection, lerp, SECTION_COUNT } from "./src/scroll.js"
-import { KEYFRAMES } from "./src/sections.js"
+import { KEYFRAMES, ALL_MODEL_URLS, MODEL_PARTIE1_CONE } from "./src/sections.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 
 const motionRef = {
@@ -24,6 +24,7 @@ const textSubtitle = document.getElementById("text-subtitle")
 const textBody = document.getElementById("text-body")
 const textCredit = document.getElementById("text-credit")
 const sectionLabelEl = document.getElementById("section-label")
+const stepIndicatorEl = document.getElementById("step-indicator")
 const scrollHint = document.getElementById("scroll-hint")
 const dots = [...document.querySelectorAll(".section-dot")]
 
@@ -98,6 +99,10 @@ function updateUiFromScroll(progress, sectionIndex) {
   })
 
   sectionLabelEl.textContent = SECTION_LABELS[sectionIndex] ?? ""
+
+  if (stepIndicatorEl) {
+    stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
+  }
 
   scrollHint.classList.toggle("is-hidden", sectionIndex !== 0)
 }
@@ -201,8 +206,8 @@ lastTextKey = k0.textSection
 textOverlay.classList.add("is-visible")
 updateUiFromScroll(0, 0)
 
-lastModelUrl = k0.modelFile
-preloadForSections(THREE, KEYFRAMES, [0, 1]).then(() => setEarthModel(k0.modelFile))
+lastModelUrl = MODEL_PARTIE1_CONE
+preloadUrls(THREE, ALL_MODEL_URLS).then(() => setEarthModel(MODEL_PARTIE1_CONE))
 
 function animate() {
   requestAnimationFrame(animate)

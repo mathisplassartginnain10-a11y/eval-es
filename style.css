@@ -7,11 +7,14 @@
 
 html {
   scroll-behavior: smooth;
+  /* Une section = une étape : le swipe / molette accroche à chaque panneau */
+  scroll-snap-type: y mandatory;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+    scroll-snap-type: none;
   }
 }
 
@@ -35,6 +38,8 @@ body {
 .scroll-panel {
   min-height: 100vh;
   min-height: 100dvh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 /* ——— App layer ——— */
@@ -50,6 +55,8 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: auto;
+  /* Laisse le swipe vertical faire défiler la page (étapes) au lieu de bloquer sur le canvas */
+  touch-action: pan-y;
 }
 
 .nebula-bg {
@@ -252,6 +259,20 @@ body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(255, 245, 224, 0.4);
+  pointer-events: none;
+}
+
+/* ——— Étapes (swipe / scroll par panneau) ——— */
+.step-indicator {
+  position: absolute;
+  right: clamp(1.25rem, 4vw, 2.5rem);
+  bottom: clamp(1rem, 3vh, 1.5rem);
+  margin: 0;
+  z-index: 9;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(255, 245, 224, 0.55);
   pointer-events: none;
 }
 

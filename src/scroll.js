@@ -1,6 +1,11 @@
 /* global gsap, ScrollTrigger */
 
-import { KEYFRAMES, SECTION_COUNT } from "./sections.js"
+import {
+  KEYFRAMES,
+  SECTION_COUNT,
+  MODEL_PARTIE1_CONE,
+  MODEL_PARTIE1_EDGE
+} from "./sections.js"
 
 const G = globalThis
 
@@ -47,13 +52,23 @@ export function initScroll({ reducedMotion, onScrollState }) {
       }
 
       let modelUrl = from.modelFile
-      if (idx < n - 1) {
+      if (idx === 0) {
+        /* Partie 1 : deux modèles sur le premier panneau (moitié / moitié au scroll) */
+        modelUrl = frac < 0.5 ? MODEL_PARTIE1_CONE : MODEL_PARTIE1_EDGE
+      } else if (idx < n - 1) {
         const a = from.modelFile
         const b = to.modelFile
         modelUrl = a === b ? a : frac < 0.5 ? a : b
       }
 
-      const textKey = idx < n - 1 ? (frac < 0.5 ? from.textSection : to.textSection) : from.textSection
+      const textKey =
+        idx === 0
+          ? from.textSection
+          : idx < n - 1
+            ? frac < 0.5
+              ? from.textSection
+              : to.textSection
+            : from.textSection
 
       onScrollState({
         progress: p,

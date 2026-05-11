@@ -1,22 +1,23 @@
-# Modèles 3D (`.glb`)
+# Modèles 3D
 
-Placez ici vos fichiers **glTF binaire** pour l’exposé. Le site les charge avec des chemins **relatifs** (compatible GitHub Pages).
+Chemins **relatifs** (compatible GitHub Pages). Les noms ci-dessous doivent **correspondre exactement** au code dans `src/sections.js` (ou adaptez ce fichier).
 
-## Fichiers attendus
+## Fichiers utilisés par le site
 
-| Fichier | Section | Rôle |
-|---------|---------|------|
-| `terre_sphere.glb` | Intro, « ronde », conclusion | Terre représentée comme sphère (ou sphéroïde) |
-| `terre_aplatie.glb` | « La Terre n’est pas ronde » | Modèle visuel aplati (oblat, schéma pédagogique, etc.) |
+| Fichier | Partie | Rôle |
+|---------|--------|------|
+| `Meshy_AI_Earth_on_a_Cone_0511114642_texture.glb` | **Partie 1** (intro) | 1ᵉʳ modèle — première moitié du défilement de l’étape 1 |
+| `Meshy_AI_Edge_of_the_World_0511114634_texture.glb` | **Partie 1** (intro) | 2ᵉ modèle — deuxième moitié de l’étape 1 |
+| `Earth 2K.obj` | **Partie 2** et suivantes | Globe pour « pas ronde », « ronde » et conclusion |
+| `Earth 2K.mtl` | (avec l’OBJ) | Matériaux — même dossier que l’OBJ |
+
+Si tu ajoutes des textures référencées dans le `.mtl` (ex. dossier `Textures/`), place-les aux chemins indiqués dans le fichier MTL.
 
 ## Si un fichier manque
 
-Le script affiche automatiquement une **sphère bleue** Three.js à la place, pour que la démo reste utilisable en classe.
+Le chargeur affiche une **sphère bleue** de secours pour ce modèle.
 
-## Conseils
+## Formats
 
-- Formats : **`.glb`** uniquement (pas `.gltf` + textures séparées, sauf si vous les regroupez).
-- Taille : gardez les modèles légers (géométrie et textures modérées) pour viser **~60 fps** sur un laptop.
-- Vous pouvez exporter depuis Blender, Sketchfab (licence respectée), etc.
-
-Les noms de fichiers doivent **correspondre exactement** à ceux ci-dessus, ou il faudra mettre à jour les chemins dans `src/sections.js`.
+- **`.glb`** : chargés via `GLTFLoader`
+- **`.obj` + `.mtl`** : chargés via `OBJLoader` + `MTLLoader`
