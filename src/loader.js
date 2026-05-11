@@ -76,6 +76,11 @@ function normalizeTreeMaterials(root, THREE) {
   })
 }
 
+function hasGeometry(root, THREE) {
+  root.updateMatrixWorld(true)
+  return !new THREE.Box3().setFromObject(root).isEmpty()
+}
+
 function splitDirAndFile(url) {
   const clean = url.split("?")[0]
   const i = Math.max(clean.lastIndexOf("/"), clean.lastIndexOf("\\"))
@@ -108,6 +113,11 @@ function loadObjWithMtl(THREE, url) {
           (group) => {
             normalizeTreeMaterials(group, THREE)
             frameModel(group, THREE)
+            if (!hasGeometry(group, THREE)) {
+              console.warn("[loader] OBJ géométrie vide, fallback:", url)
+              resolve(createFallbackMesh(THREE))
+              return
+            }
             modelCache.set(url, group)
             resolve(group.clone(true))
           },
@@ -127,6 +137,11 @@ function loadObjWithMtl(THREE, url) {
           (group) => {
             normalizeTreeMaterials(group, THREE)
             frameModel(group, THREE)
+            if (!hasGeometry(group, THREE)) {
+              console.warn("[loader] OBJ (sans MTL) géométrie vide, fallback:", url)
+              resolve(createFallbackMesh(THREE))
+              return
+            }
             modelCache.set(url, group)
             resolve(group.clone(true))
           },
@@ -163,6 +178,11 @@ export async function loadEarthModel(THREE, url) {
         const root = gltf.scene || gltf.scenes[0]
         normalizeTreeMaterials(root, THREE)
         frameModel(root, THREE)
+        if (!hasGeometry(root, THREE)) {
+          console.warn("[loader] GLB géométrie vide, fallback:", url)
+          resolve(createFallbackMesh(THREE))
+          return
+        }
         modelCache.set(url, root)
         resolve(root.clone(true))
       },
