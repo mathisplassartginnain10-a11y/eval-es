@@ -2,3 +2,8 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+.claude/
+
+# Sous-projet Vite (dépendances / build locaux)
+vite-earth-r3f/node_modules/
+vite-earth-r3f/dist/
