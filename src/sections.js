@@ -28,11 +28,18 @@ function docsUrl(relativePathUnderDocs) {
 /** @typedef {{ scrollIndex: number, textSection: string, media: MediaSpec }} SectionKeyframe */
 
 /**
- * Défaut : 10 vidéos. Remplace une ligne par `{ type: "image", file: "intro.png" }` pour une diapo fixe.
+ * Fond neutre tant qu’il n’y a pas de vrai média dans `docs/media/` (évite les 404 sur 01.mp4…).
+ * Remplace par ex. `{ type: "video", file: "01.mp4" }` quand le fichier est ajouté.
+ */
+const PLACEHOLDER = { type: "image", file: "placeholder.svg" }
+
+/**
+ * Défaut : étape 2 = vidéo Terre aplatie ; autres étapes = placeholder jusqu’à ajout des fichiers.
  * @type {SectionKeyframe[]}
  */
 export const KEYFRAMES = [
-  { scrollIndex: 0, textSection: "step01", media: { type: "video", file: "01.mp4" } },
+  { scrollIndex: 0, textSection: "step01", media: PLACEHOLDER },
+  // 2ᵉ page (Étape 2) — docs/videos/terre_aplatie/vidéo terre_aplatie.mp4
   {
     scrollIndex: 1,
     textSection: "step02",
@@ -42,14 +49,14 @@ export const KEYFRAMES = [
       loop: true
     }
   },
-  { scrollIndex: 2, textSection: "step03", media: { type: "video", file: "03.mp4" } },
-  { scrollIndex: 3, textSection: "step04", media: { type: "video", file: "04.mp4" } },
-  { scrollIndex: 4, textSection: "step05", media: { type: "video", file: "05.mp4" } },
-  { scrollIndex: 5, textSection: "step06", media: { type: "video", file: "06.mp4" } },
-  { scrollIndex: 6, textSection: "step07", media: { type: "video", file: "07.mp4" } },
-  { scrollIndex: 7, textSection: "step08", media: { type: "video", file: "08.mp4" } },
-  { scrollIndex: 8, textSection: "step09", media: { type: "video", file: "09.mp4" } },
-  { scrollIndex: 9, textSection: "step10", media: { type: "video", file: "10.mp4" } }
+  { scrollIndex: 2, textSection: "step03", media: PLACEHOLDER },
+  { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },
+  { scrollIndex: 4, textSection: "step05", media: PLACEHOLDER },
+  { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER },
+  { scrollIndex: 6, textSection: "step07", media: PLACEHOLDER },
+  { scrollIndex: 7, textSection: "step08", media: PLACEHOLDER },
+  { scrollIndex: 8, textSection: "step09", media: PLACEHOLDER },
+  { scrollIndex: 9, textSection: "step10", media: PLACEHOLDER }
 ]
 
 export function keyframeToSlideMedia(kf) {
