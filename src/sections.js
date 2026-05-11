@@ -3,6 +3,7 @@
  * - `{ type: "image", file: "01.jpg" }` → image fixe jusqu’au prochain swipe.
  * - `{ type: "video", file: "02.mp4" }` → vidéo qui joue sur cette étape (ne repart pas de 0 tant que le fichier ne change pas).
  * - `loop: true` → la vidéo boucle tant que tu ne swipes pas.
+ * - `loopSkipTailSec` (ex. `1/30` à 30 ips) → reboucle un peu avant la fin pour éviter la saccade si la dernière image ne colle pas au début.
  * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
  *
  * Fichiers :
@@ -21,6 +22,7 @@ function docsUrl(relativePathUnderDocs) {
  *   file?: string,
  *   path?: string,
  *   loop?: boolean,
+ *   loopSkipTailSec?: number,
  *   restartOnReenter?: boolean
  * }} MediaSpec
  */
@@ -46,7 +48,9 @@ export const KEYFRAMES = [
     media: {
       type: "video",
       path: "videos/terre_aplatie/vidéo terre_aplatie.mp4",
-      loop: true
+      loop: true,
+      // 30 ips : ~1 image en moins en fin de fichier = jointure plus propre ; augmente à 2/30 si besoin
+      loopSkipTailSec: 1 / 30
     }
   },
   { scrollIndex: 2, textSection: "step03", media: PLACEHOLDER },
@@ -66,6 +70,7 @@ export function keyframeToSlideMedia(kf) {
     type: m.type,
     url: rel ? docsUrl(rel) : "",
     loop: m.loop,
+    loopSkipTailSec: m.loopSkipTailSec,
     restartOnReenter: m.restartOnReenter
   }
 }

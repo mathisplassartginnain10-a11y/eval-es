@@ -5,7 +5,7 @@
  */
 
 /**
- * @typedef {{ type: "image" | "video", url: string, loop?: boolean, restartOnReenter?: boolean }} SlideMedia
+ * @typedef {{ type: "image" | "video", url: string, loop?: boolean, loopSkipTailSec?: number, restartOnReenter?: boolean }} SlideMedia
  */
 
 /**
@@ -23,7 +23,50 @@ export function createSlideStage(videoEl, imgEl, opts) {
   /** @type {string | null} */
   let activeVideoSrc = null
 
+  /** @type {{ timeupdate: (() => void) | null, ended: (() => void) | null }} */
+  let seamlessLoop = { timeupdate: null, ended: null }
+
+  function detachSeamlessLoop() {
+    if (seamlessLoop.timeupdate) {
+      videoEl.removeEventListener("timeupdate", seamlessLoop.timeupdate)
+      seamlessLoop.timeupdate = null
+    }
+    if (seamlessLoop.ended) {
+      videoEl.removeEventListener("ended", seamlessLoop.ended)
+      seamlessLoop.ended = null
+    }
+  }
+
+  /**
+   * Boucle sans passer par la toute fin du fichier (souvent 1 image en trop ou micro-pause navigateur).
+   * @param {number} skipTailSec
+   */
+  function attachSeamlessLoop(skipTailSec) {
+    detachSeamlessLoop()
+    const onTime = () => {
+      const d = videoEl.duration
+      if (!Number.isFinite(d) || d <= 0 || skipTailSec <= 0) return
+      if (videoEl.currentTime >= d - skipTailSec) {
+        videoEl.currentTime = 0
+        if (!opts.reducedMotion) void videoEl.play().catch(() => {})
+      }
+    }
+    const onEnded = () => {
+      try {
+        videoEl.currentTime = 0
+      } catch {
+        /* ignore */
+      }
+      if (!opts.reducedMotion) void videoEl.play().catch(() => {})
+    }
+    seamlessLoop.timeupdate = onTime
+    seamlessLoop.ended = onEnded
+    videoEl.addEventListener("timeupdate", onTime)
+    videoEl.addEventListener("ended", onEnded)
+  }
+
   function hideVideo() {
+    detachSeamlessLoop()
     videoEl.pause()
     videoEl.removeAttribute("src")
     videoEl.load()
@@ -62,6 +105,13 @@ export function createSlideStage(videoEl, imgEl, opts) {
 
     const url = m.url && String(m.url).trim()
     const loop = !!m.loop
+    const skipTail =
+      typeof m.loopSkipTailSec === "number" &&
+      Number.isFinite(m.loopSkipTailSec) &&
+      m.loopSkipTailSec > 0
+        ? m.loopSkipTailSec
+        : 0
+    const manualLoop = loop && skipTail > 0
 
     if (m.type === "image") {
       hideVideo()
@@ -77,7 +127,6 @@ export function createSlideStage(videoEl, imgEl, opts) {
     hideImage()
     videoEl.classList.remove("stage-video--hidden")
     videoEl.setAttribute("aria-hidden", "false")
-    videoEl.loop = loop
 
     if (!url) {
       hideVideo()
@@ -93,15 +142,24 @@ export function createSlideStage(videoEl, imgEl, opts) {
           /* ignore */
         }
       }
+      videoEl.loop = loop && !manualLoop
+      if (manualLoop) {
+        if (!seamlessLoop.timeupdate) attachSeamlessLoop(skipTail)
+      } else {
+        detachSeamlessLoop()
+      }
       if (!opts.reducedMotion) {
         void videoEl.play().catch(() => {})
       }
       return
     }
 
+    detachSeamlessLoop()
     activeVideoSrc = url
     videoEl.src = url
     videoEl.load()
+    videoEl.loop = loop && !manualLoop
+    if (manualLoop) attachSeamlessLoop(skipTail)
     playEnterAnimation(videoEl)
     if (!opts.reducedMotion) {
       void videoEl.play().catch(() => {})
