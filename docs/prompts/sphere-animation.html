@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sphère → Sphéroïde oblate</title>
+
+  <!--
+  ================================================================
+  GUIDE D'INTÉGRATION POUR CURSOR
+  ================================================================
+
+  Déjà intégré dans l’exposé principal : `src/sphereAnim.js` + un panneau `sphereTwoStep`
+  dans `KEYFRAMES` (2 swipes sur le même panneau : figé puis animation). Le fichier
+  autonome ci-dessous sert encore de référence / démo locale.
+
+  OPTION A — Iframe (la plus simple) :
+    Copiez ce fichier dans /public/ ou /assets/ de votre projet,
+    puis dans la section GOCE de index.html :
+
+      <iframe
+        src="./sphere-animation.html"
+        width="420" height="560"
+        style="border:none; background:#000;"
+        title="Animation sphère vers sphéroïde oblate">
+      </iframe>
+
+  OPTION B — Composant intégré (pour piloter depuis GSAP) :
+    1. Copiez tout le contenu du <div id="sphere-anim"> dans
+       votre section GOCE.
+    2. Copiez le <style> dans votre CSS.
+    3. Copiez le <script> dans votre JS principal.
+    4. L'API window.SphereAnim est alors disponible.
+
+  OPTION C — Scroll piloté (GSAP ScrollTrigger) :
+    Après intégration (option B), ajoutez dans scroll.js :
+
+      ScrollTrigger.create({
+        trigger: '#goce-section-5',
+        start: 'top center',
+        end: 'bottom center',
+        scrub: true,
+        onUpdate: self => window.SphereAnim.seek(self.progress)
+      });
+
+  API PUBLIQUE window.SphereAnim :
+    .play()       Lance l'animation (4 secondes)
+    .reset()      Remet à t=0
+    .seek(t)      Positionne à t (0.0 → 1.0) — pour scrub
+    .isPlaying()  Retourne true si en cours
+
+  DONNÉES SCIENTIFIQUES (WGS 84) :
+    Rayon équatorial : 6 378 km
+    Rayon polaire    : 6 357 km
+    Différence Δ     : 21 km
+    Exagération visuelle : ×10 (pour la lisibilité)
+  ================================================================
+  -->
+
+  <style>
+    :root {
+      --anim-bg:          #000000;
+      --anim-eq-color:    #4A9EFF;
+      --anim-pol-color:   #4ECDC4;
+      --anim-delta-color: #FFD700;
+      --anim-text:        #ffffff;
+      --anim-muted:       #666666;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--anim-bg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    #sphere-anim {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 2rem 1.5rem;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    #sphere-canvas { display: block; }
+
+    .anim-labels {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .anim-title {
+      color: var(--anim-text);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .anim-subtitle {
+      color: var(--anim-muted);
+      font-size: 12px;
+    }
+
+    .anim-vals {
+      display: flex;
+      gap: 2.5rem;
+      justify-content: center;
+    }
+
+    .anim-val-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .anim-val-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .anim-val-num {
+      font-size: 15px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .anim-val-label {
+      font-size: 11px;
+      color: var(--anim-muted);
+    }
+
+    .anim-delta {
+      font-size: 13px;
+      color: var(--anim-delta-color);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      height: 18px;
+    }
+
+    .anim-progress-wrap { width: 340px; }
+
+    .anim-progress-track {
+      background: #1a1a1a;
+      border-radius: 3px;
+      height: 3px;
+    }
+
+    .anim-progress-fill {
+      height: 3px;
+      border-radius: 3px;
+      background: var(--anim-eq-color);
+      width: 0%;
+      transition: width 0.05s linear;
+    }
+
+    .anim-btn-row { display: flex; gap: 10px; }
+
+    .anim-btn {
+      background: transparent;
+      border: 1px solid #333;
+      color: #888;
+      padding: 7px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .anim-btn:hover  { border-color: #666; color: #fff; }
+    .anim-btn:active { transform: scale(0.97); }
+
+    .anim-note {
+      font-size: 10px;
+      color: #333;
+      text-align: center;
+      max-width: 340px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+<div id="sphere-anim"
+     role="img"
+     aria-label="Animation montrant la déformation de la Terre d'une sphère parfaite vers un sphéroïde oblate aplati aux pôles">
+
+  <canvas id="sphere-canvas" width="340" height="340"></canvas>
+
+  <div class="anim-labels">
+    <div class="anim-title" id="anim-title">Sphère parfaite</div>
+    <div class="anim-subtitle" id="anim-subtitle">(hypothétique)</div>
+  </div>
+
+  <div class="anim-vals">
+    <div class="anim-val-item">
+      <div class="anim-val-dot" style="background: var(--anim-eq-color)"></div>
+      <div class="anim-val-num" id="val-eq" style="color: var(--anim-eq-color)">6 371 km</div>
+      <div class="anim-val-label">Rayon équatorial</div>
+    </div>
+    <div class="anim-val-item">
+      <div class="anim-val-dot" style="background: var(--anim-pol-color)"></div>
+      <div class="anim-val-num" id="val-pol" style="color: var(--anim-pol-color)">6 371 km</div>
+      <div class="anim-val-label">Rayon polaire</div>
+    </div>
+  </div>
+
+  <div class="anim-delta" id="anim-delta">Δ = 21 km entre les deux rayons</div>
+
+  <div class="anim-progress-wrap">
+    <div class="anim-progress-track">
+      <div class="anim-progress-fill" id="anim-progress"></div>
+    </div>
+  </div>
+
+  <div class="anim-btn-row">
+    <button class="anim-btn" id="btn-play">▶ Lancer</button>
+    <button class="anim-btn" id="btn-reset">↺ Réinitialiser</button>
+  </div>
+
+  <p class="anim-note">
+    Déformation ×10 exagérée pour la lisibilité visuelle.<br>
+    Valeurs affichées = données réelles WGS 84.
+  </p>
+
+</div>
+
+<script>
+/* ================================================================
+   SphereAnim — Animation sphère parfaite → sphéroïde oblate
+   Exposé sur window.SphereAnim pour pilotage externe (GSAP etc.)
+   ================================================================ */
+window.SphereAnim = (() => {
+
+  const canvas = document.getElementById('sphere-canvas');
+  const ctx    = canvas.getContext('2d');
+  const W = 340, H = 340, CX = W / 2, CY = H / 2;
+
+  /* Vraies valeurs WGS 84 */
+  const EQ_START  = 6371, EQ_END  = 6378;
+  const POL_START = 6371, POL_END = 6357;
+
+  /* Rayons canvas — exagérés ×10 pour la lisibilité */
+  const RX_START = 120, RX_END = 140;
+  const RY_START = 120, RY_END = 100;
+
+  const DURATION = 4000; /* ms */
+
+  let _progress = 0;
+  let _playing  = false;
+  let _startTs  = null;
+  let _raf      = null;
+
+  /* Étoiles générées une seule fois */
+  const STARS = Array.from({ length: 42 }, () => ({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    r: Math.random() * 0.9 + 0.3,
+    a: Math.random() * 0.4 + 0.2
+  }));
+
+  /* Easing cubic in-out */
+  function ease(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  /* Formatage km avec séparateur espace */
+  function fmt(v) {
+    return Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f') + ' km';
+  }
+
+  /* Mise à jour DOM */
+  function _updateDOM(t, eq, pol) {
+    document.getElementById('val-eq').textContent  = fmt(eq);
+    document.getElementById('val-pol').textContent = fmt(pol);
+    document.getElementById('anim-progress').style.width = (t * 100).toFixed(1) + '%';
+    document.getElementById('anim-delta').style.opacity  =
+      t > 0.7 ? Math.min(1, (t - 0.7) / 0.3).toFixed(3) : '0';
+
+    const title    = document.getElementById('anim-title');
+    const subtitle = document.getElementById('anim-subtitle');
+    if (t < 0.03) {
+      title.textContent    = 'Sphère parfaite';
+      subtitle.textContent = '(hypothétique)';
+    } else if (t > 0.97) {
+      title.textContent    = 'Sphéroïde oblate';
+      subtitle.textContent = '(forme réelle de la Terre — WGS 84)';
+    } else {
+      title.textContent    = 'Déformation en cours…';
+      subtitle.textContent = '';
+    }
+  }
+
+  /* Dessin d'une frame */
+  function _draw(t) {
+    ctx.clearRect(0, 0, W, H);
+
+    const eq  = lerp(EQ_START,  EQ_END,  t);
+    const pol = lerp(POL_START, POL_END, t);
+    const rx  = lerp(RX_START,  RX_END,  t);
+    const ry  = lerp(RY_START,  RY_END,  t);
+
+    /* Étoiles */
+    STARS.forEach(s => {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fill();
+    });
+
+    /* Halo atmosphère */
+    ctx.save();
+    ctx.scale(rx / ry, 1);
+    const halo = ctx.createRadialGradient(
+      CX * (ry / rx), CY, ry * 0.9,
+      CX * (ry / rx), CY, ry * 1.22
+    );
+    halo.addColorStop(0, 'rgba(60,130,255,0.22)');
+    halo.addColorStop(1, 'rgba(60,130,255,0)');
+    ctx.beginPath();
+    ctx.arc(CX * (ry / rx), CY, ry * 1.22, 0, Math.PI * 2);
+    ctx.fillStyle = halo;
+    ctx.fill();
+    ctx.restore();
+
+    /* Corps du globe */
+    ctx.save();
+    ctx.scale(rx / ry, 1);
+    const grad = ctx.createRadialGradient(
+      (CX - rx * 0.28) * (ry / rx), CY - ry * 0.28, 6,
+      CX * (ry / rx), CY, ry
+    );
+    grad.addColorStop(0,    '#1e5299');
+    grad.addColorStop(0.45, '#0d2d5e');
+    grad.addColorStop(1,    '#040d1f');
+    ctx.beginPath();
+    ctx.arc(CX * (ry / rx), CY, ry, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    /* Parallèles */
+    ctx.save();
+    for (let i = -3; i <= 3; i++) {
+      if (i === 0) continue;
+      const angle = (i / 4) * (Math.PI / 2);
+      const yOff  = Math.sin(angle) * ry;
+      const xW    = Math.cos(angle) * rx;
+      ctx.beginPath();
+      ctx.moveTo(CX - xW, CY + yOff);
+      ctx.lineTo(CX + xW, CY + yOff);
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    /* Contour ellipse */
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(CX, CY, rx, ry, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(100,160,255,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.restore();
+
+    /* Reflet lumière */
+    ctx.save();
+    ctx.scale(rx / ry, 1);
+    const ref = ctx.createRadialGradient(
+      (CX - rx * 0.32) * (ry / rx), CY - ry * 0.32, 0,
+      (CX - rx * 0.32) * (ry / rx), CY - ry * 0.32, ry * 0.48
+    );
+    ref.addColorStop(0, 'rgba(255,255,255,0.08)');
+    ref.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.beginPath();
+    ctx.arc(CX * (ry / rx), CY, ry, 0, Math.PI * 2);
+    ctx.fillStyle = ref;
+    ctx.fill();
+    ctx.restore();
+
+    /* Axe polaire pointillé */
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(CX, CY - ry - 20);
+    ctx.lineTo(CX, CY + ry + 20);
+    ctx.strokeStyle = 'rgba(78,205,196,0.55)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    /* Axe équatorial pointillé */
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(CX - rx - 20, CY);
+    ctx.lineTo(CX + rx + 20, CY);
+    ctx.strokeStyle = 'rgba(74,158,255,0.55)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    /* Flèche rayon équatorial */
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(CX + rx, CY);
+    ctx.strokeStyle = '#4A9EFF'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(CX + rx, CY);
+    ctx.lineTo(CX + rx - 8, CY - 4);
+    ctx.lineTo(CX + rx - 8, CY + 4);
+    ctx.closePath(); ctx.fillStyle = '#4A9EFF'; ctx.fill();
+    ctx.restore();
+
+    /* Flèche rayon polaire */
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(CX, CY - ry);
+    ctx.strokeStyle = '#4ECDC4'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(CX, CY - ry);
+    ctx.lineTo(CX - 4, CY - ry + 8);
+    ctx.lineTo(CX + 4, CY - ry + 8);
+    ctx.closePath(); ctx.fillStyle = '#4ECDC4'; ctx.fill();
+    ctx.restore();
+
+    /* Labels rayons */
+    ctx.save();
+    ctx.font = 'bold 12px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#4A9EFF';
+    ctx.fillText(fmt(eq),  CX + 8, CY - 10);
+    ctx.fillStyle = '#4ECDC4';
+    ctx.fillText(fmt(pol), CX + 8, CY - ry + 18);
+    ctx.restore();
+
+    /* Accolade Δ (apparaît progressivement à partir de t > 0.7) */
+    if (t > 0.7) {
+      const alpha = Math.min(1, (t - 0.7) / 0.3);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(CX + rx + 26, CY);
+      ctx.lineTo(CX + rx + 32, CY);
+      ctx.lineTo(CX + rx + 32, CY - ry);
+      ctx.lineTo(CX + rx + 26, CY - ry);
+      ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+      ctx.fillStyle = '#FFD700';
+      ctx.fillText('Δ 21 km', CX + rx + 36, CY - ry / 2 + 5);
+      ctx.restore();
+    }
+
+    _updateDOM(t, eq, pol);
+  }
+
+  /* Boucle requestAnimationFrame */
+  function _step(ts) {
+    if (!_startTs) _startTs = ts;
+    const raw = Math.min((ts - _startTs) / DURATION, 1);
+    _progress = ease(raw);
+    _draw(_progress);
+    if (raw < 1) {
+      _raf = requestAnimationFrame(_step);
+    } else {
+      _playing = false;
+      document.getElementById('btn-play').textContent = '▶ Lancer';
+    }
+  }
+
+  /* ---- API publique ---- */
+  const api = {
+
+    play() {
+      if (_playing) return;
+      _playing = true;
+      _startTs = null;
+      document.getElementById('btn-play').textContent = '⏸ En cours…';
+      _raf = requestAnimationFrame(_step);
+    },
+
+    reset() {
+      if (_raf) cancelAnimationFrame(_raf);
+      _playing  = false;
+      _startTs  = null;
+      _progress = 0;
+      document.getElementById('btn-play').textContent = '▶ Lancer';
+      _draw(0);
+    },
+
+    /* seek(t) — pour GSAP ScrollTrigger scrub */
+    seek(t) {
+      if (_playing) { cancelAnimationFrame(_raf); _playing = false; }
+      _progress = Math.max(0, Math.min(1, t));
+      _draw(_progress);
+    },
+
+    isPlaying() { return _playing; }
+  };
+
+  document.getElementById('btn-play').addEventListener('click',  api.play);
+  document.getElementById('btn-reset').addEventListener('click', api.reset);
+
+  /* Dessin initial */
+  _draw(0);
+
+  return api;
+
+})();
+</script>
+</body>
+</html>

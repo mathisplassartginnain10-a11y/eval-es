@@ -6,6 +6,7 @@
  * - `loop: true` → la vidéo boucle tant que tu ne swipes pas.
  * - `loopSkipTailSec` (ex. `1/30` à 30 ips) → reboucle un peu avant la fin pour éviter la saccade si la dernière image ne colle pas au début.
  * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
+ * - `sphereTwoStep: true` → sur ce panneau, le 1er swipe affiche la sphère figée, le 2e lance l’animation (`src/sphereAnim.js`), puis le swipe suivant va au panneau suivant.
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -29,7 +30,7 @@ function docsUrl(relativePathUnderDocs) {
  */
 
 /**
- * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[] }} SectionKeyframe
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean }} SectionKeyframe
  */
 
 /**
@@ -39,26 +40,18 @@ function docsUrl(relativePathUnderDocs) {
 const PLACEHOLDER = { type: "image", file: "placeholder.svg" }
 
 /**
- * Étape 1 : grille 3 tuiles (Terre aplatie + 2 emplacements à compléter). Sinon une seule `media` par étape.
+ * Étape 1 : image d’intro (docs/media/intro-terre-plate.png) + texte à gauche.
  * @type {SectionKeyframe[]}
  */
 export const KEYFRAMES = [
   {
     scrollIndex: 0,
     textSection: "step01",
-    tiles: [
-      {
-        type: "video",
-        path: "videos/terre_aplatie/vidéo terre_aplatie.mp4",
-        loop: true,
-        loopSkipTailSec: 1 / 30
-      },
-      PLACEHOLDER,
-      PLACEHOLDER
-    ]
+    media: { type: "image", file: "intro-terre-plate.png" }
   },
   { scrollIndex: 1, textSection: "step02", media: PLACEHOLDER },
-  { scrollIndex: 2, textSection: "step03", media: PLACEHOLDER },
+  /* Étape 3 : même panneau — 1er swipe = sphère figée, 2e = animation (voir scroll.js sphereSubStep) */
+  { scrollIndex: 2, textSection: "step03", sphereTwoStep: true },
   { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },
   { scrollIndex: 4, textSection: "step05", media: PLACEHOLDER },
   { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER }

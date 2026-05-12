@@ -11,11 +11,21 @@ export function lerp(a, b, t) {
 }
 
 /**
+ * @param {import("./sections.js").SectionKeyframe | undefined} kf
+ */
+function hasSphereTwoStep(kf) {
+  return !!(kf && kf.sphereTwoStep)
+}
+
+/**
  * Navigation une étape à la fois (molette, swipe, clavier via main).
  * Verrou court pendant la transition — les médias sont pilotés dans les callbacks.
+ * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep }` sur le panneau `sphereTwoStep`.
  */
 export function initScroll({ reducedMotion, onTransitionStart, onTransitionComplete, onProgressUi }) {
   let currentIndex = 0
+  /** Sur un panneau `sphereTwoStep` : 0 = sphère figée, 1 = animation */
+  let sphereSubStep = 0
   let locked = false
   let wheelSum = 0
   let touchY0 = 0
@@ -34,6 +44,33 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     if (p) window.scrollTo({ top: p.offsetTop, behavior: "auto" })
   }
 
+  function runMiniTransition(index, kf, meta) {
+    const dur = reducedMotion ? 0.01 : ANIM_DURATION_S
+    const pauseMs = reducedMotion ? 0 : PAUSE_AFTER_MS
+
+    locked = true
+    wheelSum = 0
+    setBodyLock(true)
+    if (timeline) timeline.kill()
+
+    onTransitionStart(index, kf, meta)
+    onProgressUi(index)
+
+    tick._ = 0
+    timeline = gsap.timeline({
+      defaults: { duration: dur, ease: "power3.inOut" },
+      onComplete: () => {
+        gsap.delayedCall(pauseMs / 1000, () => {
+          locked = false
+          setBodyLock(false)
+          syncScrollDom(index)
+          onTransitionComplete(index, kf, meta)
+        })
+      }
+    })
+    timeline.to(tick, { _: 1 }, 0)
+  }
+
   function runToSection(nextIndex) {
     if (locked) return
     const n = SECTION_COUNT
@@ -49,7 +86,9 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     setBodyLock(true)
     if (timeline) timeline.kill()
 
-    onTransitionStart(targetIdx, kf)
+    sphereSubStep = 0
+    const meta = hasSphereTwoStep(kf) ? { sphereSubStep: 0 } : {}
+    onTransitionStart(targetIdx, kf, meta)
     onProgressUi(targetIdx)
 
     tick._ = 0
@@ -57,15 +96,47 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
       defaults: { duration: dur, ease: "power3.inOut" },
       onComplete: () => {
         currentIndex = targetIdx
+        if (hasSphereTwoStep(kf)) sphereSubStep = 0
         gsap.delayedCall(pauseMs / 1000, () => {
           locked = false
           setBodyLock(false)
           syncScrollDom(targetIdx)
-          onTransitionComplete(targetIdx, kf)
+          onTransitionComplete(targetIdx, kf, meta)
         })
       }
     })
     timeline.to(tick, { _: 1 }, 0)
+  }
+
+  function bumpSphereSubStep(nextSub) {
+    const kf = KEYFRAMES[currentIndex]
+    if (!hasSphereTwoStep(kf)) return
+    sphereSubStep = nextSub
+    runMiniTransition(currentIndex, kf, { sphereSubStep: nextSub })
+  }
+
+  function advance(delta) {
+    if (locked) return
+    const kf = KEYFRAMES[currentIndex]
+    if (hasSphereTwoStep(kf)) {
+      if (delta > 0 && sphereSubStep === 0) {
+        bumpSphereSubStep(1)
+        return
+      }
+      if (delta > 0 && sphereSubStep === 1) {
+        runToSection(currentIndex + 1)
+        return
+      }
+      if (delta < 0 && sphereSubStep === 1) {
+        bumpSphereSubStep(0)
+        return
+      }
+      if (delta < 0 && sphereSubStep === 0) {
+        runToSection(currentIndex - 1)
+        return
+      }
+    }
+    runToSection(currentIndex + delta)
   }
 
   function onWheel(e) {
@@ -76,10 +147,10 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     wheelSum += e.deltaY
     if (wheelSum >= WHEEL_ACCUM_PX) {
       wheelSum = 0
-      runToSection(currentIndex + 1)
+      advance(1)
     } else if (wheelSum <= -WHEEL_ACCUM_PX) {
       wheelSum = 0
-      runToSection(currentIndex - 1)
+      advance(-1)
     }
   }
 
@@ -98,8 +169,8 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     (e) => {
       if (locked || !e.changedTouches[0]) return
       const dy = touchY0 - e.changedTouches[0].clientY
-      if (dy > SWIPE_PX) runToSection(currentIndex + 1)
-      else if (dy < -SWIPE_PX) runToSection(currentIndex - 1)
+      if (dy > SWIPE_PX) advance(1)
+      else if (dy < -SWIPE_PX) advance(-1)
     },
     { passive: true }
   )
@@ -108,10 +179,15 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     refresh: () => syncScrollDom(currentIndex),
     stepBy(delta) {
       if (locked) return
-      runToSection(currentIndex + delta)
+      advance(delta)
     },
     goToIndex(i) {
-      runToSection(i)
+      const t = Math.max(0, Math.min(i, SECTION_COUNT - 1))
+      if (t === currentIndex && hasSphereTwoStep(KEYFRAMES[t]) && sphereSubStep !== 0) {
+        bumpSphereSubStep(0)
+        return
+      }
+      runToSection(t)
     },
     getIndex: () => currentIndex,
     isLocked: () => locked

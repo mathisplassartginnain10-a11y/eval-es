@@ -142,6 +142,166 @@ body {
   inset: 0;
 }
 
+/* Canvas sphère → sphéroïde (étape 3, voir src/sphereAnim.js) */
+#app .stage-media-wrap .stage-sphere-host {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  pointer-events: none;
+}
+
+#app .stage-media-wrap .stage-sphere-host[hidden] {
+  display: none !important;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim {
+  --anim-eq-color: #4a9eff;
+  --anim-pol-color: #4ecdc4;
+  --anim-delta-color: #ffd700;
+  --anim-text: #ffffff;
+  --anim-muted: #666666;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.5rem;
+  width: 100%;
+  max-width: min(420px, 92%);
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__labels {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__title {
+  color: var(--anim-text);
+  font-size: clamp(14px, 1.5vw, 16px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__subtitle {
+  color: var(--anim-muted);
+  font-size: 12px;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__vals {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-dot--eq {
+  background: var(--anim-eq-color);
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-dot--pol {
+  background: var(--anim-pol-color);
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-num {
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-num--eq {
+  color: var(--anim-eq-color);
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-num--pol {
+  color: var(--anim-pol-color);
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__val-label {
+  font-size: 11px;
+  color: var(--anim-muted);
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__delta {
+  font-size: 13px;
+  color: var(--anim-delta-color);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  height: 18px;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__progress-wrap {
+  width: min(340px, 100%);
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__progress-track {
+  background: #1a1a1a;
+  border-radius: 3px;
+  height: 3px;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__progress-fill {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--anim-eq-color);
+  width: 0%;
+  transition: width 0.05s linear;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__btn {
+  background: transparent;
+  border: 1px solid #333;
+  color: #888;
+  padding: 7px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__btn:hover {
+  border-color: #666;
+  color: #fff;
+}
+
+#app .stage-media-wrap .stage-sphere-host .sphere-anim__note {
+  font-size: 10px;
+  color: #444;
+  text-align: center;
+  max-width: 340px;
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* Grille étape 1 : Terre grande en haut à droite, 2 vignettes à gauche */
 #app .stage-media-wrap .stage-tiles {
   position: absolute;

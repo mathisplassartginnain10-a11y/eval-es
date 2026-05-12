@@ -1,5 +1,5 @@
 /**
- * Textes par étape (6) — à personnaliser.
+ * Textes par étape (clés step01…step06) — à personnaliser.
  * Médias : `docs/media/` + `src/sections.js` (image ou vidéo par étape).
  */
 
@@ -8,23 +8,29 @@ function step(rubrique, titre, paragraphes, credit = "") {
 }
 
 export const CONTENT = {
-  step01: step("Étape 1", "Titre\nà compléter", ["Paragraphe d’introduction à compléter."]),
-  step02: step(
-    "Partie 2",
-    "Expérience d’Eratosthène",
-    ["Syène : 24° Nord", "Alexandrie : 31° Nord", "Circonférence : 500 000 stades"]
+  step01: step(
+    "Etape :",
+    "La Terre n'est pas ronde",
+    [
+      "Première partie : L'expérience d'Eratosthène",
+      "Seconde Partie : Les irrégularités de Surface",
+      "Troisième partie : à compléter",
+      "Quatrième partie : La déformation typographique de la terre."
+    ]
   ),
-  step03: step("Étape 3", "Titre\nà compléter", ["Contenu à compléter."]),
-  step04: step("Étape 4", "Titre\nà compléter", ["Contenu à compléter."]),
-  step05: step("Étape 5", "Titre\nà compléter", ["Contenu à compléter."]),
-  step06: step("Étape 6", "Conclusion\nà compléter", ["Synthèse à compléter."])
+  step02: step("Première partie :", "L'expérience d'Eratosthène", []),
+  step03: step("Seconde Partie :", "Les irrégularités de Surface", []),
+  step04: step("Troisième partie :", "à compléter", []),
+  step05: step("Quatrième partie :", "La déformation typographique de la terre.", []),
+  step06: step("Etape :", "à compléter", [])
 }
 
+/** Libellés des points de navigation */
 export const SECTION_LABELS = [
-  "Étape 1",
-  "Partie 2",
-  "Étape 3",
-  "Étape 4",
-  "Étape 5",
-  "Étape 6"
+  "Etape :",
+  "Première partie :",
+  "Seconde Partie :",
+  "Troisième partie :",
+  "Quatrième partie :",
+  "à compléter"
 ]

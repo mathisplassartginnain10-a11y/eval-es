@@ -1,6 +1,7 @@
 import { createSlideStage } from "./src/slideStage.js"
 import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
+import { createSphereAnim } from "./src/sphereAnim.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 
 const motionRef = {
@@ -23,6 +24,7 @@ const stepIndicatorEl = document.getElementById("step-indicator")
 const scrollHint = document.getElementById("scroll-hint")
 const dotsNav = document.getElementById("section-dots")
 const stageSingle = document.getElementById("stage-single")
+const stageSphereHost = document.getElementById("stage-sphere-host")
 const stageTilesRoot = document.getElementById("stage-tiles")
 const scrollRoot = document.getElementById("scroll-root")
 const stageVideo = document.querySelector("#stage-video")
@@ -34,6 +36,20 @@ if (!stageVideo || !stageImage) {
 
 if (!stageSingle || !stageTilesRoot) {
   throw new Error("Conteneurs #stage-single et #stage-tiles requis (index.html).")
+}
+
+if (!stageSphereHost) {
+  throw new Error("Conteneur #stage-sphere-host requis (index.html).")
+}
+
+/** @type {ReturnType<createSphereAnim> | null} */
+let sphereAnimApi = null
+
+function ensureSphereAnim() {
+  if (!sphereAnimApi) {
+    sphereAnimApi = createSphereAnim(stageSphereHost, { embed: true })
+  }
+  return sphereAnimApi
 }
 
 const tileHosts = [...stageTilesRoot.querySelectorAll(".stage-tile")]
@@ -132,8 +148,35 @@ function applyTextIfChanged(textKey) {
   fillTextContent(textKey)
 }
 
-function applySlideForIndex(index) {
+function applySlideForIndex(index, meta = {}) {
   const kf = KEYFRAMES[index]
+  const sphereSub = meta.sphereSubStep
+
+  if (kf.sphereTwoStep) {
+    const play = sphereSub === 1
+    stageTilesRoot.hidden = true
+    stageSingle.hidden = false
+    slideStage.clear()
+    stageSphereHost.hidden = false
+    stageSphereHost.setAttribute("aria-hidden", "false")
+    const api = ensureSphereAnim()
+    if (!play) {
+      api.reset()
+    } else {
+      api.reset()
+      if (motionRef.reduced) {
+        api.seek(1)
+      } else {
+        void api.play()
+      }
+    }
+    return
+  }
+
+  sphereAnimApi?.reset()
+  stageSphereHost.hidden = true
+  stageSphereHost.setAttribute("aria-hidden", "true")
+
   const tiles = kf.tiles
 
   if (Array.isArray(tiles) && tiles.length > 0) {
@@ -176,12 +219,12 @@ fillTextContent(k0.textSection)
 lastTextKey = k0.textSection
 textOverlay.classList.add("is-visible")
 updateUi(0)
-applySlideForIndex(0)
+applySlideForIndex(0, {})
 
 scrollApi = initScroll({
   reducedMotion: motionRef.reduced,
-  onTransitionStart: (idx, kf) => {
-    applySlideForIndex(idx)
+  onTransitionStart: (idx, kf, meta = {}) => {
+    applySlideForIndex(idx, meta)
     applyTextIfChanged(kf.textSection)
   },
   onTransitionComplete: () => {},
