@@ -66,7 +66,7 @@ body {
   );
 }
 
-/* Média un peu plus à gauche dans la zone (translate réduit vs avant) */
+/* Média plein cadre dans la zone droite — sans translate (alignement net avec la colonne texte) */
 #app .stage-media-wrap .stage-single .stage-video,
 #app .stage-media-wrap .stage-single .stage-image {
   position: absolute;
@@ -77,13 +77,13 @@ body {
   min-height: 100%;
   object-fit: cover;
   object-position: 50% 50%;
-  transform: translate(4%, 8%);
+  transform: none;
   transform-origin: center center;
   background: transparent;
   pointer-events: none;
 }
 
-/* Petite entrée — conserve translate(4%, 8%) */
+/* Petite entrée */
 #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
 #app .stage-media-wrap .stage-single .stage-image.stage-media-enter {
   animation: stage-media-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -92,12 +92,12 @@ body {
 @keyframes stage-media-enter {
   from {
     opacity: 0;
-    transform: translate(4%, 8%) scale(1.04) translateX(1.25rem);
+    transform: scale(1.035) translateX(0.6rem);
     filter: brightness(0.92);
   }
   to {
     opacity: 1;
-    transform: translate(4%, 8%) scale(1) translateX(0);
+    transform: none;
     filter: brightness(1);
   }
 }
@@ -105,12 +105,12 @@ body {
 @keyframes stage-media-enter-narrow {
   from {
     opacity: 0;
-    transform: translate(2%, 6%) scale(1.04) translateX(1.25rem);
+    transform: scale(1.03) translateX(0.45rem);
     filter: brightness(0.92);
   }
   to {
     opacity: 1;
-    transform: translate(2%, 6%) scale(1) translateX(0);
+    transform: none;
     filter: brightness(1);
   }
 }
@@ -120,7 +120,7 @@ body {
   #app .stage-media-wrap .stage-single .stage-image.stage-media-enter {
     animation: none;
     opacity: 1;
-    transform: translate(4%, 8%);
+    transform: none;
     filter: none;
   }
 }
@@ -455,7 +455,7 @@ body {
 /* ——— Section dots ——— */
 .section-dots {
   position: absolute;
-  right: clamp(1rem, 3vw, 2rem);
+  right: clamp(1rem, 2.75vw, 1.85rem);
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
@@ -510,11 +510,62 @@ body {
 .text-overlay--apple {
   top: 50%;
   bottom: auto;
-  left: clamp(1.25rem, 5vw, 4.5rem);
-  /* Colonne texte alignée avec la zone gauche (média + fondu à partir de ~36 %) */
-  right: 62%;
-  max-width: min(42rem, 38vw);
+  left: clamp(1.35rem, 5vw, 4rem);
+  /* Bord droit du bloc texte vers ~33 % — léger vide avant la zone média (left 36 %) */
+  right: 67%;
+  max-width: none;
+  width: auto;
   transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+/* Intro : visuel en haut à droite, plan des parties aligné à gauche */
+#app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
+#app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
+  object-fit: contain;
+  object-position: 92% 18%;
+}
+
+#app[data-layout="intro"] .text-overlay--apple {
+  top: 47%;
+  left: clamp(1.35rem, 5.5vw, 3.75rem);
+  /* Fin du bloc texte à (36 % − 1.25 rem) depuis la gauche = marge avant la zone média */
+  right: calc(64% + 1.25rem);
+}
+
+#app[data-layout="intro"] .text-overlay__kicker {
+  margin-bottom: 0.4rem;
+}
+
+#app[data-layout="intro"] .text-overlay__title {
+  margin-bottom: 0.95rem;
+}
+
+#app[data-layout="intro"] .text-overlay__body {
+  gap: 0.42rem;
+  width: 100%;
+}
+
+#app[data-layout="intro"] .text-overlay__body p {
+  max-width: none;
+  font-size: clamp(0.95rem, 1.15vw, 1.1rem);
+  line-height: 1.42;
+  letter-spacing: -0.006em;
+}
+
+/* Sphère : centrage stable dans la colonne média */
+#app[data-layout="sphere"] .stage-sphere-host {
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.25rem, 2vh, 1.25rem) 0.5rem;
+}
+
+#app[data-layout="sphere"] .stage-sphere-host .sphere-anim {
+  margin: 0 auto;
 }
 
 /* Colonne droite étroite : cover rogne les visuels ronds → disque entier, sans coupe nette */
@@ -545,7 +596,16 @@ body {
   #app .stage-media-wrap .stage-single .stage-image {
     object-fit: contain;
     object-position: 55% 50%;
-    transform: translate(2%, 6%);
+    transform: none;
+  }
+
+  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
+  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
+    object-position: 90% 16%;
+  }
+
+  #app[data-layout="intro"] .text-overlay--apple {
+    right: calc(72% + 0.75rem);
   }
 
   #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
@@ -560,7 +620,7 @@ body {
     #app .stage-media-wrap .stage-single .stage-image.stage-media-enter {
       animation: none;
       opacity: 1;
-      transform: translate(2%, 6%);
+      transform: none;
       filter: none;
     }
   }
@@ -571,8 +631,23 @@ body {
     top: auto;
     bottom: clamp(5rem, 20vh, 8rem);
     transform: none;
-    right: clamp(1rem, 4vw, 2rem);
+    left: clamp(1.25rem, 4vw, 1.75rem);
+    right: clamp(1.25rem, 4vw, 1.75rem);
     max-width: none;
+    width: auto;
+  }
+
+  #app[data-layout="intro"] .text-overlay--apple {
+    top: auto;
+    bottom: clamp(4.5rem, 18vh, 7rem);
+    left: clamp(1.15rem, 4vw, 1.5rem);
+    right: clamp(1.15rem, 4vw, 1.5rem);
+  }
+
+  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
+  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
+    object-fit: contain;
+    object-position: 50% 28%;
   }
 
   #app .stage-media-wrap {
@@ -585,7 +660,7 @@ body {
   #app .stage-media-wrap .stage-single .stage-image {
     object-fit: cover;
     object-position: 50% 50%;
-    transform: translate(4%, 8%);
+    transform: none;
   }
 
   #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
@@ -657,6 +732,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 100%;
+  align-self: stretch;
 }
 
 .text-overlay__body p {
@@ -666,7 +743,7 @@ body {
   letter-spacing: -0.011em;
   font-weight: 400;
   color: #a1a1a6;
-  max-width: 38rem;
+  max-width: min(36rem, 100%);
 }
 
 .text-overlay__credit {
@@ -734,7 +811,7 @@ body {
 /* ——— Section label ——— */
 .section-label {
   position: absolute;
-  left: clamp(1.25rem, 4vw, 2.5rem);
+  left: clamp(1.35rem, 5vw, 4rem);
   bottom: clamp(1rem, 3vh, 1.5rem);
   margin: 0;
   z-index: 9;

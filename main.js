@@ -12,6 +12,7 @@ window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change",
   motionRef.reduced = e.matches
 })
 
+const appRoot = document.getElementById("app")
 const progressBar = document.getElementById("progress-bar")
 const textOverlay = document.getElementById("text-overlay")
 const textKicker = document.getElementById("text-kicker")
@@ -200,6 +201,12 @@ function applySlideForIndex(index, meta = {}) {
 }
 
 function updateUi(sectionIndex) {
+  const kf = KEYFRAMES[sectionIndex]
+  let layout = "split"
+  if (sectionIndex === 0) layout = "intro"
+  else if (kf?.sphereTwoStep) layout = "sphere"
+  if (appRoot) appRoot.dataset.layout = layout
+
   progressBar.style.width = `${((sectionIndex + 1) / SECTION_COUNT) * 100}%`
 
   dots.forEach((d, i) => {
