@@ -170,5 +170,11 @@ export function createSlideStage(videoEl, imgEl, opts) {
     videoEl.pause()
   }
 
-  return { apply, pause }
+  function clear() {
+    stripEnterClass()
+    hideVideo()
+    hideImage()
+  }
+
+  return { apply, pause, clear }
 }

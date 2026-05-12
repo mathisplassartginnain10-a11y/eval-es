@@ -1,6 +1,6 @@
 # Exposé ES — « La Terre est-elle ronde ? »
 
-Site **vidéo plein écran** avec **~10 étapes**, navigation **molette / swipe / clavier / points**, et texte superposé. **GSAP** gère le verrouillage court entre les transitions.
+Site **vidéo plein écran** avec **6 étapes** (6 pages), navigation **molette / swipe / clavier / points**, et texte superposé. **GSAP** gère le verrouillage court entre les transitions.
 
 ## Lancer en local
 
@@ -16,14 +16,14 @@ Fichiers dans **`docs/media/`** — voir `docs/media/README.md`. Le type par ét
 
 ## Texte
 
-**`src/content.js`** — clés `step01` … `step10`.
+**`src/content.js`** — clés `step01` … `step06`.
 
 ## Structure
 
 - `main.js` — UI, vidéo, navigation
 - `src/slideStage.js` — image fixe ou vidéo par étape
 - `src/scroll.js` — wheel / touch / verrou
-- `src/sections.js` — 10 étapes (fichiers vidéo + clés texte)
+- `src/sections.js` — 6 étapes (fichiers vidéo + clés texte)
 - `style.css` — calques vidéo + overlay
 
 ## Accessibilité

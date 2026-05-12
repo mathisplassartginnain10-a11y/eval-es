@@ -1,6 +1,6 @@
 import { createSlideStage } from "./src/slideStage.js"
 import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
-import { KEYFRAMES, keyframeToSlideMedia } from "./src/sections.js"
+import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 
 const motionRef = {
@@ -22,6 +22,8 @@ const sectionLabelEl = document.getElementById("section-label")
 const stepIndicatorEl = document.getElementById("step-indicator")
 const scrollHint = document.getElementById("scroll-hint")
 const dotsNav = document.getElementById("section-dots")
+const stageSingle = document.getElementById("stage-single")
+const stageTilesRoot = document.getElementById("stage-tiles")
 const scrollRoot = document.getElementById("scroll-root")
 const stageVideo = document.querySelector("#stage-video")
 const stageImage = document.querySelector("#stage-image")
@@ -29,6 +31,20 @@ const stageImage = document.querySelector("#stage-image")
 if (!stageVideo || !stageImage) {
   throw new Error("Éléments #stage-video et #stage-image requis (index.html).")
 }
+
+if (!stageSingle || !stageTilesRoot) {
+  throw new Error("Conteneurs #stage-single et #stage-tiles requis (index.html).")
+}
+
+const tileHosts = [...stageTilesRoot.querySelectorAll(".stage-tile")]
+const tileStages = tileHosts.map((host, idx) => {
+  const v = host.querySelector(".stage-tile-video")
+  const img = host.querySelector(".stage-tile-image")
+  if (!(v instanceof HTMLVideoElement) || !(img instanceof HTMLImageElement)) {
+    throw new Error(`Tuile média invalide à l’index ${idx} (vidéo + image attendues).`)
+  }
+  return createSlideStage(v, img, { reducedMotion: motionRef.reduced })
+})
 
 const slideStage = createSlideStage(stageVideo, stageImage, { reducedMotion: motionRef.reduced })
 
@@ -118,6 +134,25 @@ function applyTextIfChanged(textKey) {
 
 function applySlideForIndex(index) {
   const kf = KEYFRAMES[index]
+  const tiles = kf.tiles
+
+  if (Array.isArray(tiles) && tiles.length > 0) {
+    stageSingle.hidden = true
+    stageTilesRoot.hidden = false
+    slideStage.clear()
+    tiles.forEach((spec, i) => {
+      const st = tileStages[i]
+      if (st) st.apply(mediaSpecToSlideMedia(spec))
+    })
+    for (let j = tiles.length; j < tileStages.length; j++) {
+      tileStages[j]?.clear()
+    }
+    return
+  }
+
+  stageSingle.hidden = false
+  stageTilesRoot.hidden = true
+  tileStages.forEach((s) => s.clear())
   slideStage.apply(keyframeToSlideMedia(kf))
 }
 

@@ -1,5 +1,6 @@
 /**
- * Chaque étape : choix dans `media` :
+ * Chaque étape : soit `media` (un seul visuel), soit `tiles` (tableau de `MediaSpec`, ex. 3 vignettes).
+ * Avec `media` :
  * - `{ type: "image", file: "01.jpg" }` → image fixe jusqu’au prochain swipe.
  * - `{ type: "video", file: "02.mp4" }` → vidéo qui joue sur cette étape (ne repart pas de 0 tant que le fichier ne change pas).
  * - `loop: true` → la vidéo boucle tant que tu ne swipes pas.
@@ -27,7 +28,9 @@ function docsUrl(relativePathUnderDocs) {
  * }} MediaSpec
  */
 
-/** @typedef {{ scrollIndex: number, textSection: string, media: MediaSpec }} SectionKeyframe */
+/**
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[] }} SectionKeyframe
+ */
 
 /**
  * Fond neutre tant qu’il n’y a pas de vrai média dans `docs/media/` (évite les 404 sur 01.mp4…).
@@ -36,35 +39,32 @@ function docsUrl(relativePathUnderDocs) {
 const PLACEHOLDER = { type: "image", file: "placeholder.svg" }
 
 /**
- * Défaut : étape 2 = vidéo Terre aplatie ; autres étapes = placeholder jusqu’à ajout des fichiers.
+ * Étape 1 : grille 3 tuiles (Terre aplatie + 2 emplacements à compléter). Sinon une seule `media` par étape.
  * @type {SectionKeyframe[]}
  */
 export const KEYFRAMES = [
-  { scrollIndex: 0, textSection: "step01", media: PLACEHOLDER },
-  // 2ᵉ page (Étape 2) — docs/videos/terre_aplatie/vidéo terre_aplatie.mp4
   {
-    scrollIndex: 1,
-    textSection: "step02",
-    media: {
-      type: "video",
-      path: "videos/terre_aplatie/vidéo terre_aplatie.mp4",
-      loop: true,
-      // 30 ips : ~1 image en moins en fin de fichier = jointure plus propre ; augmente à 2/30 si besoin
-      loopSkipTailSec: 1 / 30
-    }
+    scrollIndex: 0,
+    textSection: "step01",
+    tiles: [
+      {
+        type: "video",
+        path: "videos/terre_aplatie/vidéo terre_aplatie.mp4",
+        loop: true,
+        loopSkipTailSec: 1 / 30
+      },
+      PLACEHOLDER,
+      PLACEHOLDER
+    ]
   },
+  { scrollIndex: 1, textSection: "step02", media: PLACEHOLDER },
   { scrollIndex: 2, textSection: "step03", media: PLACEHOLDER },
   { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },
   { scrollIndex: 4, textSection: "step05", media: PLACEHOLDER },
-  { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER },
-  { scrollIndex: 6, textSection: "step07", media: PLACEHOLDER },
-  { scrollIndex: 7, textSection: "step08", media: PLACEHOLDER },
-  { scrollIndex: 8, textSection: "step09", media: PLACEHOLDER },
-  { scrollIndex: 9, textSection: "step10", media: PLACEHOLDER }
+  { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER }
 ]
 
-export function keyframeToSlideMedia(kf) {
-  const m = kf.media
+export function mediaSpecToSlideMedia(m) {
   const rel = m.path ?? (m.file ? `media/${m.file}` : "")
   return {
     type: m.type,
@@ -73,6 +73,10 @@ export function keyframeToSlideMedia(kf) {
     loopSkipTailSec: m.loopSkipTailSec,
     restartOnReenter: m.restartOnReenter
   }
+}
+
+export function keyframeToSlideMedia(kf) {
+  return mediaSpecToSlideMedia(kf.media ?? PLACEHOLDER)
 }
 
 export const SECTION_COUNT = KEYFRAMES.length

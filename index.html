@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=3" />
+  <link rel="stylesheet" href="./style.css?v=6" />
   <script type="importmap">
   {
     "imports": {
@@ -35,15 +35,31 @@
     <div class="nebula-bg" aria-hidden="true"></div>
 
     <!-- Média uniquement dans la moitié droite (le texte reste à gauche, z-index plus haut) -->
-    <div class="stage-media-wrap" aria-hidden="true">
-      <video
-        id="stage-video"
-        class="stage-video"
-        aria-label="Vidéo de l’exposé"
-        muted
-        playsinline
-      ></video>
-      <img id="stage-image" class="stage-image" alt="" hidden decoding="async" />
+    <div class="stage-media-wrap" id="stage-media-wrap" aria-hidden="true">
+      <div class="stage-single" id="stage-single" hidden>
+        <video
+          id="stage-video"
+          class="stage-video"
+          aria-label="Vidéo de l’exposé"
+          muted
+          playsinline
+        ></video>
+        <img id="stage-image" class="stage-image" alt="" hidden decoding="async" />
+      </div>
+      <div class="stage-tiles" id="stage-tiles">
+        <div class="stage-tile">
+          <video class="stage-tile-video" muted playsinline aria-hidden="true"></video>
+          <img class="stage-tile-image" alt="" hidden decoding="async" />
+        </div>
+        <div class="stage-tile">
+          <video class="stage-tile-video" muted playsinline aria-hidden="true"></video>
+          <img class="stage-tile-image" alt="" hidden decoding="async" />
+        </div>
+        <div class="stage-tile">
+          <video class="stage-tile-video" muted playsinline aria-hidden="true"></video>
+          <img class="stage-tile-image" alt="" hidden decoding="async" />
+        </div>
+      </div>
     </div>
 
     <div class="progress-track" aria-hidden="true">
@@ -73,6 +89,6 @@
   <div id="scroll-root" class="scroll-root"></div>
 
   <!-- ?v= incrémente si le navigateur garde une vieille copie de sections.js (ex. ancien nom de vidéo). -->
-  <script type="module" src="./main.js?v=4"></script>
+  <script type="module" src="./main.js?v=6"></script>
 </body>
 </html>
