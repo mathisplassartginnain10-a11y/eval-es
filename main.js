@@ -14,6 +14,7 @@ window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change",
 
 const appRoot = document.getElementById("app")
 const progressBar = document.getElementById("progress-bar")
+const progressTrack = document.querySelector(".progress-track")
 const textOverlay = document.getElementById("text-overlay")
 const textKicker = document.getElementById("text-kicker")
 const textTitle = document.getElementById("text-title")
@@ -22,7 +23,6 @@ const textBody = document.getElementById("text-body")
 const textCredit = document.getElementById("text-credit")
 const sectionLabelEl = document.getElementById("section-label")
 const stepIndicatorEl = document.getElementById("step-indicator")
-const scrollHint = document.getElementById("scroll-hint")
 const dotsNav = document.getElementById("section-dots")
 const stageSingle = document.getElementById("stage-single")
 const stageSphereHost = document.getElementById("stage-sphere-host")
@@ -150,16 +150,51 @@ function fillTextContent(key) {
     textCredit.textContent = ""
     textCredit.hidden = true
   }
+}
 
-  if (!motionRef.reduced) {
-    textOverlay.classList.remove("is-visible")
+const introPageMeta = document.querySelector(".intro-page-meta")
+
+function triggerTextOverlayEnter() {
+  if (!textOverlay || textOverlay.hidden) return
+  if (motionRef.reduced) {
+    textOverlay.classList.add("is-visible")
+    return
+  }
+  textOverlay.classList.remove("is-visible")
+  requestAnimationFrame(() => {
+    void textOverlay.offsetWidth
     requestAnimationFrame(() => {
-      void textOverlay.offsetWidth
       textOverlay.classList.add("is-visible")
     })
-  } else {
-    textOverlay.classList.add("is-visible")
-  }
+  })
+}
+
+function triggerMediaWrapEnter() {
+  if (motionRef.reduced || !(stageMediaWrap instanceof HTMLElement)) return
+  stageMediaWrap.classList.remove("stage-media-wrap--enter")
+  requestAnimationFrame(() => {
+    void stageMediaWrap.offsetWidth
+    requestAnimationFrame(() => {
+      stageMediaWrap.classList.add("stage-media-wrap--enter")
+    })
+  })
+}
+
+function triggerIntroMetaEnter() {
+  if (motionRef.reduced || !(introPageMeta instanceof HTMLElement)) return
+  introPageMeta.classList.remove("intro-page-meta--enter")
+  requestAnimationFrame(() => {
+    void introPageMeta.offsetWidth
+    requestAnimationFrame(() => {
+      introPageMeta.classList.add("intro-page-meta--enter")
+    })
+  })
+}
+
+function triggerPageEnterEffects(sectionIndex) {
+  triggerMediaWrapEnter()
+  if (textOverlay && !textOverlay.hidden) triggerTextOverlayEnter()
+  if (sectionIndex === 0) triggerIntroMetaEnter()
 }
 
 function applyTextIfChanged(textKey) {
@@ -269,6 +304,15 @@ function updateUi(sectionIndex) {
     appRoot.dataset.layout = layout
   }
 
+  const spherePage = !!kf?.sphereTwoStep
+  if (progressTrack instanceof HTMLElement) {
+    progressTrack.hidden = spherePage
+  }
+  if (textOverlay) {
+    textOverlay.hidden = spherePage
+    textOverlay.setAttribute("aria-hidden", spherePage ? "true" : "false")
+  }
+
   progressBar.style.width = `${((sectionIndex + 1) / SECTION_COUNT) * 100}%`
 
   dots.forEach((d, i) => {
@@ -280,20 +324,20 @@ function updateUi(sectionIndex) {
   if (stepIndicatorEl) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
-  scrollHint.classList.toggle("is-hidden", sectionIndex !== 0)
 }
 
 const k0 = KEYFRAMES[0]
-fillTextContent(k0.textSection)
-lastTextKey = k0.textSection
 updateUi(0)
 applySlideForIndex(0, {})
+applyTextIfChanged(k0.textSection)
+triggerPageEnterEffects(0)
 
 scrollApi = initScroll({
   reducedMotion: motionRef.reduced,
   onTransitionStart: (idx, kf, meta = {}) => {
     applySlideForIndex(idx, meta)
     applyTextIfChanged(kf.textSection)
+    triggerPageEnterEffects(idx)
   },
   onTransitionComplete: () => {},
   onProgressUi: (idx) => {

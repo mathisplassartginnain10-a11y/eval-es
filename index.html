@@ -35,6 +35,11 @@
   <div id="app" data-layout="intro">
     <div class="nebula-bg" aria-hidden="true"></div>
 
+    <header class="intro-page-meta" aria-label="Crédits de l’exposé">
+      <p class="intro-page-meta__credits">Réalisé par : Mathis PLASSART GINNAIN et Maximilien FAVRE</p>
+      <p class="intro-page-meta__subject">Exposé ES</p>
+    </header>
+
     <!-- Média uniquement dans la moitié droite (le texte reste à gauche, z-index plus haut) -->
     <div class="stage-media-wrap" id="stage-media-wrap" aria-hidden="true">
       <!-- Intro : 3 pastilles (sphère = orbite ; deux emplacements vidéos à venir) -->
@@ -106,10 +111,6 @@
 
     <div class="app-status-bar" aria-label="Navigation de l’exposé">
       <p class="section-label" id="section-label" aria-live="polite" aria-atomic="true"></p>
-      <div class="scroll-hint" id="scroll-hint" aria-hidden="true">
-        <span class="scroll-hint__arrow">↓</span>
-        <span class="scroll-hint__label">Glisser ≥ 60 px · une étape à la fois</span>
-      </div>
       <p class="step-indicator" id="step-indicator" aria-live="polite" aria-atomic="true"></p>
     </div>
   </div>

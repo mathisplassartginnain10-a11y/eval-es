@@ -9,46 +9,33 @@ export function createSphereAnim(container, opts = {}) {
   container.innerHTML = `
 <div class="sphere-anim" role="img" aria-label="Déformation de la Terre d’une sphère vers un sphéroïde oblate">
   <canvas class="sphere-anim__canvas" width="340" height="340"></canvas>
-  <div class="sphere-anim__labels">
+  <div class="sphere-anim__post">
     <div class="sphere-anim__title"></div>
-    <div class="sphere-anim__subtitle"></div>
-  </div>
-  <div class="sphere-anim__vals">
-    <div class="sphere-anim__val-item">
-      <div class="sphere-anim__val-dot sphere-anim__val-dot--eq"></div>
-      <div class="sphere-anim__val-num sphere-anim__val-num--eq"></div>
-      <div class="sphere-anim__val-label">Rayon équatorial</div>
-    </div>
-    <div class="sphere-anim__val-item">
-      <div class="sphere-anim__val-dot sphere-anim__val-dot--pol"></div>
-      <div class="sphere-anim__val-num sphere-anim__val-num--pol"></div>
-      <div class="sphere-anim__val-label">Rayon polaire</div>
-    </div>
-  </div>
-  <div class="sphere-anim__delta">Δ = 21 km entre les deux rayons</div>
-  <div class="sphere-anim__progress-wrap">
-    <div class="sphere-anim__progress-track">
-      <div class="sphere-anim__progress-fill"></div>
+    <div class="sphere-anim__metrics">
+      <div class="sphere-anim__metric">
+        <span class="sphere-anim__metric-val sphere-anim__metric-val--eq"></span>
+        <span class="sphere-anim__metric-label">Rayon équatorial</span>
+      </div>
+      <div class="sphere-anim__metric">
+        <span class="sphere-anim__metric-val sphere-anim__metric-val--pol"></span>
+        <span class="sphere-anim__metric-label">Rayon polaire</span>
+      </div>
     </div>
   </div>
   ${embed ? "" : `<div class="sphere-anim__btn-row">
     <button type="button" class="sphere-anim__btn sphere-anim__btn-play">▶ Lancer</button>
     <button type="button" class="sphere-anim__btn sphere-anim__btn-reset">↺ Réinitialiser</button>
   </div>`}
-  <p class="sphere-anim__note">Déformation ×10 exagérée pour la lisibilité visuelle.<br>Valeurs affichées = données réelles WGS 84.</p>
 </div>`
 
   const canvas = container.querySelector(".sphere-anim__canvas")
   const elTitle = container.querySelector(".sphere-anim__title")
-  const elSubtitle = container.querySelector(".sphere-anim__subtitle")
-  const elValEq = container.querySelector(".sphere-anim__val-num--eq")
-  const elValPol = container.querySelector(".sphere-anim__val-num--pol")
-  const elDelta = container.querySelector(".sphere-anim__delta")
-  const elProgress = container.querySelector(".sphere-anim__progress-fill")
+  const elValEq = container.querySelector(".sphere-anim__metric-val--eq")
+  const elValPol = container.querySelector(".sphere-anim__metric-val--pol")
   const btnPlay = container.querySelector(".sphere-anim__btn-play")
   const btnReset = container.querySelector(".sphere-anim__btn-reset")
 
-  if (!(canvas instanceof HTMLCanvasElement) || !elTitle || !elSubtitle || !elValEq || !elValPol || !elDelta || !elProgress) {
+  if (!(canvas instanceof HTMLCanvasElement) || !elTitle || !elValEq || !elValPol) {
     throw new Error("createSphereAnim: structure DOM incomplète")
   }
 
@@ -100,18 +87,12 @@ export function createSphereAnim(container, opts = {}) {
   function updateDOM(t, eq, pol) {
     elValEq.textContent = fmt(eq)
     elValPol.textContent = fmt(pol)
-    elProgress.style.width = (t * 100).toFixed(1) + "%"
-    elDelta.style.opacity = t > 0.7 ? String(Math.min(1, (t - 0.7) / 0.3)) : "0"
-
     if (t < 0.03) {
       elTitle.textContent = "Sphère parfaite"
-      elSubtitle.textContent = "(hypothétique)"
     } else if (t > 0.97) {
       elTitle.textContent = "Sphéroïde oblate"
-      elSubtitle.textContent = "(forme réelle de la Terre — WGS 84)"
     } else {
       elTitle.textContent = "Déformation en cours…"
-      elSubtitle.textContent = ""
     }
   }
 
@@ -256,25 +237,6 @@ export function createSphereAnim(container, opts = {}) {
     ctx.fillStyle = "#4ECDC4"
     ctx.fillText(fmt(pol), CX + 8, CY - ry + 18)
     ctx.restore()
-
-    if (t > 0.7) {
-      const alpha = Math.min(1, (t - 0.7) / 0.3)
-      ctx.save()
-      ctx.globalAlpha = alpha
-      ctx.setLineDash([])
-      ctx.beginPath()
-      ctx.moveTo(CX + rx + 26, CY)
-      ctx.lineTo(CX + rx + 32, CY)
-      ctx.lineTo(CX + rx + 32, CY - ry)
-      ctx.lineTo(CX + rx + 26, CY - ry)
-      ctx.strokeStyle = "#FFD700"
-      ctx.lineWidth = 1.2
-      ctx.stroke()
-      ctx.font = "bold 11px Inter, system-ui, sans-serif"
-      ctx.fillStyle = "#FFD700"
-      ctx.fillText("Δ 21 km", CX + rx + 36, CY - ry / 2 + 5)
-      ctx.restore()
-    }
 
     updateDOM(t, eq, pol)
   }
