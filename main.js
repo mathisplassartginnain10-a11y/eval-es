@@ -28,6 +28,8 @@ const stageSingle = document.getElementById("stage-single")
 const stageSphereHost = document.getElementById("stage-sphere-host")
 const stageTilesRoot = document.getElementById("stage-tiles")
 const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
+const introClipsWrap = document.getElementById("intro-clips-wrap")
+const stageMediaWrap = document.getElementById("stage-media-wrap")
 const scrollRoot = document.getElementById("scroll-root")
 const stageVideo = document.querySelector("#stage-video")
 const stageImage = document.querySelector("#stage-image")
@@ -46,6 +48,14 @@ if (!stageSphereHost) {
 
 if (!eratoPromptWrap) {
   throw new Error("Conteneur #erato-prompt-wrap requis (index.html).")
+}
+
+if (!introClipsWrap) {
+  throw new Error("Conteneur #intro-clips-wrap requis (index.html).")
+}
+
+if (!stageMediaWrap) {
+  throw new Error("Conteneur #stage-media-wrap requis (index.html).")
 }
 
 /** @type {ReturnType<createSphereAnim> | null} */
@@ -125,6 +135,7 @@ function fillTextContent(key) {
   textTitle.innerHTML = `<span class="text-overlay__title-inner">${titreHtml}</span>`
   textOverlay.classList.toggle("text-overlay--stacked-title", titreLines.length > 1)
   textOverlay.classList.toggle("text-overlay--title-rule", !!block.titleUnderline)
+  textOverlay.classList.toggle("text-overlay--intro-poster", !!block.introPoster)
 
   const st = typeof block.sousTitre === "string" ? block.sousTitre.trim() : ""
   textSubtitle.textContent = st
@@ -160,6 +171,24 @@ function applyTextIfChanged(textKey) {
 function applySlideForIndex(index, meta = {}) {
   const kf = KEYFRAMES[index]
   const sphereSub = meta.sphereSubStep
+
+  if (index === 0) {
+    introClipsWrap.hidden = false
+    introClipsWrap.setAttribute("aria-hidden", "false")
+    stageMediaWrap.setAttribute("aria-hidden", "false")
+    eratoPromptWrap.hidden = true
+    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    stageTilesRoot.hidden = true
+    stageSingle.hidden = true
+    slideStage.clear()
+    sphereAnimApi?.reset()
+    stageSphereHost.hidden = true
+    stageSphereHost.setAttribute("aria-hidden", "true")
+    return
+  }
+
+  introClipsWrap.hidden = true
+  introClipsWrap.setAttribute("aria-hidden", "true")
 
   if (kf.eratoTwoStep) {
     const showIframe = sphereSub === 1
@@ -238,7 +267,6 @@ function updateUi(sectionIndex) {
   else if (kf?.sphereTwoStep || kf?.eratoTwoStep) layout = "sphere"
   if (appRoot) {
     appRoot.dataset.layout = layout
-    appRoot.classList.toggle("app--status-only", sectionIndex === 0)
   }
 
   progressBar.style.width = `${((sectionIndex + 1) / SECTION_COUNT) * 100}%`

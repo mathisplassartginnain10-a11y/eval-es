@@ -447,6 +447,168 @@ body {
   background: #000;
 }
 
+/* Page 1 — trois médias (sphère = iframe) : coins légers, pas d’anneau, espacements serrés */
+.intro-clips-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: none;
+  box-sizing: border-box;
+  padding: clamp(0.5rem, 1.8vmin, 1.25rem) clamp(0.35rem, 1.2vw, 0.85rem);
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: clamp(0.15rem, 0.75vmin, 0.4rem);
+  pointer-events: none;
+}
+
+.intro-clips-wrap:not([hidden]) {
+  display: grid;
+}
+
+.intro-clip {
+  position: relative;
+  aspect-ratio: 1;
+  width: clamp(10rem, 44vmin, 19.5rem);
+  max-width: min(50vw, 20.5rem);
+  border-radius: 0.55rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: none;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(255, 245, 224, 0.12);
+  pointer-events: auto;
+}
+
+.intro-clip--sphere {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
+  margin-right: 0;
+}
+
+.intro-clip--aplatie {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  justify-self: start;
+  margin-bottom: 0;
+}
+
+.intro-clip--triangle {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  justify-self: start;
+  margin-top: 0;
+}
+
+.intro-clip-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+  pointer-events: auto;
+}
+
+.intro-clip--soon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.2rem, 1vmin, 0.45rem);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.intro-clip__label {
+  font-size: clamp(0.72rem, 2.1vmin, 1.05rem);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  color: rgba(245, 245, 247, 0.82);
+  text-align: center;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+/* Intro : colonne texte ~40 %, pastilles dimensionnées pour remplir la zone sans déborder */
+#app[data-layout="intro"] .stage-media-wrap {
+  left: 40%;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.12) 6%,
+    rgba(0, 0, 0, 0.48) 14%,
+    rgba(0, 0, 0, 0.82) 22%,
+    #000 30%,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.12) 6%,
+    rgba(0, 0, 0, 0.48) 14%,
+    rgba(0, 0, 0, 0.82) 22%,
+    #000 30%,
+    #000 100%
+  );
+}
+
+#app[data-layout="intro"] .text-overlay--apple {
+  left: clamp(0.85rem, 3.2vw, 2rem);
+  right: 56%;
+  max-width: min(30rem, 48vw);
+  transform: translateY(-50%);
+}
+
+/* Même échelle que les autres titres héro, plafonnée si peu de hauteur (évite débordement) */
+#app[data-layout="intro"] .text-overlay__title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2rem, min(9vw, 13.5vh), 5.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+#app[data-layout="intro"] .text-overlay--title-rule .text-overlay__title-inner {
+  border-bottom-width: 2px;
+  padding-bottom: 0.12em;
+}
+
+/* Affiche « LA TERRE / N'EST PAS / RONDE » au même corps (sans mini-ligne type rubrique) */
+.text-overlay--intro-poster.text-overlay--stacked-title .text-overlay__title::first-line {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+@media (max-width: 540px) {
+  .intro-clip {
+    width: clamp(7.25rem, 56vmin, 14rem);
+    max-width: min(58vw, 14rem);
+  }
+
+  .intro-clip__label {
+    font-size: clamp(0.58rem, 3.1vw, 0.88rem);
+  }
+
+  #app[data-layout="intro"] .text-overlay--apple {
+    right: 48%;
+    max-width: min(92vw, 48rem);
+  }
+
+  #app[data-layout="intro"] .text-overlay__title {
+    font-size: clamp(1.35rem, min(10vw, 11vh), 3.25rem);
+  }
+}
+
 /* ——— Progress ——— */
 .progress-track {
   position: absolute;
@@ -487,7 +649,14 @@ body {
   overflow-y: auto;
   padding: 0.25rem 0;
   pointer-events: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.section-dots::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .section-dot {
@@ -634,6 +803,28 @@ body {
   #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
   #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
     object-position: 90% 16%;
+  }
+
+  #app[data-layout="intro"] .stage-media-wrap {
+    left: 40%;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.12) 6%,
+      rgba(0, 0, 0, 0.48) 14%,
+      rgba(0, 0, 0, 0.82) 22%,
+      #000 30%,
+      #000 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.12) 6%,
+      rgba(0, 0, 0, 0.48) 14%,
+      rgba(0, 0, 0, 0.82) 22%,
+      #000 30%,
+      #000 100%
+    );
   }
 
   #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
