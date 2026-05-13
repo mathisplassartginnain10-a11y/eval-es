@@ -150,7 +150,6 @@ export function createSlideStage(videoEl, imgEl, opts) {
       }
       if (!opts.reducedMotion) {
         void videoEl.play().catch(() => {})
-        playEnterAnimation(videoEl)
       }
       return
     }

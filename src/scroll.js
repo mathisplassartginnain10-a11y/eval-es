@@ -3,8 +3,13 @@ import { KEYFRAMES, SECTION_COUNT } from "./sections.js"
 
 const ANIM_DURATION_S = 0.025
 const PAUSE_AFTER_MS = 20
-const SWIPE_PX = 60
 const WHEEL_ACCUM_PX = 60
+/** Seuil vertical (px) — min absolu + fraction de la hauteur d’écran (meilleur sur grands écrans / trackpad tactile). */
+function swipeThresholdPx() {
+  return Math.max(52, Math.min(110, window.innerHeight * 0.09))
+}
+/** Après une navigation déclenchée au doigt, court silence pour éviter double déclenchement (iOS / multi-touch). */
+const TOUCH_NAV_COOLDOWN_MS = 320
 
 export function lerp(a, b, t) {
   return a + (b - a) * t
@@ -19,8 +24,9 @@ function hasTwoStep(kf) {
 
 /**
  * Navigation une étape à la fois (molette, swipe, clavier via main).
+ * Swipe tactile : suivi par identifiant de doigt, rejet du geste majoritairement horizontal, pastilles latérales exclues (`#section-dots`), `touchcancel`, anti double-frappe court. Les iframes ne remontent pas les touches : bandes `.intro-clip-swipe-rail--start|end` et `.erato-swipe-rail--start|end` au-dessus ; le canvas sphère reste en `pointer-events: none`.
  * Verrou court pendant la transition — les médias sont pilotés dans les callbacks.
- * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep }` sur les panneaux à deux temps (`sphereTwoStep`, `eratoTwoStep`).
+ * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep?, subStepOnly? }` sur les panneaux à deux temps (`sphereTwoStep`, `eratoTwoStep`). `subStepOnly: true` = changement de sous-étape sans changement de page (pas d’animation d’entrée globale).
  */
 export function initScroll({ reducedMotion, onTransitionStart, onTransitionComplete, onProgressUi }) {
   let currentIndex = 0
@@ -28,7 +34,9 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
   let sphereSubStep = 0
   let locked = false
   let wheelSum = 0
-  let touchY0 = 0
+  /** @type {{ id: number; y0: number; x0: number; ignore: boolean } | null} */
+  let touchGesture = null
+  let lastTouchNavAt = 0
   /** @type { gsap.core.Timeline | null } */
   let timeline = null
 
@@ -39,9 +47,9 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
   }
 
   function syncScrollDom(index) {
-    const panels = document.querySelectorAll("#scroll-root .scroll-panel")
-    const p = panels[index]
-    if (p) window.scrollTo({ top: p.offsetTop, behavior: "auto" })
+    const root = document.getElementById("scroll-root")
+    const p = root?.children[index]
+    if (p instanceof HTMLElement) window.scrollTo({ top: p.offsetTop, behavior: "auto" })
   }
 
   function runMiniTransition(index, kf, meta) {
@@ -50,10 +58,11 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
 
     locked = true
     wheelSum = 0
+    touchGesture = null
     setBodyLock(true)
     if (timeline) timeline.kill()
 
-    onTransitionStart(index, kf, meta)
+    onTransitionStart(index, kf, { ...meta, subStepOnly: true })
     onProgressUi(index)
 
     tick._ = 0
@@ -83,6 +92,7 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
 
     locked = true
     wheelSum = 0
+    touchGesture = null
     setBodyLock(true)
     if (timeline) timeline.kill()
 
@@ -139,12 +149,19 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     runToSection(currentIndex + delta)
   }
 
+  function targetIsDotsScroller(el) {
+    return !!(el && typeof el.closest === "function" && el.closest("#section-dots"))
+  }
+
   function onWheel(e) {
     if (locked) {
       e.preventDefault()
       return
     }
-    wheelSum += e.deltaY
+    const dy = e.deltaY
+    if (dy > 0 && wheelSum < 0) wheelSum = 0
+    else if (dy < 0 && wheelSum > 0) wheelSum = 0
+    wheelSum += dy
     if (wheelSum >= WHEEL_ACCUM_PX) {
       wheelSum = 0
       advance(1)
@@ -156,24 +173,106 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
 
   window.addEventListener("wheel", onWheel, { passive: false })
 
-  window.addEventListener(
-    "touchstart",
-    (e) => {
-      if (e.touches[0]) touchY0 = e.touches[0].clientY
-    },
-    { passive: true }
-  )
+  function touchById(e, id) {
+    for (let i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier === id) return e.touches[i]
+    }
+    return null
+  }
 
-  window.addEventListener(
-    "touchend",
-    (e) => {
-      if (locked || !e.changedTouches[0]) return
-      const dy = touchY0 - e.changedTouches[0].clientY
-      if (dy > SWIPE_PX) advance(1)
-      else if (dy < -SWIPE_PX) advance(-1)
-    },
-    { passive: true }
-  )
+  function onTouchStart(e) {
+    if (locked) {
+      touchGesture = null
+      return
+    }
+    if (targetIsDotsScroller(/** @type {EventTarget | null} */ (e.target))) {
+      touchGesture = null
+      return
+    }
+    if (e.touches.length !== 1) {
+      touchGesture = null
+      return
+    }
+    const t = e.touches[0]
+    touchGesture = { id: t.identifier, y0: t.clientY, x0: t.clientX, ignore: false }
+  }
+
+  function onTouchMove(e) {
+    if (!touchGesture || touchGesture.ignore) return
+    const t = touchById(e, touchGesture.id)
+    if (!t) {
+      touchGesture = null
+      return
+    }
+    const dx = t.clientX - touchGesture.x0
+    const dy = t.clientY - touchGesture.y0
+    const ax = Math.abs(dx)
+    const ay = Math.abs(dy)
+    if (ax > 14 && ax > ay * 1.15) {
+      touchGesture.ignore = true
+      return
+    }
+    if (ay > 10 && ay > ax * 1.05) {
+      e.preventDefault()
+    }
+  }
+
+  function finishTouchFromChanged(e) {
+    if (!touchGesture || touchGesture.ignore) {
+      touchGesture = null
+      return
+    }
+    if (locked) {
+      touchGesture = null
+      return
+    }
+    let ended = null
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === touchGesture.id) {
+        ended = e.changedTouches[i]
+        break
+      }
+    }
+    if (!ended) return
+    const dy = touchGesture.y0 - ended.clientY
+    const dx = ended.clientX - touchGesture.x0
+    if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+      touchGesture = null
+      return
+    }
+    const th = swipeThresholdPx()
+    touchGesture = null
+    if (dy > th || dy < -th) {
+      const now = Date.now()
+      if (now - lastTouchNavAt < TOUCH_NAV_COOLDOWN_MS) return
+      lastTouchNavAt = now
+      advance(dy > th ? 1 : -1)
+    }
+  }
+
+  function onTouchEnd(e) {
+    finishTouchFromChanged(e)
+  }
+
+  function onTouchCancel() {
+    touchGesture = null
+  }
+
+  function resetTouchAfterLayout() {
+    touchGesture = null
+    wheelSum = 0
+  }
+
+  document.addEventListener("touchstart", onTouchStart, { passive: true, capture: true })
+  document.addEventListener("touchmove", onTouchMove, { passive: false, capture: true })
+  document.addEventListener("touchend", onTouchEnd, { passive: true, capture: true })
+  document.addEventListener("touchcancel", onTouchCancel, { passive: true, capture: true })
+
+  window.addEventListener("resize", resetTouchAfterLayout, { passive: true })
+  window.addEventListener("orientationchange", resetTouchAfterLayout, { passive: true })
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") resetTouchAfterLayout()
+  })
 
   return {
     refresh: () => syncScrollDom(currentIndex),
@@ -201,9 +300,9 @@ export function scrollToSection(index, reducedMotion, api) {
     api.goToIndex(i)
     return
   }
-  const panels = document.querySelectorAll("#scroll-root .scroll-panel")
-  const p = panels[i]
-  const y = p ? p.offsetTop : i * window.innerHeight
+  const root = document.getElementById("scroll-root")
+  const p = root?.children[i]
+  const y = p instanceof HTMLElement ? p.offsetTop : i * window.innerHeight
   window.scrollTo({ top: y, behavior: reducedMotion ? "auto" : "smooth" })
 }
 

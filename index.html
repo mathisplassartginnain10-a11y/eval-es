@@ -15,7 +15,7 @@
       document.head.appendChild(b);
     })();
   </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>La Terre est-elle ronde ? — Exposé ES</title>
   <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -42,7 +42,7 @@
 
     <!-- Média uniquement dans la moitié droite (le texte reste à gauche, z-index plus haut) -->
     <div class="stage-media-wrap" id="stage-media-wrap" aria-hidden="true">
-      <!-- Intro : 3 pastilles (sphère = orbite ; deux emplacements vidéos à venir) -->
+      <!-- Intro : iframes → docs/prompts/ (fichiers non modifiés ici) -->
       <div id="intro-clips-wrap" class="intro-clips-wrap" hidden aria-hidden="true">
         <div class="intro-clip intro-clip--sphere">
           <iframe
@@ -51,12 +51,28 @@
             src="docs/prompts/earth-orbit.html"
             loading="eager"
           ></iframe>
+          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
+          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
         </div>
-        <div class="intro-clip intro-clip--aplatie intro-clip--soon" aria-label="Terre aplatie — à venir">
-          <span class="intro-clip__label">Terre aplatie</span>
+        <div class="intro-clip intro-clip--aplatie">
+          <iframe
+            class="intro-clip-frame"
+            title="Terre aplatie — caméra orbitale"
+            src="docs/prompts/terre-aplatie-orbit.html"
+            loading="lazy"
+          ></iframe>
+          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
+          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
         </div>
-        <div class="intro-clip intro-clip--triangle intro-clip--soon" aria-label="Terre triangle — à venir">
-          <span class="intro-clip__label">Terre triangle</span>
+        <div class="intro-clip intro-clip--triangle">
+          <iframe
+            class="intro-clip-frame"
+            title="Terre cône — caméra orbitale"
+            src="docs/prompts/terre-cone-orbit.html"
+            loading="lazy"
+          ></iframe>
+          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
+          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
         </div>
       </div>
       <div class="stage-single" id="stage-single" hidden>
@@ -92,6 +108,8 @@
           src="docs/prompts/eratosthene-animation.html"
           loading="lazy"
         ></iframe>
+        <div class="erato-swipe-rail erato-swipe-rail--start" aria-hidden="true"></div>
+        <div class="erato-swipe-rail erato-swipe-rail--end" aria-hidden="true"></div>
       </div>
     </div>
 

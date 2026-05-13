@@ -1,3 +1,4 @@
+import gsap from "gsap"
 import { createSlideStage } from "./src/slideStage.js"
 import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
@@ -154,53 +155,129 @@ function fillTextContent(key) {
 
 const introPageMeta = document.querySelector(".intro-page-meta")
 
-function triggerTextOverlayEnter() {
-  if (!textOverlay || textOverlay.hidden) return
-  if (motionRef.reduced) {
-    textOverlay.classList.add("is-visible")
-    return
+/** @type {gsap.core.Timeline | null} */
+let pageEnterTimeline = null
+
+function killPageEnterTimeline() {
+  if (pageEnterTimeline) {
+    pageEnterTimeline.kill()
+    pageEnterTimeline = null
   }
-  textOverlay.classList.remove("is-visible")
-  requestAnimationFrame(() => {
-    void textOverlay.offsetWidth
-    requestAnimationFrame(() => {
-      textOverlay.classList.add("is-visible")
-    })
-  })
 }
 
-function triggerMediaWrapEnter() {
+/** Remet opacité / transform après tween interrompu (swipe rapide). */
+function snapPageEnterLayerComplete() {
+  if (!(stageMediaWrap instanceof HTMLElement)) return
+  gsap.killTweensOf(stageMediaWrap)
+  gsap.set(stageMediaWrap, { autoAlpha: 1, clearProps: "opacity,visibility,transform" })
+
+  const textEls = [textKicker, textTitle, textSubtitle, textBody, textCredit].filter((el) => el instanceof HTMLElement)
+  gsap.killTweensOf(textEls)
+  if (textOverlay && !textOverlay.hidden) {
+    gsap.set(textEls, { autoAlpha: 1, clearProps: "opacity,visibility,transform" })
+    textOverlay.classList.add("is-visible")
+  } else {
+    gsap.set(textEls, { clearProps: "opacity,visibility,transform" })
+  }
+
+  if (introPageMeta instanceof HTMLElement) {
+    gsap.killTweensOf(introPageMeta)
+    gsap.set(introPageMeta, { clearProps: "opacity,visibility,transform" })
+  }
+}
+
+/** Blocs texte visibles pour l’entrée (hors `[hidden]`). */
+function collectTextEnterTargets() {
+  if (!textOverlay || textOverlay.hidden) return []
+  const parts = [textKicker, textTitle, textSubtitle, textBody, textCredit]
+  return parts.filter((el) => el instanceof HTMLElement && !el.hidden)
+}
+
+/**
+ * Avant la frame d’entrée : colonne média + texte en état « caché » pour éviter
+ * un flash d’opacité 1 puis tween (les transitions CSS seules restaient souvent invisibles).
+ */
+function primePageEnterHidden(sectionIndex) {
   if (motionRef.reduced || !(stageMediaWrap instanceof HTMLElement)) return
-  stageMediaWrap.classList.remove("stage-media-wrap--enter")
-  requestAnimationFrame(() => {
-    void stageMediaWrap.offsetWidth
-    requestAnimationFrame(() => {
-      stageMediaWrap.classList.add("stage-media-wrap--enter")
-    })
-  })
-}
 
-function triggerIntroMetaEnter() {
-  if (motionRef.reduced || !(introPageMeta instanceof HTMLElement)) return
-  introPageMeta.classList.remove("intro-page-meta--enter")
-  requestAnimationFrame(() => {
-    void introPageMeta.offsetWidth
-    requestAnimationFrame(() => {
-      introPageMeta.classList.add("intro-page-meta--enter")
-    })
-  })
+  killPageEnterTimeline()
+  snapPageEnterLayerComplete()
+
+  const textTargets = collectTextEnterTargets()
+  const killList = [stageMediaWrap, ...textTargets]
+  if (introPageMeta instanceof HTMLElement) killList.push(introPageMeta)
+  gsap.killTweensOf(killList)
+
+  if (textOverlay && !textOverlay.hidden) textOverlay.classList.remove("is-visible")
+  stageMediaWrap.classList.remove("stage-media-wrap--enter")
+  if (introPageMeta instanceof HTMLElement) {
+    introPageMeta.classList.remove("intro-page-meta--enter")
+    if (sectionIndex !== 0) {
+      gsap.set(introPageMeta, { clearProps: "opacity,visibility,transform" })
+    }
+  }
+
+  gsap.set(stageMediaWrap, { autoAlpha: 0, y: 24, force3D: true })
+  if (textTargets.length) gsap.set(textTargets, { autoAlpha: 0, y: 24, force3D: true })
+  if (sectionIndex === 0 && introPageMeta instanceof HTMLElement) {
+    gsap.set(introPageMeta, { autoAlpha: 0, y: 24 })
+  }
 }
 
 function triggerPageEnterEffects(sectionIndex) {
-  triggerMediaWrapEnter()
-  if (textOverlay && !textOverlay.hidden) triggerTextOverlayEnter()
-  if (sectionIndex === 0) triggerIntroMetaEnter()
+  if (!(stageMediaWrap instanceof HTMLElement)) return
+
+  if (motionRef.reduced) {
+    killPageEnterTimeline()
+    snapPageEnterLayerComplete()
+    return
+  }
+
+  const textTargets = collectTextEnterTargets()
+  const introTargets = sectionIndex === 0 && introPageMeta instanceof HTMLElement ? [introPageMeta] : []
+
+  const ease = "power2.out"
+  const dur = 0.88
+
+  pageEnterTimeline = gsap.timeline({
+    onComplete: () => {
+      pageEnterTimeline = null
+      gsap.set(stageMediaWrap, { clearProps: "opacity,visibility,transform" })
+      if (textTargets.length) gsap.set(textTargets, { clearProps: "opacity,visibility,transform" })
+      if (textOverlay && !textOverlay.hidden) textOverlay.classList.add("is-visible")
+      if (introTargets.length) gsap.set(introTargets, { clearProps: "opacity,visibility,transform" })
+    }
+  })
+
+  pageEnterTimeline.fromTo(
+    stageMediaWrap,
+    { autoAlpha: 0, y: 24, force3D: true },
+    { autoAlpha: 1, y: 0, duration: dur, ease },
+    0
+  )
+  if (textTargets.length) {
+    pageEnterTimeline.fromTo(
+      textTargets,
+      { autoAlpha: 0, y: 24, force3D: true },
+      { autoAlpha: 1, y: 0, duration: dur, ease, stagger: 0.08 },
+      0.08
+    )
+  }
+  if (introTargets.length) {
+    pageEnterTimeline.fromTo(introTargets, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: dur, ease }, 0.05)
+  }
 }
 
 function applyTextIfChanged(textKey) {
   if (textKey === lastTextKey) return
   lastTextKey = textKey
   fillTextContent(textKey)
+}
+
+/** Rafraîchit le texte même si la clé est identique (ex. retour sur une étape), pour les flags `hidden` / le DOM. */
+function applyTextForSection(textKey) {
+  lastTextKey = null
+  applyTextIfChanged(textKey)
 }
 
 function applySlideForIndex(index, meta = {}) {
@@ -330,19 +407,31 @@ const k0 = KEYFRAMES[0]
 updateUi(0)
 applySlideForIndex(0, {})
 applyTextIfChanged(k0.textSection)
-triggerPageEnterEffects(0)
+if (!motionRef.reduced) primePageEnterHidden(0)
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    triggerPageEnterEffects(0)
+  })
+})
 
 scrollApi = initScroll({
   reducedMotion: motionRef.reduced,
   onTransitionStart: (idx, kf, meta = {}) => {
     applySlideForIndex(idx, meta)
-    applyTextIfChanged(kf.textSection)
-    triggerPageEnterEffects(idx)
+    if (meta.subStepOnly) applyTextIfChanged(kf.textSection)
+    else applyTextForSection(kf.textSection)
+    updateUi(idx)
+    if (meta.subStepOnly) return
+    if (!motionRef.reduced) primePageEnterHidden(idx)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        triggerPageEnterEffects(idx)
+      })
+    })
   },
   onTransitionComplete: () => {},
-  onProgressUi: (idx) => {
-    updateUi(idx)
-  }
+  /** `updateUi` est déjà appelé dans `onTransitionStart` — évite double recalcul layout / dots. */
+  onProgressUi: () => {}
 })
 
 dots.forEach((btn) => {

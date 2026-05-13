@@ -45,11 +45,7 @@ sun.position.set(6, 3, 5);
 scene.add(sun);
 
 /* Étoiles */
-const sb = new Float32Array(3000*3);
-for(let i=0;i<sb.length;i++) sb[i]=(Math.random()-.5)*120;
-const sg = new THREE.BufferGeometry();
-sg.setAttribute('position', new THREE.BufferAttribute(sb, 3));
-scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0xffffff, size:0.045})));
+
 
 /* Texture encodée en base64 */
 const texImg = new Image();
@@ -78,13 +74,13 @@ scene.add(new THREE.Mesh(
   })
 ));
 
-/* Caméra orbitale — 1 tour en 6s */
+/* Caméra orbitale — 1 tour en 4s (~60 fps) */
 let angle = 0;
 let paused = false;
 let speed  = 1.0;
 const TILT       = 0.22;
 const RADIUS     = 3.2;
-const BASE_SPEED = (2*Math.PI)/(12*60);
+const BASE_SPEED = (2*Math.PI)/(4*60);
 
 function animate(){
   requestAnimationFrame(animate);
