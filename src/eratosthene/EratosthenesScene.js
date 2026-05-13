@@ -1,6 +1,6 @@
 import { latLonToVector3 } from "../utils/latLonToVector3.js"
 import { CITIES, ERATOSTHENES } from "../part2/constants.js"
-import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js"
+import { CSS2DObject } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/renderers/CSS2DRenderer.js"
 
 const GLOBE_RADIUS = 1
 

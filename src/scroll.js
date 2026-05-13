@@ -13,18 +13,18 @@ export function lerp(a, b, t) {
 /**
  * @param {import("./sections.js").SectionKeyframe | undefined} kf
  */
-function hasSphereTwoStep(kf) {
-  return !!(kf && kf.sphereTwoStep)
+function hasTwoStep(kf) {
+  return !!(kf && (kf.sphereTwoStep || kf.eratoTwoStep))
 }
 
 /**
  * Navigation une étape à la fois (molette, swipe, clavier via main).
  * Verrou court pendant la transition — les médias sont pilotés dans les callbacks.
- * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep }` sur le panneau `sphereTwoStep`.
+ * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep }` sur les panneaux à deux temps (`sphereTwoStep`, `eratoTwoStep`).
  */
 export function initScroll({ reducedMotion, onTransitionStart, onTransitionComplete, onProgressUi }) {
   let currentIndex = 0
-  /** Sur un panneau `sphereTwoStep` : 0 = sphère figée, 1 = animation */
+  /** Sur un panneau à deux temps : 0 = état d’arrivée, 1 = animation / iframe */
   let sphereSubStep = 0
   let locked = false
   let wheelSum = 0
@@ -87,7 +87,7 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     if (timeline) timeline.kill()
 
     sphereSubStep = 0
-    const meta = hasSphereTwoStep(kf) ? { sphereSubStep: 0 } : {}
+    const meta = hasTwoStep(kf) ? { sphereSubStep: 0 } : {}
     onTransitionStart(targetIdx, kf, meta)
     onProgressUi(targetIdx)
 
@@ -96,7 +96,7 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
       defaults: { duration: dur, ease: "power3.inOut" },
       onComplete: () => {
         currentIndex = targetIdx
-        if (hasSphereTwoStep(kf)) sphereSubStep = 0
+        if (hasTwoStep(kf)) sphereSubStep = 0
         gsap.delayedCall(pauseMs / 1000, () => {
           locked = false
           setBodyLock(false)
@@ -110,7 +110,7 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
 
   function bumpSphereSubStep(nextSub) {
     const kf = KEYFRAMES[currentIndex]
-    if (!hasSphereTwoStep(kf)) return
+    if (!hasTwoStep(kf)) return
     sphereSubStep = nextSub
     runMiniTransition(currentIndex, kf, { sphereSubStep: nextSub })
   }
@@ -118,7 +118,7 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
   function advance(delta) {
     if (locked) return
     const kf = KEYFRAMES[currentIndex]
-    if (hasSphereTwoStep(kf)) {
+    if (hasTwoStep(kf)) {
       if (delta > 0 && sphereSubStep === 0) {
         bumpSphereSubStep(1)
         return
@@ -183,7 +183,7 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     },
     goToIndex(i) {
       const t = Math.max(0, Math.min(i, SECTION_COUNT - 1))
-      if (t === currentIndex && hasSphereTwoStep(KEYFRAMES[t]) && sphereSubStep !== 0) {
+      if (t === currentIndex && hasTwoStep(KEYFRAMES[t]) && sphereSubStep !== 0) {
         bumpSphereSubStep(0)
         return
       }

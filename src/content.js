@@ -3,31 +3,22 @@
  * Médias : `docs/media/` + `src/sections.js` (image ou vidéo par étape).
  */
 
-function step(rubrique, titre, paragraphes, credit = "") {
-  return { rubrique, titre, sousTitre: "", paragraphes, credit }
+function step(rubrique, titre, paragraphes, credit = "", extras = {}) {
+  return { rubrique, titre, sousTitre: "", paragraphes, credit, ...extras }
 }
 
 export const CONTENT = {
-  step01: step(
-    "Etape :",
-    "La Terre n'est pas ronde",
-    [
-      "Première partie : L'expérience d'Eratosthène",
-      "Seconde Partie : Les irrégularités de Surface",
-      "Troisième partie : à compléter",
-      "Quatrième partie : La déformation typographique de la terre."
-    ]
-  ),
-  step02: step("Première partie :", "L'expérience d'Eratosthène", []),
+  step01: step("", "Etape :\nLa Terre n'est pas ronde", []),
+  step02: step("Première partie :", "L'expérience d'Eratosthène", [], "", { titleUnderline: true }),
   step03: step("Seconde Partie :", "Les irrégularités de Surface", []),
   step04: step("Troisième partie :", "à compléter", []),
   step05: step("Quatrième partie :", "La déformation typographique de la terre.", []),
-  step06: step("Etape :", "à compléter", [])
+  step06: step("", "Etape :\nà compléter", [])
 }
 
 /** Libellés des points de navigation */
 export const SECTION_LABELS = [
-  "Etape :",
+  "Introduction",
   "Première partie :",
   "Seconde Partie :",
   "Troisième partie :",

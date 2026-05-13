@@ -66,7 +66,7 @@ body {
   );
 }
 
-/* Média plein cadre dans la zone droite — sans translate (alignement net avec la colonne texte) */
+/* Média un peu plus à gauche dans la zone (comme avant) */
 #app .stage-media-wrap .stage-single .stage-video,
 #app .stage-media-wrap .stage-single .stage-image {
   position: absolute;
@@ -77,13 +77,13 @@ body {
   min-height: 100%;
   object-fit: cover;
   object-position: 50% 50%;
-  transform: none;
+  transform: translate(4%, 8%);
   transform-origin: center center;
   background: transparent;
   pointer-events: none;
 }
 
-/* Petite entrée */
+/* Petite entrée — conserve translate(4%, 8%) */
 #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
 #app .stage-media-wrap .stage-single .stage-image.stage-media-enter {
   animation: stage-media-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -92,12 +92,12 @@ body {
 @keyframes stage-media-enter {
   from {
     opacity: 0;
-    transform: scale(1.035) translateX(0.6rem);
+    transform: translate(4%, 8%) scale(1.04) translateX(1.25rem);
     filter: brightness(0.92);
   }
   to {
     opacity: 1;
-    transform: none;
+    transform: translate(4%, 8%) scale(1) translateX(0);
     filter: brightness(1);
   }
 }
@@ -105,12 +105,12 @@ body {
 @keyframes stage-media-enter-narrow {
   from {
     opacity: 0;
-    transform: scale(1.03) translateX(0.45rem);
+    transform: translate(2%, 6%) scale(1.04) translateX(1.25rem);
     filter: brightness(0.92);
   }
   to {
     opacity: 1;
-    transform: none;
+    transform: translate(2%, 6%) scale(1) translateX(0);
     filter: brightness(1);
   }
 }
@@ -120,7 +120,7 @@ body {
   #app .stage-media-wrap .stage-single .stage-image.stage-media-enter {
     animation: none;
     opacity: 1;
-    transform: none;
+    transform: translate(4%, 8%);
     filter: none;
   }
 }
@@ -142,7 +142,7 @@ body {
   inset: 0;
 }
 
-/* Canvas sphère → sphéroïde (étape 3, voir src/sphereAnim.js) */
+/* Canvas sphère → sphéroïde (étape 3) ou globe Ératosthène (étape 2) */
 #app .stage-media-wrap .stage-sphere-host {
   position: absolute;
   inset: 0;
@@ -156,6 +156,27 @@ body {
 
 #app .stage-media-wrap .stage-sphere-host[hidden] {
   display: none !important;
+}
+
+/* Iframe animation Ératosthène (étape 2, 2ᵉ sous-étape) */
+#app .stage-media-wrap .erato-prompt-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+#app .stage-media-wrap .erato-prompt-wrap[hidden] {
+  display: none !important;
+}
+
+#app .stage-media-wrap .erato-prompt-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #0a0a12;
 }
 
 #app .stage-media-wrap .stage-sphere-host .sphere-anim {
@@ -510,51 +531,62 @@ body {
 .text-overlay--apple {
   top: 50%;
   bottom: auto;
-  left: clamp(1.35rem, 5vw, 4rem);
-  /* Bord droit du bloc texte vers ~33 % — léger vide avant la zone média (left 36 %) */
-  right: 67%;
-  max-width: none;
-  width: auto;
+  left: clamp(1.25rem, 5vw, 4.5rem);
+  right: 62%;
+  max-width: min(42rem, 38vw);
   transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  box-sizing: border-box;
-  text-align: left;
 }
 
-/* Intro : visuel en haut à droite, plan des parties aligné à gauche */
+/* Étapes sphère / Ératosthène : bloc texte centré verticalement face au média */
+@media (min-width: 541px) {
+  #app[data-layout="sphere"] .text-overlay--apple {
+    top: 0;
+    bottom: 0;
+    transform: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+    padding-top: clamp(0.5rem, 3vh, 2rem);
+    padding-bottom: clamp(2.5rem, 10vh, 4rem);
+  }
+}
+
+/* Intro : image terre plate en haut à droite dans la colonne média */
 #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
 #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
   object-fit: contain;
   object-position: 92% 18%;
 }
 
-#app[data-layout="intro"] .text-overlay--apple {
-  top: 47%;
-  left: clamp(1.35rem, 5.5vw, 3.75rem);
-  /* Fin du bloc texte à (36 % − 1.25 rem) depuis la gauche = marge avant la zone média */
-  right: calc(64% + 1.25rem);
+/* Première ligne du h1 quand titre sur 2 lignes (intro, conclusion…) */
+.text-overlay--stacked-title .text-overlay__title::first-line {
+  font-size: clamp(1.125rem, 2.2vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.2;
 }
 
-#app[data-layout="intro"] .text-overlay__kicker {
-  margin-bottom: 0.4rem;
+/* Bloc titre (largeur = ligne la plus longue → trait aligné début / fin du texte) */
+.text-overlay__title-inner {
+  display: inline-block;
+  max-width: 100%;
+  width: fit-content;
+  text-wrap: balance;
 }
 
-#app[data-layout="intro"] .text-overlay__title {
-  margin-bottom: 0.95rem;
+.text-overlay--title-rule .text-overlay__title-inner {
+  border-bottom: 2px solid rgba(245, 245, 247, 0.45);
+  padding-bottom: 0.14em;
 }
 
-#app[data-layout="intro"] .text-overlay__body {
-  gap: 0.42rem;
-  width: 100%;
+#app[data-layout="sphere"] .text-overlay__kicker {
+  margin-bottom: 0.35rem;
 }
 
-#app[data-layout="intro"] .text-overlay__body p {
-  max-width: none;
-  font-size: clamp(0.95rem, 1.15vw, 1.1rem);
-  line-height: 1.42;
-  letter-spacing: -0.006em;
+#app[data-layout="sphere"] .text-overlay__title {
+  line-height: 1.06;
+  letter-spacing: -0.038em;
 }
 
 /* Sphère : centrage stable dans la colonne média */
@@ -596,16 +628,12 @@ body {
   #app .stage-media-wrap .stage-single .stage-image {
     object-fit: contain;
     object-position: 55% 50%;
-    transform: none;
+    transform: translate(2%, 6%);
   }
 
   #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
   #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
     object-position: 90% 16%;
-  }
-
-  #app[data-layout="intro"] .text-overlay--apple {
-    right: calc(72% + 0.75rem);
   }
 
   #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
@@ -620,7 +648,7 @@ body {
     #app .stage-media-wrap .stage-single .stage-image.stage-media-enter {
       animation: none;
       opacity: 1;
-      transform: none;
+      transform: translate(2%, 6%);
       filter: none;
     }
   }
@@ -635,13 +663,6 @@ body {
     right: clamp(1.25rem, 4vw, 1.75rem);
     max-width: none;
     width: auto;
-  }
-
-  #app[data-layout="intro"] .text-overlay--apple {
-    top: auto;
-    bottom: clamp(4.5rem, 18vh, 7rem);
-    left: clamp(1.15rem, 4vw, 1.5rem);
-    right: clamp(1.15rem, 4vw, 1.5rem);
   }
 
   #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
@@ -660,7 +681,7 @@ body {
   #app .stage-media-wrap .stage-single .stage-image {
     object-fit: cover;
     object-position: 50% 50%;
-    transform: none;
+    transform: translate(4%, 8%);
   }
 
   #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
@@ -687,6 +708,10 @@ body {
   #app .stage-media-wrap .stage-tile:nth-child(2),
   #app .stage-media-wrap .stage-tile:nth-child(3) {
     max-width: min(100%, 42vw);
+  }
+
+  .text-overlay--stacked-title .text-overlay__title::first-line {
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
   }
 }
 
@@ -732,8 +757,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: 100%;
-  align-self: stretch;
 }
 
 .text-overlay__body p {
@@ -743,7 +766,7 @@ body {
   letter-spacing: -0.011em;
   font-weight: 400;
   color: #a1a1a6;
-  max-width: min(36rem, 100%);
+  max-width: 38rem;
 }
 
 .text-overlay__credit {
@@ -811,7 +834,7 @@ body {
 /* ——— Section label ——— */
 .section-label {
   position: absolute;
-  left: clamp(1.35rem, 5vw, 4rem);
+  left: clamp(1.25rem, 4vw, 2.5rem);
   bottom: clamp(1rem, 3vh, 1.5rem);
   margin: 0;
   z-index: 9;
@@ -878,6 +901,91 @@ body {
   50% {
     transform: translateY(8px);
   }
+}
+
+/* Hors page 1 : la barre n’est qu’un regroupement logique — placement comme avant (absolute sur chaque bloc) */
+#app:not(.app--status-only) .app-status-bar {
+  display: contents;
+}
+
+/* ——— Mode barre seule (page 1 uniquement : contenu masqué, JS inchangé) ——— */
+#app.app--status-only {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: #000;
+}
+
+#app.app--status-only > .nebula-bg,
+#app.app--status-only > .stage-media-wrap,
+#app.app--status-only > .progress-track,
+#app.app--status-only > .text-overlay {
+  display: none !important;
+}
+
+#app.app--status-only .section-dots {
+  z-index: 25;
+}
+
+#app.app--status-only .app-status-bar {
+  position: relative;
+  z-index: 20;
+  width: 100%;
+  margin: 0;
+  padding: clamp(0.85rem, 2.2vh, 1.35rem) clamp(1.25rem, 4vw, 2.25rem);
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: clamp(0.75rem, 2vw, 1.5rem);
+  background: #000;
+  border-top: none;
+}
+
+#app.app--status-only .app-status-bar .section-label {
+  position: static;
+  grid-column: 1;
+  justify-self: start;
+  margin: 0;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(168, 148, 128, 0.88);
+}
+
+#app.app--status-only .app-status-bar .scroll-hint {
+  position: static;
+  grid-column: 2;
+  justify-self: center;
+  transform: none;
+  margin: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(168, 148, 128, 0.88);
+}
+
+#app.app--status-only .app-status-bar .scroll-hint.is-hidden {
+  opacity: 1;
+}
+
+#app.app--status-only .app-status-bar .step-indicator {
+  position: static;
+  grid-column: 3;
+  justify-self: end;
+  margin: 0;
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: rgba(245, 245, 247, 0.92);
 }
 
 /* brief_cursor_v4 : verrou scroll pendant l’animation caméra */

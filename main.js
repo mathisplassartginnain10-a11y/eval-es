@@ -27,6 +27,7 @@ const dotsNav = document.getElementById("section-dots")
 const stageSingle = document.getElementById("stage-single")
 const stageSphereHost = document.getElementById("stage-sphere-host")
 const stageTilesRoot = document.getElementById("stage-tiles")
+const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
 const scrollRoot = document.getElementById("scroll-root")
 const stageVideo = document.querySelector("#stage-video")
 const stageImage = document.querySelector("#stage-image")
@@ -41,6 +42,10 @@ if (!stageSingle || !stageTilesRoot) {
 
 if (!stageSphereHost) {
   throw new Error("Conteneur #stage-sphere-host requis (index.html).")
+}
+
+if (!eratoPromptWrap) {
+  throw new Error("Conteneur #erato-prompt-wrap requis (index.html).")
 }
 
 /** @type {ReturnType<createSphereAnim> | null} */
@@ -96,6 +101,14 @@ let lastTextKey = null
 /** @type {ReturnType<initScroll> | null} */
 let scrollApi = null
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
 function fillTextContent(key) {
   const block = CONTENT[key]
   if (!block) return
@@ -108,7 +121,10 @@ function fillTextContent(key) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-  textTitle.innerHTML = titreLines.map((line) => escapeHtml(line)).join("<br />")
+  const titreHtml = titreLines.map((line) => escapeHtml(line)).join("<br />")
+  textTitle.innerHTML = `<span class="text-overlay__title-inner">${titreHtml}</span>`
+  textOverlay.classList.toggle("text-overlay--stacked-title", titreLines.length > 1)
+  textOverlay.classList.toggle("text-overlay--title-rule", !!block.titleUnderline)
 
   const st = typeof block.sousTitre === "string" ? block.sousTitre.trim() : ""
   textSubtitle.textContent = st
@@ -135,14 +151,6 @@ function fillTextContent(key) {
   }
 }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-}
-
 function applyTextIfChanged(textKey) {
   if (textKey === lastTextKey) return
   lastTextKey = textKey
@@ -152,6 +160,29 @@ function applyTextIfChanged(textKey) {
 function applySlideForIndex(index, meta = {}) {
   const kf = KEYFRAMES[index]
   const sphereSub = meta.sphereSubStep
+
+  if (kf.eratoTwoStep) {
+    const showIframe = sphereSub === 1
+    stageTilesRoot.hidden = true
+    sphereAnimApi?.reset()
+    stageSphereHost.hidden = true
+    stageSphereHost.setAttribute("aria-hidden", "true")
+    if (!showIframe) {
+      eratoPromptWrap.hidden = true
+      eratoPromptWrap.setAttribute("aria-hidden", "true")
+      stageSingle.hidden = false
+      slideStage.apply(keyframeToSlideMedia(kf))
+    } else {
+      slideStage.clear()
+      stageSingle.hidden = true
+      eratoPromptWrap.hidden = false
+      eratoPromptWrap.setAttribute("aria-hidden", "false")
+    }
+    return
+  }
+
+  eratoPromptWrap.hidden = true
+  eratoPromptWrap.setAttribute("aria-hidden", "true")
 
   if (kf.sphereTwoStep) {
     const play = sphereSub === 1
@@ -204,8 +235,11 @@ function updateUi(sectionIndex) {
   const kf = KEYFRAMES[sectionIndex]
   let layout = "split"
   if (sectionIndex === 0) layout = "intro"
-  else if (kf?.sphereTwoStep) layout = "sphere"
-  if (appRoot) appRoot.dataset.layout = layout
+  else if (kf?.sphereTwoStep || kf?.eratoTwoStep) layout = "sphere"
+  if (appRoot) {
+    appRoot.dataset.layout = layout
+    appRoot.classList.toggle("app--status-only", sectionIndex === 0)
+  }
 
   progressBar.style.width = `${((sectionIndex + 1) / SECTION_COUNT) * 100}%`
 
@@ -224,7 +258,6 @@ function updateUi(sectionIndex) {
 const k0 = KEYFRAMES[0]
 fillTextContent(k0.textSection)
 lastTextKey = k0.textSection
-textOverlay.classList.add("is-visible")
 updateUi(0)
 applySlideForIndex(0, {})
 

@@ -6,7 +6,8 @@
  * - `loop: true` → la vidéo boucle tant que tu ne swipes pas.
  * - `loopSkipTailSec` (ex. `1/30` à 30 ips) → reboucle un peu avant la fin pour éviter la saccade si la dernière image ne colle pas au début.
  * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
- * - `sphereTwoStep: true` → sur ce panneau, le 1er swipe affiche la sphère figée, le 2e lance l’animation (`src/sphereAnim.js`), puis le swipe suivant va au panneau suivant.
+ * - `sphereTwoStep: true` → 1er swipe = état figé, 2e = animation sphère (`src/sphereAnim.js`), 3e = panneau suivant.
+ * - `eratoTwoStep: true` → même logique page 2 : 1er swipe = arrivée (média seul), 2e = iframe `docs/prompts/eratosthene-animation.html`, 3e = panneau suivant.
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -30,7 +31,7 @@ function docsUrl(relativePathUnderDocs) {
  */
 
 /**
- * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean }} SectionKeyframe
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean }} SectionKeyframe
  */
 
 /**
@@ -49,7 +50,7 @@ export const KEYFRAMES = [
     textSection: "step01",
     media: { type: "image", file: "intro-terre-plate.png" }
   },
-  { scrollIndex: 1, textSection: "step02", media: PLACEHOLDER },
+  { scrollIndex: 1, textSection: "step02", eratoTwoStep: true, media: PLACEHOLDER },
   /* Étape 3 : même panneau — 1er swipe = sphère figée, 2e = animation (voir scroll.js sphereSubStep) */
   { scrollIndex: 2, textSection: "step03", sphereTwoStep: true },
   { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },
