@@ -26,18 +26,16 @@
   {
     "imports": {
       "gsap": "https://esm.sh/gsap@3.12.5",
-      "gsap/ScrollTrigger": "https://esm.sh/gsap@3.12.5/ScrollTrigger",
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
     }
   }
   </script>
 </head>
 <body>
-  <div id="app" data-layout="intro">
+  <div id="app" data-layout="intro" data-step="1">
     <div class="nebula-bg" aria-hidden="true"></div>
 
-    <header class="intro-page-meta" aria-label="Crédits de l’exposé">
-      <p class="intro-page-meta__credits">Réalisé par : Mathis PLASSART GINNAIN et Maximilien FAVRE</p>
+    <header class="intro-page-meta" aria-label="Informations sur l’exposé">
       <p class="intro-page-meta__subject">Exposé ES</p>
     </header>
 
@@ -92,22 +90,6 @@
         <div class="erato-swipe-rail erato-swipe-rail--start" aria-hidden="true"></div>
         <div class="erato-swipe-rail erato-swipe-rail--end" aria-hidden="true"></div>
       </div>
-      <!-- Animation puits : affichée à l’étape 2 (index KEYFRAMES 1), voir src/sections.js -->
-      <div id="puits-stage-wrap" class="puits-stage-wrap" hidden aria-hidden="true">
-        <div id="puits-scroll-scroller" class="puits-scroll-scroller">
-          <section id="section-puits" class="section-puits" aria-label="Animation puits">
-            <div class="section-puits__sticky">
-              <iframe
-                id="puits-prompt-frame"
-                class="puits-prompt-frame"
-                title="Animation puits"
-                src="docs/prompts/puits-animation.html"
-                scrolling="no"
-              ></iframe>
-            </div>
-          </section>
-        </div>
-      </div>
     </div>
 
     <div class="progress-track" aria-hidden="true">
@@ -117,9 +99,11 @@
     <nav class="section-dots" id="section-dots" aria-label="Sections de l'exposé"></nav>
 
     <div class="text-overlay text-overlay--apple is-visible" id="text-overlay">
-      <p class="text-overlay__kicker" id="text-kicker"></p>
-      <h1 class="text-overlay__title" id="text-title"></h1>
-      <p class="text-overlay__subtitle" id="text-subtitle" hidden></p>
+      <div class="intro-title-wrap">
+        <p class="text-overlay__kicker" id="text-kicker"></p>
+        <h1 class="text-overlay__title" id="text-title"></h1>
+        <p class="text-overlay__subtitle" id="text-subtitle" hidden></p>
+      </div>
       <div class="text-overlay__body" id="text-body"></div>
       <p class="text-overlay__credit" id="text-credit" hidden></p>
     </div>
@@ -138,11 +122,19 @@
     title="Introduction — fond étoilé"
     src="docs/prompts/intro-stars.html"
   ></iframe>
-  <div id="persistent-names" class="persistent-names" aria-hidden="true">
+  <div id="persistent-names" class="persistent-names" aria-hidden="true" aria-label="Auteurs">
     Mathis PLASSART GINNAIN<br />
     Maximilien FAVRE
   </div>
-  <p id="scroll-hint" class="scroll-hint-intro" aria-hidden="true">Défiler</p>
+  <button
+    type="button"
+    id="btn-prev"
+    class="nav-btn-prev"
+    aria-label="Étape précédente"
+  >
+    ←
+  </button>
+  <p id="scroll-hint" class="scroll-hint-intro" aria-hidden="true">Appuyer pour continuer</p>
 
   <script>
     (function () {

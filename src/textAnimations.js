@@ -1,7 +1,4 @@
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
-
-gsap.registerPlugin(ScrollTrigger)
 
 /** iPad / iPadOS (Safari « desktop »). */
 export function detectIpadLike() {
@@ -19,24 +16,21 @@ export function configureGsapPerformance(opts) {
   if (opts.isIpad) {
     gsap.ticker.fps(30)
     gsap.config({ force3D: true })
-    ScrollTrigger.config({
-      limitCallbacks: true,
-      ignoreMobileResize: true,
-    })
   }
 }
 
-export function bindScrollTriggerResizeRefresh() {
+/** Debounce léger au redimensionnement (sans ScrollTrigger). */
+export function bindViewportResizeDebounced(onResize) {
   let t = 0
-  const onResize = () => {
+  const fn = () => {
     window.clearTimeout(t)
     t = window.setTimeout(() => {
-      ScrollTrigger.refresh()
+      onResize()
     }, 300)
   }
-  window.addEventListener("resize", onResize, { passive: true })
+  window.addEventListener("resize", fn, { passive: true })
   return () => {
-    window.removeEventListener("resize", onResize)
+    window.removeEventListener("resize", fn)
     window.clearTimeout(t)
   }
 }
@@ -66,33 +60,28 @@ export function initLayoutEntranceAnimations(opts) {
 }
 
 /**
- * Pastilles : légère mise à l’échelle selon le panneau visible au scroll (complète `.is-active`).
- * @param {HTMLElement} scrollRootEl
+ * Pastilles : état visuel selon l’étape active (plus de ScrollTrigger).
+ * @param {number} activeIndex
  * @param {HTMLElement[]} dotEls
+ * @param {{ reducedMotion?: boolean }} [opts]
  */
-export function setupDotsScrollFeedback(scrollRootEl, dotEls) {
-  const panels = [...scrollRootEl.querySelectorAll(".scroll-panel")]
-  const triggers = []
-  panels.forEach((panel, i) => {
-    const dot = dotEls[i]
+export function updateDotsVisualState(activeIndex, dotEls, opts = {}) {
+  const instant = !!opts.reducedMotion
+  dotEls.forEach((dot, i) => {
     if (!(dot instanceof HTMLElement)) return
-    const st = ScrollTrigger.create({
-      trigger: panel,
-      start: "top 52%",
-      end: "bottom 48%",
-      onToggle({ isActive }) {
-        gsap.to(dot, {
-          scale: isActive ? 1.18 : 1,
-          opacity: isActive ? 1 : 0.38,
-          duration: 0.28,
-          ease: "power2.out",
-          overwrite: "auto",
-        })
-      },
-    })
-    triggers.push(st)
+    const active = i === activeIndex
+    if (instant) {
+      gsap.set(dot, { scale: active ? 1.18 : 1, opacity: active ? 1 : 0.38 })
+    } else {
+      gsap.to(dot, {
+        scale: active ? 1.18 : 1,
+        opacity: active ? 1 : 0.38,
+        duration: 0.28,
+        ease: "power2.out",
+        overwrite: "auto",
+      })
+    }
   })
-  return () => triggers.forEach((t) => t.kill())
 }
 
 /**

@@ -8,7 +8,6 @@
  * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
  * - `sphereTwoStep: true` → 1er swipe = état figé, 2e = animation sphère (`src/sphereAnim.js`), 3e = panneau suivant.
  * - `eratoTwoStep: true` → même logique page 2 : 1er swipe = arrivée (média seul), 2e = iframe `docs/prompts/eratosthene-animation.html`, 3e = panneau suivant.
- * - `puitsScrollSection: true` → iframe `docs/prompts/puits-animation.html` + scroll interne (souvent étape 2) ; progression pilotée par GSAP ScrollTrigger (`src/scroll.js`).
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -32,7 +31,7 @@ function docsUrl(relativePathUnderDocs) {
  */
 
 /**
- * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsScrollSection?: boolean }} SectionKeyframe
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean }} SectionKeyframe
  */
 
 /**
@@ -51,8 +50,8 @@ export const KEYFRAMES = [
     textSection: "step01",
     media: { type: "image", file: "intro-terre-plate.png" }
   },
-  /* Étape 2 : animation puits (scroll interne + ScrollTrigger, voir scroll.js) */
-  { scrollIndex: 1, textSection: "step02", puitsScrollSection: true },
+  /* Étape 2 : texte « Première partie / Eratosthène » — média visuel à remplacer (fichier dans docs/media/) */
+  { scrollIndex: 1, textSection: "step02", media: PLACEHOLDER },
   /* Étape 3 : même panneau — 1er swipe = sphère figée, 2e = animation (voir scroll.js sphereSubStep) */
   { scrollIndex: 2, textSection: "step03", sphereTwoStep: true },
   { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },

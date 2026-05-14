@@ -8,85 +8,38 @@
 ================================================================
 GUIDE CURSOR — intro-stars.html
 ================================================================
-Fichier autonome. Fond étoilé animé + texte de présentation.
+Fichier autonome. Fond étoilé animé uniquement (pas de texte ici :
+les noms sont affichés une seule fois dans la page parente,
+#persistent-names).
 
 SÉQUENCE INTERNE :
   Phase 1 (0-3s)   : étoiles se déplacent vers la caméra (effet warp)
   Phase 2 (3-4.5s) : étoiles ralentissent et s arrêtent
-  Phase 3 (4.5-6s) : "Présenté par" + noms apparaissent en grand
-  Phase 4 (6-7.5s) : texte se réduit → coin haut gauche
-  Après             : idle, attend le scroll
+  Puis idle jusqu’au 1er geste (scroll / molette / clic côté parent, ou clic ici en ouverture seule).
 
-AU SCROLL — Cursor doit :
+AU SCROLL / CLIC — Cursor doit :
   1. Appeler window.IntroStars.start() puis window.IntroStars.exit() → fade-out fond étoilé
   2. Zoomer les 3 iframes Terres depuis scale 0.05 → 1
-     (effet : les étoiles deviennent les 3 Terres)
-  3. Garder le texte compact en haut gauche
 
 API window.IntroStars :
   .start()         démarre la boucle d’animation (appelé par la page parente au 1er geste)
   .exit()          fade-out (800ms)
-  .onComplete(fn)  callback quand texte compact en place
+  .onComplete(fn)  callback quand la séquence étoiles a atteint la fin logique (~8,5 s)
   .getStarPositions() retourne [{x,y,r}] pour que Cursor
-                    puisse positionner les 3 Terres aux
-                    positions de 3 étoiles spécifiques
+                    puisse positionner les 3 iframes Terres au moment du zoom
 ================================================================
 -->
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:Inter,system-ui,sans-serif}
   #c{position:fixed;inset:0;width:100%;height:100%;z-index:0}
-  #intro-text{
-    position:fixed;inset:0;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    z-index:1;pointer-events:none;opacity:0;
-  }
-  #label-by{
-    font-size:clamp(12px,1.4vw,15px);
-    color:rgba(255,255,255,0.4);
-    letter-spacing:.2em;text-transform:uppercase;
-    margin-bottom:1.1rem;opacity:0;
-  }
-  #label-names{
-    font-size:clamp(20px,4vw,52px);
-    font-weight:500;color:#fff;
-    text-align:center;line-height:1.3;opacity:0;
-  }
-  #label-names span{
-    display:block;color:rgba(255,255,255,0.6);
-    font-size:.88em;margin-top:.25em;
-  }
-  #intro-text.compact{
-    inset:auto;top:.9rem;left:1.4rem;right:auto;
-    flex-direction:column;align-items:flex-start;opacity:1;
-  }
-  #intro-text.compact #label-by{display:none}
-  #intro-text.compact #label-names{
-    font-size:11px;color:rgba(255,255,255,0.5);
-    line-height:1.4;text-align:left;
-  }
-  #intro-text.compact #label-names span{
-    display:block;font-size:11px;
-    color:rgba(255,255,255,0.5);margin:0;
-  }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="intro-text">
-  <div id="label-by">Présenté par</div>
-  <div id="label-names">
-    Mathis PLASSART GINNAIN
-    <span>Maximilien FAVRE</span>
-  </div>
-</div>
 <script>
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
-const text   = document.getElementById('intro-text');
-const lBy    = document.getElementById('label-by');
-const lNames = document.getElementById('label-names');
 
 function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
 
@@ -117,16 +70,15 @@ stars.slice(0,3).forEach((s,i)=>{
   s.r = 1.8;
 });
 
-/* ── Timings (ms) ── */
-const T_WARP_DUR    = 3000;  /* mouvement rapide */
-const T_SLOW_DUR    = 1500;  /* ralentissement */
-const T_SLOW_START  = T_WARP_DUR;
+/* ── Timings (ms) — fin séquence = même instant qu’ancienne fin « compact » ── */
+const T_WARP_DUR    = 3000;
+const T_SLOW_DUR    = 1500;
 const T_BY_START    = T_WARP_DUR + T_SLOW_DUR + 200;
-const T_BY_DUR      = 900;
 const T_NAMES_START = T_BY_START + 600;
 const T_NAMES_DUR   = 900;
 const T_COMPACT     = T_NAMES_START + T_NAMES_DUR + 1200;
 const T_COMPACT_DUR = 1100;
+const T_INTRO_DONE_MS = T_COMPACT + T_COMPACT_DUR;
 
 let startTs    = null;
 let isCompact  = false;
@@ -136,22 +88,16 @@ let _onComplete = null;
 
 function ease(t){ return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2 }
 function clamp(t){ return Math.max(0,Math.min(1,t)) }
-function sub(e,s,d){ return ease(clamp((e-s)/d)) }
 
 /* ── Calcul vitesse du warp ── */
 function warpSpeed(elapsed){
   if(elapsed < T_WARP_DUR){
-    /* accélération douce 0→1 */
     return ease(clamp(elapsed/T_WARP_DUR));
   } else {
-    /* décélération */
     const t = clamp((elapsed - T_WARP_DUR) / T_SLOW_DUR);
     return 1 - ease(t);
   }
 }
-
-/* ── Dessin ── */
-let cameraZ = 0; /* zoom cumulé de la caméra */
 
 function drawStars(elapsed, globalAlpha){
   const W = canvas.width, H = canvas.height;
@@ -159,7 +105,6 @@ function drawStars(elapsed, globalAlpha){
   ctx.clearRect(0,0,W,H);
 
   const spd = warpSpeed(elapsed);
-  /* Avancer les étoiles (déplacement z) */
   if(spd > 0.001){
     stars.forEach(s => {
       s.z += spd * 0.018;
@@ -167,14 +112,12 @@ function drawStars(elapsed, globalAlpha){
     });
   }
 
-  /* Dessiner */
   stars.forEach(s => {
     const perspective = 1 / (1.2 - s.z * 0.8);
     const sx = cx + s.x * W * 0.6 * perspective;
     const sy = cy + s.y * H * 0.6 * perspective;
     const sr = s.r * perspective * 0.8;
 
-    /* Trail (traînée) quand ça bouge vite */
     if(spd > 0.05){
       const trailLen = spd * 18 * perspective;
       const dx = s.x * W * 0.6 * perspective - s.x * W * 0.6 * (1/(1.2-(s.z-0.015)*0.8));
@@ -194,7 +137,6 @@ function drawStars(elapsed, globalAlpha){
       ctx.stroke();
     }
 
-    /* Point */
     const twinkle = spd > 0.1 ? 1 : 0.7 + 0.3*Math.sin(s.twinkle + elapsed*s.speed*0.001);
     ctx.beginPath();
     ctx.arc(sx, sy, Math.max(0.3, sr), 0, Math.PI*2);
@@ -220,7 +162,6 @@ function onResize(){
   if(!introStarted) paintStaticStars();
 }
 
-/* ── Boucle principale ── */
 function loop(ts){
   requestAnimationFrame(loop);
   if(!startTs) startTs = ts;
@@ -231,53 +172,34 @@ function loop(ts){
     if(!exitStart) exitStart = ts;
     globalAlpha = 1 - ease(clamp((ts-exitStart)/800));
     canvas.style.opacity = globalAlpha;
-    text.style.opacity   = globalAlpha;
     if(globalAlpha <= 0) return;
   }
 
   drawStars(elapsed, globalAlpha);
 
-  if(!isCompact && !isExiting){
-    text.style.opacity   = sub(elapsed, T_BY_START-100, 400);
-    lBy.style.opacity    = sub(elapsed, T_BY_START, T_BY_DUR);
-    lNames.style.opacity = sub(elapsed, T_NAMES_START, T_NAMES_DUR);
-  }
-
-  /* Passage compact */
-  if(elapsed > T_COMPACT && !isCompact && !isExiting){
-    const t = sub(elapsed, T_COMPACT, T_COMPACT_DUR);
-    if(t < 0.5){
-      text.style.opacity = 1 - ease(t*2);
-    } else {
-      if(!text.classList.contains('compact')) text.classList.add('compact');
-      text.style.opacity = ease((t-0.5)*2);
-    }
-    if(t >= 1){
-      isCompact = true;
-      if(_onComplete) _onComplete();
-    }
+  if(elapsed > T_INTRO_DONE_MS && !isCompact && !isExiting){
+    isCompact = true;
+    if(_onComplete) _onComplete();
   }
 }
 
 resize();
 window.addEventListener('resize', onResize);
 paintStaticStars();
-window.addEventListener('scroll', startIntro, { once: true, passive: true });
-window.addEventListener('touchstart', startIntro, { once: true, passive: true });
-window.addEventListener('wheel', startIntro, { once: true, passive: true });
+window.addEventListener('click', (e) => {
+  if (e.sourceCapabilities?.firesTouchEvents) return
+  startIntro()
+}, { passive: true });
 
-/* ── API publique ── */
 window.IntroStars = {
   start: startIntro,
   exit(){
-    isExiting = true;
+    isExiting = true
   },
   onComplete(fn){
     _onComplete = fn;
     if (isCompact && typeof fn === "function") fn();
   },
-  /* Retourne les positions écran des 3 "seeds" pour que Cursor
-     puisse y placer les 3 iframes Terres au moment du zoom */
   getSeedPositions(){
     const W = canvas.width, H = canvas.height;
     const cx = W/2, cy = H/2;

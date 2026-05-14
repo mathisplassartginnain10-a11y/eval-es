@@ -8,7 +8,7 @@ function step(rubrique, titre, paragraphes, credit = "", extras = {}) {
 }
 
 export const CONTENT = {
-  step01: step("", "LA TERRE\nN'EST PAS\nRONDE", [], "", { titleUnderline: true, introPoster: true }),
+  step01: step("", "LA TERRE N'EST PAS RONDE", [], "", { titleUnderline: true, introPoster: true }),
   step02: step(
     "Première partie :",
     "L'expérience d'Eratosthène",

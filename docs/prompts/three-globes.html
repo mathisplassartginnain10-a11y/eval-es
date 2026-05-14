@@ -6,7 +6,7 @@
 <title>Les trois Terres — scène unique</title>
 <!--
   Une scène WebGL + intro séquencée (sprites → zoom caméra → révélation des globes).
-  GSAP pour la timeline ; Three.js pour le rendu.
+  Layout : sphère bas-gauche, aplatie haut-droite, triangle bas-droite (chevauchement).
   API : window.ThreeGlobes.setSpeed / pause / resume ; à la fin de l’intro (~5,5 s),
   window.parent.postMessage("intro-complete", "*") pour synchroniser la nav parente.
 -->
@@ -57,7 +57,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace
 
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(
-  42,
+  50,
   window.innerWidth / Math.max(1, window.innerHeight),
   0.1,
   200
@@ -84,8 +84,6 @@ const SPIN_BASE = 0.0048
 
 const sphereSeg = isIpad ? 24 : 32
 
-const GLOBES_Y = 0.5
-
 /** @type {THREE.Group | null} */
 let earthPivot = null
 /** @type {THREE.Group | null} */
@@ -93,10 +91,17 @@ let aplatiePivot = null
 /** @type {THREE.Group | null} */
 let conePivot = null
 
+/** Positions monde des libellés (mise à jour selon aspect) */
+const labelWorldPositions = [
+  new THREE.Vector3(-0.8, -1.6, 0),
+  new THREE.Vector3(1.2, -0.4, 0),
+  new THREE.Vector3(1.4, -2.1, 0),
+]
+
 /** Fond étoilé */
 let starsPoints = null
 
-/** Sprites « graines » (ordre : gauche, centre, droite) */
+/** Sprites « graines » (alignés sur les 3 Terres) */
 /** @type {THREE.Sprite[]} */
 const seedSprites = []
 
@@ -111,8 +116,56 @@ let animating = false
 /** Libellés sous les trois Terres (projection 3D → écran) */
 /** @type {{ el: HTMLDivElement }[]} */
 let globeLabelSlots = []
-const globeLabelTexts = ["Sphère parfaite", "Sphéroïde oblate", "Théorie plate"]
+const globeLabelTexts = ["Terre_sphère", "Terre_aplatie", "Terre-triangle"]
 const labelProjectVec = new THREE.Vector3()
+
+function getLayoutSnapshot() {
+  const aspect = window.innerWidth / Math.max(1, window.innerHeight)
+  const narrow = aspect < 1.3
+  if (narrow) {
+    return {
+      sphere: new THREE.Vector3(-0.6, -0.2, 0),
+      aplatie: new THREE.Vector3(0.9, 0.7, 0),
+      cone: new THREE.Vector3(1.0, -0.6, 0),
+      labels: [
+        new THREE.Vector3(-0.6, -1.5, 0),
+        new THREE.Vector3(0.9, -0.45, 0),
+        new THREE.Vector3(1.0, -1.95, 0),
+      ],
+      cam: new THREE.Vector3(0.3, 0, 10),
+      look: new THREE.Vector3(0.5, 0, 0),
+    }
+  }
+  return {
+    sphere: new THREE.Vector3(-0.8, -0.3, 0),
+    aplatie: new THREE.Vector3(1.2, 0.9, 0),
+    cone: new THREE.Vector3(1.4, -0.8, 0),
+    labels: [
+      new THREE.Vector3(-0.8, -1.6, 0),
+      new THREE.Vector3(1.2, -0.4, 0),
+      new THREE.Vector3(1.4, -2.1, 0),
+    ],
+    cam: new THREE.Vector3(0.5, 0, 8),
+    look: new THREE.Vector3(0.5, 0, 0),
+  }
+}
+
+function updateLayout() {
+  const L = getLayoutSnapshot()
+  for (let i = 0; i < 3; i++) labelWorldPositions[i].copy(L.labels[i])
+
+  camera.fov = 50
+  camera.aspect = window.innerWidth / Math.max(1, window.innerHeight)
+  camera.updateProjectionMatrix()
+  camera.position.copy(L.cam)
+  camera.lookAt(L.look)
+
+  if (earthPivot) earthPivot.position.copy(L.sphere)
+  if (aplatiePivot) aplatiePivot.position.copy(L.aplatie)
+  if (conePivot) conePivot.position.copy(L.cone)
+
+  layoutSeedSprites()
+}
 
 function ensureGlobeLabels() {
   const root = document.getElementById("globe-labels-root")
@@ -146,10 +199,8 @@ function updateGlobeLabelPositions() {
   if (!globeLabelSlots.length) return
   const W = window.innerWidth
   const H = window.innerHeight
-  const s = spread()
-  const xs = [-s, 0, s]
   globeLabelSlots.forEach((slot, i) => {
-    labelProjectVec.set(xs[i], GLOBES_Y - 0.95, 0)
+    labelProjectVec.copy(labelWorldPositions[i])
     labelProjectVec.project(camera)
     const px = (labelProjectVec.x * 0.5 + 0.5) * W
     const py = (-labelProjectVec.y * 0.5 + 0.5) * H
@@ -158,53 +209,16 @@ function updateGlobeLabelPositions() {
   })
 }
 
-function spread() {
-  const w = window.innerWidth
-  if (w < 420) return 1.55
-  if (w < 640) return 2.25
-  return 3.2
-}
-
-function finalCamZ() {
-  const s = spread()
-  return Math.max(9, 8 + s * 0.5)
-}
-
-function addStarfield() {
-  const n = isIpad ? 1200 : 2200
-  const pos = new Float32Array(n * 3)
-  for (let i = 0; i < n * 3; i += 3) {
-    const r = 40 + Math.random() * 55
-    const th = Math.random() * Math.PI * 2
-    const ph = Math.acos(2 * Math.random() - 1)
-    pos[i] = r * Math.sin(ph) * Math.cos(th)
-    pos[i + 1] = r * Math.sin(ph) * Math.sin(th)
-    pos[i + 2] = r * Math.cos(ph)
-  }
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3))
-  const mat = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: isIpad ? 0.045 : 0.055,
-    transparent: true,
-    opacity: 0.55,
-    depthWrite: false,
-  })
-  starsPoints = new THREE.Points(geo, mat)
-  scene.add(starsPoints)
-}
-
 function layoutSeedSprites() {
-  const s = spread()
-  const xs = [-s, 0, s]
+  const L = getLayoutSnapshot()
+  const pts = [L.sphere, L.aplatie, L.cone]
   seedSprites.forEach((spr, i) => {
-    spr.position.set(xs[i], GLOBES_Y, 0)
+    if (pts[i]) spr.position.copy(pts[i])
   })
 }
 
 function createSeedSprites() {
   const gold = new THREE.Color(0xffd27a)
-  const xs = [-spread(), 0, spread()]
   for (let i = 0; i < 3; i++) {
     const mat = new THREE.SpriteMaterial({
       color: gold,
@@ -214,12 +228,12 @@ function createSeedSprites() {
       depthWrite: false,
     })
     const sprite = new THREE.Sprite(mat)
-    sprite.position.set(xs[i], GLOBES_Y, 0)
     sprite.scale.set(0.15, 0.15, 1)
     sprite.userData.baseScale = 0.22
     scene.add(sprite)
     seedSprites.push(sprite)
   }
+  layoutSeedSprites()
 }
 
 function runIntroSpritePhase() {
@@ -242,16 +256,23 @@ function runIntroSpritePhase() {
 }
 
 function runIntroCameraZoom() {
-  const zEnd = finalCamZ()
-  gsap.to(camera.position, {
-    z: zEnd,
-    duration: 1.5,
-    delay: 2.0,
-    ease: "power3.inOut",
-    onUpdate: () => {
-      camera.lookAt(0, GLOBES_Y, 0)
-    },
-  })
+  const L = getLayoutSnapshot()
+  const zEnd = L.cam.z
+  gsap.fromTo(
+    camera.position,
+    { x: L.cam.x, y: L.cam.y, z: Math.max(zEnd + 4, 12) },
+    {
+      x: L.cam.x,
+      y: L.cam.y,
+      z: zEnd,
+      duration: 1.5,
+      delay: 2.0,
+      ease: "power3.inOut",
+      onUpdate: () => {
+        camera.lookAt(L.look)
+      },
+    }
+  )
 }
 
 /**
@@ -266,11 +287,34 @@ function fitModelInBox(model, targetMax) {
   model.position.copy(ctr.clone().multiplyScalar(-sc))
 }
 
+function applyPivotRenderOrders() {
+  const pairs = [
+    [aplatiePivot, 2],
+    [conePivot, 1],
+    [earthPivot, 3],
+  ]
+  pairs.forEach(([pivot, order]) => {
+    if (!pivot) return
+    pivot.traverse((o) => {
+      if (o.isMesh) o.renderOrder = order
+    })
+  })
+}
+
+function attachGlobesOrdered() {
+  if (!earthPivot || !aplatiePivot || !conePivot) return
+  ;[earthPivot, aplatiePivot, conePivot].forEach((p) => {
+    if (p?.parent) scene.remove(p)
+  })
+  scene.add(aplatiePivot)
+  scene.add(conePivot)
+  scene.add(earthPivot)
+  applyPivotRenderOrders()
+  updateLayout()
+}
+
 function layoutGlobes() {
-  const s = spread()
-  if (earthPivot) earthPivot.position.set(-s, GLOBES_Y, 0)
-  if (aplatiePivot) aplatiePivot.position.set(0, GLOBES_Y, 0)
-  if (conePivot) conePivot.position.set(s, GLOBES_Y, 0)
+  updateLayout()
 }
 
 function scheduleRevealIfReady() {
@@ -330,8 +374,7 @@ const loader = new GLTFLoader()
 /* ——— Setup intro immédiat ——— */
 addStarfield()
 createSeedSprites()
-camera.position.set(0, 2.5, 22)
-camera.lookAt(0, GLOBES_Y, 0)
+updateLayout()
 runIntroSpritePhase()
 runIntroCameraZoom()
 schedulePostIntro()
@@ -359,20 +402,20 @@ function tick(ts) {
     }
   })
 
+  const L = getLayoutSnapshot()
   if (animating) {
     orbitAngle += ORBIT_STEP * speed
-    const s = spread()
-    const dist = finalCamZ()
+    const dist = L.cam.z
     const wobble = Math.sin(orbitAngle * 0.12) * 0.35
-    camera.position.set(wobble, 2.5 + Math.sin(orbitAngle * 0.08) * 0.08, dist)
-    camera.lookAt(0, GLOBES_Y, 0)
+    camera.position.set(L.cam.x + wobble, L.cam.y + Math.sin(orbitAngle * 0.08) * 0.06, dist)
+    camera.lookAt(L.look)
 
     const sp = SPIN_BASE * speed
     if (earthPivot?.visible) earthPivot.rotation.y += sp
-    if (aplatiePivot?.visible) aplatiePivot.rotation.z += sp
-    if (conePivot?.visible) conePivot.rotation.z += sp
+    if (aplatiePivot?.visible) aplatiePivot.rotation.y += sp
+    if (conePivot?.visible) conePivot.rotation.y += sp
   } else {
-    camera.lookAt(0, GLOBES_Y, 0)
+    camera.lookAt(L.look)
   }
 
   updateGlobeLabelPositions()
@@ -416,26 +459,52 @@ window.addEventListener(
     resizeTimer = window.setTimeout(() => {
       resizeTimer = null
       renderer.setSize(window.innerWidth, window.innerHeight)
-      camera.aspect = window.innerWidth / Math.max(1, window.innerHeight)
-      camera.updateProjectionMatrix()
-      layoutGlobes()
-      layoutSeedSprites()
+      updateLayout()
       if (animating) {
-        const dist = finalCamZ()
-        camera.position.z = dist
+        const L = getLayoutSnapshot()
+        camera.position.z = L.cam.z
       }
-    }, 300)
+    }, 200)
   },
   { passive: true }
 )
 
-/* ——— Terre sphère (gauche) ——— */
+queueMicrotask(() => {
+  window.dispatchEvent(new Event("resize"))
+})
+
+function addStarfield() {
+  const n = isIpad ? 1200 : 2200
+  const pos = new Float32Array(n * 3)
+  for (let i = 0; i < n * 3; i += 3) {
+    const r = 40 + Math.random() * 55
+    const th = Math.random() * Math.PI * 2
+    const ph = Math.acos(2 * Math.random() - 1)
+    pos[i] = r * Math.sin(ph) * Math.cos(th)
+    pos[i + 1] = r * Math.sin(ph) * Math.sin(th)
+    pos[i + 2] = r * Math.cos(ph)
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3))
+  const mat = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: isIpad ? 0.036 : 0.04,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+  })
+  starsPoints = new THREE.Points(geo, mat)
+  scene.add(starsPoints)
+}
+
+/* ——— Terre sphère (grande, bas-gauche) ——— */
 new THREE.TextureLoader().load(
   "./textures/earth-texture.jpg",
   (earthTex) => {
     earthTex.colorSpace = THREE.SRGBColorSpace
+    const earthR = 0.9
     const globe = new THREE.Mesh(
-      new THREE.SphereGeometry(1, sphereSeg, sphereSeg),
+      new THREE.SphereGeometry(earthR, sphereSeg, sphereSeg),
       new THREE.MeshPhongMaterial({
         map: earthTex,
         specular: new THREE.Color(0x1a3355),
@@ -446,7 +515,7 @@ new THREE.TextureLoader().load(
     earthPivot.userData.targetScale = 1
     earthPivot.add(globe)
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(1.04, Math.min(sphereSeg, 28), Math.min(sphereSeg, 28)),
+      new THREE.SphereGeometry(earthR * 1.05, Math.min(sphereSeg, 28), Math.min(sphereSeg, 28)),
       new THREE.MeshPhongMaterial({
         color: 0x4499ff,
         transparent: true,
@@ -456,8 +525,7 @@ new THREE.TextureLoader().load(
     )
     earthPivot.add(halo)
     earthPivot.visible = false
-    layoutGlobes()
-    scene.add(earthPivot)
+    attachGlobesOrdered()
     earthAssetReady = true
     scheduleRevealIfReady()
   },
@@ -468,7 +536,7 @@ new THREE.TextureLoader().load(
   }
 )
 
-/* ——— Terre aplatie (centre) ——— */
+/* ——— Terre aplatie (haut-droite) ——— */
 new THREE.TextureLoader().load(
   "./textures/aplatie-texture.png",
   (tex) => {
@@ -478,14 +546,13 @@ new THREE.TextureLoader().load(
       (gltf) => {
         const model = gltf.scene
         applyPhongTextured(model, tex)
-        fitModelInBox(model, 2.0)
-        model.rotation.set(-Math.PI / 2, 0, 0)
+        fitModelInBox(model, 1.3)
+        model.rotation.set(0, 0, -Math.PI / 2)
         aplatiePivot = new THREE.Group()
         aplatiePivot.userData.targetScale = 1
         aplatiePivot.add(model)
         aplatiePivot.visible = false
-        layoutGlobes()
-        scene.add(aplatiePivot)
+        attachGlobesOrdered()
         glbLoaded += 1
         scheduleRevealIfReady()
       },
@@ -500,7 +567,7 @@ new THREE.TextureLoader().load(
   () => {}
 )
 
-/* ——— Terre cône (droite) ——— */
+/* ——— Terre triangle / cône (bas-droite) ——— */
 new THREE.TextureLoader().load(
   "./textures/cone-texture.png",
   (tex) => {
@@ -510,14 +577,13 @@ new THREE.TextureLoader().load(
       (gltf) => {
         const model = gltf.scene
         applyPhongTextured(model, tex)
-        fitModelInBox(model, 2.2)
+        fitModelInBox(model, 1.3)
         model.rotation.set(-Math.PI / 2, 0, 0)
         conePivot = new THREE.Group()
         conePivot.userData.targetScale = 1
         conePivot.add(model)
         conePivot.visible = false
-        layoutGlobes()
-        scene.add(conePivot)
+        attachGlobesOrdered()
         glbLoaded += 1
         scheduleRevealIfReady()
       },

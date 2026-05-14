@@ -1,15 +1,14 @@
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { createSlideStage } from "./src/slideStage.js"
 import {
-  bindScrollTriggerResizeRefresh,
+  bindViewportResizeDebounced,
   configureGsapPerformance,
   detectIpadLike,
   initLayoutEntranceAnimations,
-  setupDotsScrollFeedback,
+  updateDotsVisualState,
   setupFinePointerHoverNudges,
 } from "./src/textAnimations.js"
-import { initScroll, scrollToSection, SECTION_COUNT, killPuitsScrollTrigger, setupPuitsScrollTrigger, setIntroStarsInteractionGuards } from "./src/scroll.js"
+import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
 import { createSphereAnim } from "./src/sphereAnim.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
@@ -44,7 +43,6 @@ const stageSingle = document.getElementById("stage-single")
 const stageSphereHost = document.getElementById("stage-sphere-host")
 const stageTilesRoot = document.getElementById("stage-tiles")
 const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
-const puitsStageWrap = document.getElementById("puits-stage-wrap")
 const introClipsWrap = document.getElementById("intro-clips-wrap")
 const stageMediaWrap = document.getElementById("stage-media-wrap")
 const scrollRoot = document.getElementById("scroll-root")
@@ -65,10 +63,6 @@ if (!stageSphereHost) {
 
 if (!eratoPromptWrap) {
   throw new Error("Conteneur #erato-prompt-wrap requis (index.html).")
-}
-
-if (!puitsStageWrap) {
-  throw new Error("Conteneur #puits-stage-wrap requis (index.html).")
 }
 
 if (!introClipsWrap) {
@@ -127,12 +121,17 @@ function buildScrollShell() {
 
 buildScrollShell()
 const dots = [...document.querySelectorAll(".section-dot")]
+const btnPrev = document.getElementById("btn-prev")
 
-bindScrollTriggerResizeRefresh()
-initLayoutEntranceAnimations({ reducedMotion: motionRef.reduced })
-if (!motionRef.reduced) {
-  setupDotsScrollFeedback(scrollRoot, dots)
+function updatePrevBtn(sectionIndex) {
+  if (!(btnPrev instanceof HTMLButtonElement)) return
+  btnPrev.classList.toggle("is-visible", sectionIndex > 0)
 }
+
+bindViewportResizeDebounced(() => {
+  scrollApi?.refresh()
+})
+initLayoutEntranceAnimations({ reducedMotion: motionRef.reduced })
 setupFinePointerHoverNudges()
 
 let lastTextKey = null
@@ -401,11 +400,6 @@ function applyTextForSection(textKey) {
 
 function applySlideForIndex(index, meta = {}) {
   const kf = KEYFRAMES[index]
-  if (!kf?.puitsScrollSection) {
-    killPuitsScrollTrigger()
-    puitsStageWrap.hidden = true
-    puitsStageWrap.setAttribute("aria-hidden", "true")
-  }
 
   const sphereSub = meta.sphereSubStep
 
@@ -426,27 +420,6 @@ function applySlideForIndex(index, meta = {}) {
 
   introClipsWrap.hidden = true
   introClipsWrap.setAttribute("aria-hidden", "true")
-
-  if (kf.puitsScrollSection) {
-    stageTilesRoot.hidden = true
-    sphereAnimApi?.reset()
-    stageSphereHost.hidden = true
-    stageSphereHost.setAttribute("aria-hidden", "true")
-    eratoPromptWrap.hidden = true
-    eratoPromptWrap.setAttribute("aria-hidden", "true")
-    stageSingle.hidden = true
-    slideStage.clear()
-    puitsStageWrap.hidden = false
-    puitsStageWrap.setAttribute("aria-hidden", "false")
-    const puitsScroller = document.getElementById("puits-scroll-scroller")
-    if (puitsScroller instanceof HTMLElement) puitsScroller.scrollTop = 0
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setupPuitsScrollTrigger()
-      })
-    })
-    return
-  }
 
   if (kf.eratoTwoStep) {
     const showIframe = sphereSub === 1
@@ -525,6 +498,7 @@ function updateUi(sectionIndex) {
   else if (kf?.sphereTwoStep || kf?.eratoTwoStep) layout = "sphere"
   if (appRoot) {
     appRoot.dataset.layout = layout
+    appRoot.dataset.step = String(sectionIndex + 1)
   }
 
   const spherePage = !!kf?.sphereTwoStep
@@ -555,11 +529,13 @@ function updateUi(sectionIndex) {
     d.classList.toggle("is-active", i === sectionIndex)
     d.setAttribute("aria-current", i === sectionIndex ? "true" : "false")
   })
+  updateDotsVisualState(sectionIndex, dots, { reducedMotion: motionRef.reduced })
 
   sectionLabelEl.textContent = SECTION_LABELS[sectionIndex] ?? ""
   if (stepIndicatorEl) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
+  updatePrevBtn(sectionIndex)
 }
 
 const k0 = KEYFRAMES[0]
@@ -593,6 +569,95 @@ scrollApi = initScroll({
   onProgressUi: () => {}
 })
 
+const NAV_DELAY_MS = 500
+let lastNavTime = 0
+let navLocked = false
+
+function goToNextStep() {
+  scrollApi?.stepBy(1)
+}
+
+function goToPrevStep() {
+  scrollApi?.stepBy(-1)
+}
+
+function handleNav(direction = "forward") {
+  if (document.body.classList.contains("intro-stars-phase")) return
+  const now = Date.now()
+  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
+  navLocked = true
+  lastNavTime = now
+  if (direction === "forward") goToNextStep()
+  else goToPrevStep()
+  window.setTimeout(() => {
+    navLocked = false
+  }, NAV_DELAY_MS)
+}
+
+function targetExcludesGlobalNav(el) {
+  if (!(el instanceof Element)) return true
+  if (el.isContentEditable || el.closest("[contenteditable]")) return true
+  return !!el.closest(
+    "#section-dots, #btn-prev, .section-dot, .nav-dot, .nav-btn, a, button, [role=\"button\"], input, textarea, select, label, iframe"
+  )
+}
+
+function onGlobalClickNav(e) {
+  if (document.body.classList.contains("intro-stars-phase")) return
+  if (targetExcludesGlobalNav(/** @type {EventTarget} */ (e.target))) return
+  handleNav("forward")
+}
+
+let touchNavStartX = 0
+let touchNavStartY = 0
+
+function onTouchStartNav(e) {
+  if (e.touches.length !== 1) return
+  touchNavStartX = e.touches[0].clientX
+  touchNavStartY = e.touches[0].clientY
+}
+
+function onTouchEndNav(e) {
+  if (!e.changedTouches.length) return
+  const t = e.changedTouches[0]
+  const dx = t.clientX - touchNavStartX
+  const dy = t.clientY - touchNavStartY
+  const dist = Math.sqrt(dx * dx + dy * dy)
+
+  if (document.body.classList.contains("intro-stars-phase") && introStarsExitIntro) {
+    if (dist < 15 && !targetExcludesGlobalNav(/** @type {EventTarget} */ (t.target))) {
+      introStarsExitIntro(true)
+    }
+    return
+  }
+
+  if (dist >= 15) return
+  if (targetExcludesGlobalNav(/** @type {EventTarget} */ (t.target))) return
+  handleNav("forward")
+}
+
+window.addEventListener("click", onGlobalClickNav, true)
+window.addEventListener("touchstart", onTouchStartNav, { passive: true })
+window.addEventListener("touchend", onTouchEndNav, { passive: true })
+
+window.addEventListener(
+  "scroll",
+  (e) => {
+    e.preventDefault()
+  },
+  { passive: false, capture: true }
+)
+
+document.addEventListener(
+  "touchmove",
+  (e) => {
+    const el = e.target
+    if (el instanceof Element && el.closest("iframe")) return
+    e.preventDefault()
+  },
+  { passive: false, capture: true }
+)
+
 /** @type {null | (() => void)} */
 let introStarsExitIntro = null
 
@@ -612,14 +677,63 @@ function initIntroStarsOverlay() {
   }
 
   let exited = false
-  let safetyUnlockTimer = 0
+  let introPhase = 0
+  let lastIntroBounceTs = 0
+  const INTRO_BOUNCE_GAP_MS = 450
+
+  function bumpIntroInteraction(fromDirect = false) {
+    if (exited) return
+    if (!fromDirect) {
+      const now = Date.now()
+      if (now - lastIntroBounceTs < INTRO_BOUNCE_GAP_MS) return
+      lastIntroBounceTs = now
+    } else {
+      lastIntroBounceTs = Date.now()
+    }
+    if (introPhase === 0) {
+      introPhase = 1
+      try {
+        frame.contentWindow?.IntroStars?.start?.()
+      } catch (_) {
+        /* iframe cross-origin ou API absente */
+      }
+      const names = document.getElementById("persistent-names")
+      if (names instanceof HTMLElement) {
+        names.style.opacity = "1"
+        names.setAttribute("aria-hidden", "false")
+      }
+      return
+    }
+    exitIntro()
+  }
+
+  function onIntroClick(e) {
+    if (exited) return
+    if (e.sourceCapabilities?.firesTouchEvents) return
+    const el = e.target
+    if (el instanceof Element) {
+      if (
+        el.closest(
+          "#section-dots, a, button, [role=\"button\"], input, textarea, select, label, .section-dot, #btn-prev"
+        )
+      ) {
+        return
+      }
+    }
+    bumpIntroInteraction(true)
+  }
 
   function exitIntro() {
     if (exited) return
     exited = true
     introStarsExitIntro = null
-    if (safetyUnlockTimer) window.clearTimeout(safetyUnlockTimer)
-    setIntroStarsInteractionGuards(null)
+    window.removeEventListener("click", onIntroClick, true)
+
+    document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
+      if (!(el instanceof HTMLIFrameElement)) return
+      const ds = el.dataset.src
+      if (ds && (!el.src || el.src === "about:blank")) el.src = ds
+    })
 
     try {
       frame.contentWindow?.IntroStars?.start?.()
@@ -655,29 +769,13 @@ function initIntroStarsOverlay() {
       }, 800)
     }, 100)
 
-    const names = document.getElementById("persistent-names")
-    if (names instanceof HTMLElement) names.style.opacity = "1"
-
     const hint = document.getElementById("scroll-hint")
     if (hint instanceof HTMLElement) hint.style.opacity = "0"
+
+    scrollToSection(0, motionRef.reduced, scrollApi)
   }
 
-  introStarsExitIntro = exitIntro
-
-  setIntroStarsInteractionGuards({
-    wheel: () => {
-      if (exited) return false
-      exitIntro()
-      return true
-    },
-  })
-
-  safetyUnlockTimer = window.setTimeout(() => {
-    if (!exited) {
-      document.body.style.overflow = ""
-      document.body.classList.remove("intro-stars-phase")
-    }
-  }, 4000)
+  introStarsExitIntro = bumpIntroInteraction
 
   function wireIntroReady() {
     const api = frame.contentWindow?.IntroStars
@@ -686,26 +784,20 @@ function initIntroStarsOverlay() {
       api.onComplete(() => {
         if (done) return
         done = true
-        if (safetyUnlockTimer) window.clearTimeout(safetyUnlockTimer)
         document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
           if (!(el instanceof HTMLIFrameElement)) return
           const ds = el.dataset.src
           if (ds && (!el.src || el.src === "about:blank")) el.src = ds
         })
-        document.body.style.overflow = ""
-        document.body.classList.remove("intro-stars-phase")
         const hint = document.getElementById("scroll-hint")
         if (hint instanceof HTMLElement) hint.style.opacity = "1"
       })
     } else {
-      if (safetyUnlockTimer) window.clearTimeout(safetyUnlockTimer)
       document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
         if (!(el instanceof HTMLIFrameElement)) return
         const ds = el.dataset.src
         if (ds && (!el.src || el.src === "about:blank")) el.src = ds
       })
-      document.body.style.overflow = ""
-      document.body.classList.remove("intro-stars-phase")
       const hint = document.getElementById("scroll-hint")
       if (hint instanceof HTMLElement) hint.style.opacity = "1"
     }
@@ -714,11 +806,7 @@ function initIntroStarsOverlay() {
   if (frame.contentDocument?.readyState === "complete") queueMicrotask(wireIntroReady)
   else frame.addEventListener("load", () => queueMicrotask(wireIntroReady), { once: true })
 
-  const onFirstScrollLike = () => {
-    introStarsExitIntro?.()
-  }
-  window.addEventListener("scroll", onFirstScrollLike, { passive: true, once: true })
-  window.addEventListener("touchmove", onFirstScrollLike, { passive: true, once: true })
+  window.addEventListener("click", onIntroClick, true)
 }
 
 initIntroStarsOverlay()
@@ -730,9 +818,15 @@ dots.forEach((btn) => {
   })
 })
 
+if (btnPrev instanceof HTMLButtonElement) {
+  btnPrev.addEventListener("click", (e) => {
+    e.stopPropagation()
+    handleNav("backward")
+  })
+}
+
 window.addEventListener("load", () => {
   scrollApi?.refresh()
-  ScrollTrigger.refresh()
 })
 
 window.addEventListener("keydown", (e) => {
@@ -740,27 +834,25 @@ window.addEventListener("keydown", (e) => {
   const t = e.target
   if (t && (t.isContentEditable || (t.closest && t.closest("input, textarea, select")))) return
 
-  if (document.getElementById("intro-stars-frame") && introStarsExitIntro) {
-    if (e.key === " " || e.key === "ArrowDown" || e.key === "PageDown") {
-      e.preventDefault()
-      introStarsExitIntro()
-      return
-    }
+  const introFrame = document.getElementById("intro-stars-frame")
+  const introDownKeys = e.key === " " || e.key === "ArrowDown" || e.key === "PageDown"
+
+  if (introFrame && introStarsExitIntro && introDownKeys) {
+    e.preventDefault()
+    introStarsExitIntro(true)
+    return
   }
 
-  if (scrollApi?.isLocked?.()) return
+  const forwardKeys = ["ArrowRight", "ArrowDown", "Enter", "PageDown"]
+  if (e.key === " " || forwardKeys.includes(e.key)) {
+    e.preventDefault()
+    handleNav("forward")
+    return
+  }
 
-  if (e.key === "ArrowDown" || e.key === "PageDown") {
+  const backKeys = ["ArrowLeft", "ArrowUp", "PageUp"]
+  if (backKeys.includes(e.key)) {
     e.preventDefault()
-    scrollApi?.stepBy(1)
-  } else if (e.key === "ArrowUp" || e.key === "PageUp") {
-    e.preventDefault()
-    scrollApi?.stepBy(-1)
-  } else if (e.key === "Home") {
-    e.preventDefault()
-    scrollToSection(0, motionRef.reduced, scrollApi)
-  } else if (e.key === "End") {
-    e.preventDefault()
-    scrollToSection(SECTION_COUNT - 1, motionRef.reduced, scrollApi)
+    handleNav("backward")
   }
 })

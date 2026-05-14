@@ -43,6 +43,144 @@ body {
   contain: style;
 }
 
+/* Conteneur intro — 40 % titre + trait | 60 % scène trois globes (schéma maquette) */
+#app[data-layout="intro"],
+#app[data-step="1"] {
+  display: grid;
+  grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+  grid-template-rows: 1fr;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+#app[data-layout="intro"] > .nebula-bg,
+#app[data-step="1"] > .nebula-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#app[data-layout="intro"] > .intro-page-meta,
+#app[data-step="1"] > .intro-page-meta {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  align-self: start;
+  justify-self: stretch;
+}
+
+#app[data-layout="intro"] > .text-overlay.text-overlay--apple,
+#app[data-step="1"] > .text-overlay.text-overlay--apple {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  transform: none;
+  align-self: center;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+  z-index: 2;
+}
+
+#app[data-layout="intro"] .intro-title-wrap,
+#app[data-step="1"] .intro-title-wrap {
+  width: 100%;
+  max-width: min(36rem, 38vw);
+  padding-left: 4vw;
+  box-sizing: border-box;
+}
+
+#app[data-layout="intro"] > .stage-media-wrap,
+#app[data-step="1"] > .stage-media-wrap {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  inset: auto;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  width: 100%;
+  height: 100%;
+  align-self: stretch;
+  justify-self: stretch;
+  min-height: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+#app[data-layout="intro"] #three-globes-frame,
+#app[data-step="1"] #three-globes-frame {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  z-index: 1;
+}
+
+@media (max-width: 540px) {
+  #app[data-layout="intro"],
+  #app[data-step="1"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  #app[data-layout="intro"] > .text-overlay.text-overlay--apple,
+  #app[data-step="1"] > .text-overlay.text-overlay--apple {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+    padding: 0 clamp(1rem, 4vw, 1.5rem) 0.75rem;
+  }
+
+  #app[data-layout="intro"] .intro-title-wrap,
+  #app[data-step="1"] .intro-title-wrap {
+    max-width: none;
+    padding-left: clamp(1rem, 4vw, 1.5rem);
+  }
+
+  #app[data-layout="intro"] > .stage-media-wrap,
+  #app[data-step="1"] > .stage-media-wrap {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: min(52vh, 28rem);
+  }
+}
+
+/* Intro : la barre d’état ne doit pas utiliser display:contents (sinon les labels deviennent des items de grille). */
+#app[data-layout="intro"]:not(.app--status-only) .app-status-bar,
+#app[data-step="1"]:not(.app--status-only) .app-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(0.55rem, 1.8vh, 1rem);
+  z-index: 15;
+  pointer-events: none;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 clamp(0.85rem, 3vw, 2rem);
+}
+
+#app[data-layout="intro"]:not(.app--status-only) .app-status-bar .section-label,
+#app[data-step="1"]:not(.app--status-only) .app-status-bar .section-label,
+#app[data-layout="intro"]:not(.app--status-only) .app-status-bar .step-indicator,
+#app[data-step="1"]:not(.app--status-only) .app-status-bar .step-indicator {
+  position: static;
+}
+
 /* Colonne média — bord gauche en fondu long sur le fond (évite couture / ligne nette) */
 #app .stage-media-wrap {
   position: absolute;
@@ -200,61 +338,6 @@ body {
   display: none !important;
 }
 
-/* Iframe puits + zone scroll interne (ScrollTrigger, voir src/scroll.js) */
-#app .stage-media-wrap .puits-stage-wrap {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  overflow: hidden;
-  pointer-events: auto;
-}
-
-#app .stage-media-wrap .puits-stage-wrap[hidden] {
-  display: none !important;
-}
-
-#app .stage-media-wrap .puits-scroll-scroller {
-  height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-#app .stage-media-wrap .section-puits {
-  position: relative;
-  min-height: 260vh;
-}
-
-#app .stage-media-wrap .section-puits__sticky {
-  position: sticky;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  min-height: min(100vh, 100%);
-  box-sizing: border-box;
-}
-
-#app .stage-media-wrap .puits-prompt-frame {
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  border: 0;
-  display: block;
-  background: #0a0a12;
-  overflow: hidden;
-  scrollbar-width: none;
-}
-
-iframe[src*="puits"] {
-  overflow: hidden;
-  scrollbar-width: none;
-}
-
-iframe[src*="puits"]::-webkit-scrollbar {
-  display: none;
-}
 
 #app .stage-media-wrap .erato-prompt-frame {
   width: 100%;
@@ -561,6 +644,44 @@ body.intro-stars-phase {
   overflow: hidden;
 }
 
+/* Retour étape précédente (tap / clic ailleurs = avant) */
+.nav-btn-prev {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 1000;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.nav-btn-prev:hover,
+.nav-btn-prev:focus-visible {
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 245, 224, 0.45);
+  outline: none;
+}
+
+.nav-btn-prev.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Page 1 — trois pastilles (sphère, aplatie, cône) : iframes docs/prompts
    Colonnes minmax(0,1fr) + pastilles width ≤ 100 % : évite que la sphère (colonne 1)
    ne déborde et ne masque les deux iframes de droite (min-width:auto par défaut). */
@@ -698,38 +819,9 @@ body.intro-stars-phase {
   pointer-events: none;
 }
 
-/* Intro : colonne texte ~40 %, pastilles dimensionnées pour remplir la zone sans déborder */
-#app[data-layout="intro"] .stage-media-wrap {
-  left: 40%;
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 0, 0, 0.12) 6%,
-    rgba(0, 0, 0, 0.48) 14%,
-    rgba(0, 0, 0, 0.82) 22%,
-    #000 30%,
-    #000 100%
-  );
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 0, 0, 0.12) 6%,
-    rgba(0, 0, 0, 0.48) 14%,
-    rgba(0, 0, 0, 0.82) 22%,
-    #000 30%,
-    #000 100%
-  );
-}
-
-#app[data-layout="intro"] .text-overlay--apple {
-  left: clamp(0.85rem, 3.2vw, 2rem);
-  right: 56%;
-  max-width: min(30rem, 48vw);
-  transform: translateY(-50%);
-}
-
-/* Même échelle que les autres titres héro, plafonnée si peu de hauteur (évite débordement) */
-#app[data-layout="intro"] .text-overlay__title {
+/* Intro : typographie titre (grille 40 / 60 définie en tête de fichier) */
+#app[data-layout="intro"] .text-overlay__title,
+#app[data-step="1"] .text-overlay__title {
   margin: 0 0 0.75rem;
   font-size: clamp(2rem, min(9vw, 13.5vh), 5.25rem);
   line-height: 1.05;
@@ -738,7 +830,8 @@ body.intro-stars-phase {
   text-transform: uppercase;
 }
 
-#app[data-layout="intro"] .text-overlay--title-rule .text-overlay__title-inner {
+#app[data-layout="intro"] .text-overlay--title-rule .text-overlay__title-inner,
+#app[data-step="1"] .text-overlay--title-rule .text-overlay__title-inner {
   border-bottom-width: 2px;
   padding-bottom: 0.12em;
 }
@@ -767,7 +860,8 @@ body.intro-stars-phase {
   gap: clamp(0.75rem, 2vw, 1.5rem);
 }
 
-#app[data-layout="intro"] .intro-page-meta {
+#app[data-layout="intro"] .intro-page-meta,
+#app[data-step="1"] .intro-page-meta {
   display: flex;
 }
 
@@ -837,12 +931,8 @@ body.intro-stars-phase {
     font-size: clamp(0.58rem, 3.1vw, 0.88rem);
   }
 
-  #app[data-layout="intro"] .text-overlay--apple {
-    right: 48%;
-    max-width: min(92vw, 48rem);
-  }
-
-  #app[data-layout="intro"] .text-overlay__title {
+  #app[data-layout="intro"] .text-overlay__title,
+  #app[data-step="1"] .text-overlay__title {
     font-size: clamp(1.35rem, min(10vw, 11vh), 3.25rem);
   }
 
@@ -1068,33 +1158,6 @@ body.intro-stars-phase {
     transform: translate(2%, 6%);
   }
 
-  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
-  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
-    object-position: 90% 16%;
-  }
-
-  #app[data-layout="intro"] .stage-media-wrap {
-    left: 40%;
-    -webkit-mask-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(0, 0, 0, 0.12) 6%,
-      rgba(0, 0, 0, 0.48) 14%,
-      rgba(0, 0, 0, 0.82) 22%,
-      #000 30%,
-      #000 100%
-    );
-    mask-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(0, 0, 0, 0.12) 6%,
-      rgba(0, 0, 0, 0.48) 14%,
-      rgba(0, 0, 0, 0.82) 22%,
-      #000 30%,
-      #000 100%
-    );
-  }
-
   #app .stage-media-wrap .stage-single .stage-video.stage-media-enter,
   #app .stage-media-wrap .stage-single .stage-image.stage-media-enter {
     animation-name: stage-media-enter-narrow;
@@ -1124,10 +1187,15 @@ body.intro-stars-phase {
     width: auto;
   }
 
-  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-image,
-  #app[data-layout="intro"] .stage-media-wrap .stage-single .stage-video {
-    object-fit: contain;
-    object-position: 50% 28%;
+  #app[data-layout="intro"] .text-overlay.text-overlay--apple,
+  #app[data-step="1"] .text-overlay.text-overlay--apple {
+    top: auto;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    transform: none;
+    max-width: none;
+    width: 100%;
   }
 
   #app .stage-media-wrap {
@@ -1310,7 +1378,7 @@ body.intro-stars-phase {
   opacity: 0.92;
 }
 
-/* ——— Étapes (swipe / scroll par panneau) ——— */
+/* ——— Étapes (navigation par tap / clic) ——— */
 .step-indicator {
   position: absolute;
   right: clamp(1.25rem, 4vw, 2.5rem);

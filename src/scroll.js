@@ -1,18 +1,11 @@
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { KEYFRAMES, SECTION_COUNT } from "./sections.js"
 
-gsap.registerPlugin(ScrollTrigger)
-
 const ANIM_DURATION_S = 0.025
-const PAUSE_AFTER_MS = 20
-const WHEEL_ACCUM_PX = 60
-/** Seuil vertical (px) — min absolu + fraction de la hauteur d’écran (meilleur sur grands écrans / trackpad tactile). */
-function swipeThresholdPx() {
-  return Math.max(52, Math.min(110, window.innerHeight * 0.09))
-}
-/** Après une navigation déclenchée au doigt, court silence pour éviter double déclenchement (iOS / multi-touch). */
-const TOUCH_NAV_COOLDOWN_MS = 320
+/** Pause après une transition GSAP avant de déverrouiller la navigation suivante. */
+const PAUSE_AFTER_MS = 500
+/** Entre deux navigations déclenchées par clic / tap / clavier (une étape max par fenêtre). */
+const STEP_NAV_DELAY_MS = 500
 
 export function lerp(a, b, t) {
   return a + (b - a) * t
@@ -26,35 +19,17 @@ function hasTwoStep(kf) {
 }
 
 /**
- * Navigation une étape à la fois (molette, swipe, clavier via main).
- * Swipe tactile : suivi par identifiant de doigt, rejet du geste majoritairement horizontal, pastilles latérales exclues (`#section-dots`), `touchcancel`, anti double-frappe court. Les iframes ne remontent pas les touches : bandes `.intro-clip-swipe-rail--start|end` et `.erato-swipe-rail--start|end` au-dessus ; le canvas sphère reste en `pointer-events: none`.
- * Verrou court pendant la transition — les médias sont pilotés dans les callbacks.
- * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep?, subStepOnly? }` sur les panneaux à deux temps (`sphereTwoStep`, `eratoTwoStep`). `subStepOnly: true` = changement de sous-étape sans changement de page (pas d’animation d’entrée globale). Garde `wheel` optionnel pour l’intro étoiles (`setIntroStarsInteractionGuards`) ; le premier `touchmove` pour quitter l’intro est dans `main.js`.
+ * Navigation une étape à la fois via `stepBy` (clic / tap / clavier dans `main.js`).
+ * Throttle ~500 ms. Pas de molette ni scroll pour changer d’étape.
+ * `onTransitionStart` / `onTransitionComplete` : 3ᵉ argument `{ sphereSubStep?, subStepOnly? }` pour `sphereTwoStep` / `eratoTwoStep`.
  */
-/** @type {null | ((e: WheelEvent) => boolean)} */
-let introWheelGuard = null
-
-/**
- * Pendant l’intro étoiles : consomme le premier wheel pour ne pas avancer les sections.
- * @param {{ wheel?: (e: WheelEvent) => boolean } | null} guards
- */
-export function setIntroStarsInteractionGuards(guards) {
-  if (!guards) {
-    introWheelGuard = null
-    return
-  }
-  introWheelGuard = guards.wheel ?? null
-}
-
 export function initScroll({ reducedMotion, onTransitionStart, onTransitionComplete, onProgressUi }) {
   let currentIndex = 0
   /** Sur un panneau à deux temps : 0 = état d’arrivée, 1 = animation / iframe */
   let sphereSubStep = 0
   let locked = false
-  let wheelSum = 0
-  /** @type {{ id: number; y0: number; x0: number; ignore: boolean } | null} */
-  let touchGesture = null
-  let lastTouchNavAt = 0
+  let lastStepNavAt = 0
+  let stepNavLocked = false
   /** @type { gsap.core.Timeline | null } */
   let timeline = null
 
@@ -64,10 +39,8 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     document.body.classList.toggle("scroll-locked", on)
   }
 
-  function syncScrollDom(index) {
-    const root = document.getElementById("scroll-root")
-    const p = root?.children[index]
-    if (p instanceof HTMLElement) window.scrollTo({ top: p.offsetTop, behavior: "auto" })
+  function syncScrollDom(_index) {
+    /* Pas de scroll natif : les panneaux `#scroll-root` servent d’ancres sémantiques uniquement. */
   }
 
   function runMiniTransition(index, kf, meta) {
@@ -75,8 +48,6 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     const pauseMs = reducedMotion ? 0 : PAUSE_AFTER_MS
 
     locked = true
-    wheelSum = 0
-    touchGesture = null
     setBodyLock(true)
     if (timeline) timeline.kill()
 
@@ -109,8 +80,6 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     const pauseMs = reducedMotion ? 0 : PAUSE_AFTER_MS
 
     locked = true
-    wheelSum = 0
-    touchGesture = null
     setBodyLock(true)
     if (timeline) timeline.kill()
 
@@ -167,155 +136,39 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     runToSection(currentIndex + delta)
   }
 
-  function targetIsDotsScroller(el) {
-    return !!(el && typeof el.closest === "function" && el.closest("#section-dots"))
+  function requestThrottledNav(delta) {
+    if (locked) return
+    const now = Date.now()
+    if (stepNavLocked || now - lastStepNavAt < STEP_NAV_DELAY_MS) return
+    stepNavLocked = true
+    lastStepNavAt = now
+    advance(delta)
+    setTimeout(() => {
+      stepNavLocked = false
+    }, STEP_NAV_DELAY_MS)
   }
-
-  function targetIsPuitsScroller(el) {
-    return !!(el && typeof el.closest === "function" && el.closest("#puits-scroll-scroller"))
-  }
-
-  function onWheel(e) {
-    if (locked) {
-      e.preventDefault()
-      return
-    }
-    if (introWheelGuard?.(e)) {
-      e.preventDefault()
-      return
-    }
-    const t = e.target
-    if (targetIsPuitsScroller(/** @type {Node | null} */ (t))) return
-    const dy = e.deltaY
-    if (dy > 0 && wheelSum < 0) wheelSum = 0
-    else if (dy < 0 && wheelSum > 0) wheelSum = 0
-    wheelSum += dy
-    if (wheelSum >= WHEEL_ACCUM_PX) {
-      wheelSum = 0
-      advance(1)
-    } else if (wheelSum <= -WHEEL_ACCUM_PX) {
-      wheelSum = 0
-      advance(-1)
-    }
-  }
-
-  window.addEventListener("wheel", onWheel, { passive: false })
-
-  function touchById(e, id) {
-    for (let i = 0; i < e.touches.length; i++) {
-      if (e.touches[i].identifier === id) return e.touches[i]
-    }
-    return null
-  }
-
-  function onTouchStart(e) {
-    if (locked) {
-      touchGesture = null
-      return
-    }
-    if (targetIsDotsScroller(/** @type {EventTarget | null} */ (e.target))) {
-      touchGesture = null
-      return
-    }
-    if (targetIsPuitsScroller(/** @type {EventTarget | null} */ (e.target))) {
-      touchGesture = null
-      return
-    }
-    if (e.touches.length !== 1) {
-      touchGesture = null
-      return
-    }
-    const t = e.touches[0]
-    touchGesture = { id: t.identifier, y0: t.clientY, x0: t.clientX, ignore: false }
-  }
-
-  function onTouchMove(e) {
-    if (!touchGesture || touchGesture.ignore) return
-    const t = touchById(e, touchGesture.id)
-    if (!t) {
-      touchGesture = null
-      return
-    }
-    const dx = t.clientX - touchGesture.x0
-    const dy = t.clientY - touchGesture.y0
-    const ax = Math.abs(dx)
-    const ay = Math.abs(dy)
-    if (ax > 14 && ax > ay * 1.15) {
-      touchGesture.ignore = true
-      return
-    }
-    if (ay > 10 && ay > ax * 1.05) {
-      e.preventDefault()
-    }
-  }
-
-  function finishTouchFromChanged(e) {
-    if (!touchGesture || touchGesture.ignore) {
-      touchGesture = null
-      return
-    }
-    if (locked) {
-      touchGesture = null
-      return
-    }
-    let ended = null
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === touchGesture.id) {
-        ended = e.changedTouches[i]
-        break
-      }
-    }
-    if (!ended) return
-    const dy = touchGesture.y0 - ended.clientY
-    const dx = ended.clientX - touchGesture.x0
-    if (Math.abs(dx) > Math.abs(dy) * 1.2) {
-      touchGesture = null
-      return
-    }
-    const th = swipeThresholdPx()
-    touchGesture = null
-    if (dy > th || dy < -th) {
-      const now = Date.now()
-      if (now - lastTouchNavAt < TOUCH_NAV_COOLDOWN_MS) return
-      lastTouchNavAt = now
-      advance(dy > th ? 1 : -1)
-    }
-  }
-
-  function onTouchEnd(e) {
-    finishTouchFromChanged(e)
-  }
-
-  function onTouchCancel() {
-    touchGesture = null
-  }
-
-  function resetTouchAfterLayout() {
-    touchGesture = null
-    wheelSum = 0
-  }
-
-  document.addEventListener("touchstart", onTouchStart, { passive: true, capture: true })
-  document.addEventListener("touchmove", onTouchMove, { passive: false, capture: true })
-  document.addEventListener("touchend", onTouchEnd, { passive: true, capture: true })
-  document.addEventListener("touchcancel", onTouchCancel, { passive: true, capture: true })
-
-  window.addEventListener("resize", resetTouchAfterLayout, { passive: true })
-  window.addEventListener("orientationchange", resetTouchAfterLayout, { passive: true })
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") resetTouchAfterLayout()
-  })
 
   return {
     refresh: () => syncScrollDom(currentIndex),
     stepBy(delta) {
-      if (locked) return
-      advance(delta)
+      if (delta === 0) return
+      requestThrottledNav(delta > 0 ? 1 : -1)
     },
     goToIndex(i) {
       const t = Math.max(0, Math.min(i, SECTION_COUNT - 1))
       if (t === currentIndex && hasTwoStep(KEYFRAMES[t]) && sphereSubStep !== 0) {
         bumpSphereSubStep(0)
+        return
+      }
+      /* Même index (ex. fin intro étoiles → étape 0 déjà active) : court verrou pour absorber les entrées résiduelles */
+      if (t === currentIndex) {
+        if (locked) return
+        locked = true
+        if (timeline) timeline.kill()
+        timeline = null
+        gsap.delayedCall(0.35, () => {
+          locked = false
+        })
         return
       }
       runToSection(t)
@@ -332,45 +185,6 @@ export function scrollToSection(index, reducedMotion, api) {
     api.goToIndex(i)
     return
   }
-  const root = document.getElementById("scroll-root")
-  const p = root?.children[i]
-  const y = p instanceof HTMLElement ? p.offsetTop : i * window.innerHeight
-  window.scrollTo({ top: y, behavior: reducedMotion ? "auto" : "smooth" })
-}
-
-/** @type {ScrollTrigger | null} */
-let puitsScrollTriggerInstance = null
-
-export function killPuitsScrollTrigger() {
-  puitsScrollTriggerInstance?.kill()
-  puitsScrollTriggerInstance = null
-}
-
-/**
- * Pilote `PuitsAnim.seek(t)` (t ∈ [0,1]) dans l’iframe `puits-animation.html`
- * via le scroll du conteneur `#puits-scroll-scroller` (le document ne défile pas).
- */
-export function setupPuitsScrollTrigger() {
-  killPuitsScrollTrigger()
-  const scroller = document.getElementById("puits-scroll-scroller")
-  const section = document.getElementById("section-puits")
-  if (!(scroller instanceof HTMLElement) || !(section instanceof HTMLElement)) return
-
-  puitsScrollTriggerInstance = ScrollTrigger.create({
-    id: "puits-iframe-scrub",
-    trigger: "#section-puits",
-    scroller,
-    start: "top center",
-    end: "bottom center",
-    scrub: true,
-    onUpdate: (self) => {
-      const iframe = document.querySelector('iframe[src*="puits-animation"]')
-      if (iframe?.contentWindow?.PuitsAnim) {
-        iframe.contentWindow.PuitsAnim.seek(self.progress)
-      }
-    }
-  })
-  ScrollTrigger.refresh()
 }
 
 export { SECTION_COUNT }
