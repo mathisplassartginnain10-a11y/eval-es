@@ -36,7 +36,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 1);
 
 const scene  = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 200);
+/* FOV étroit = globe + fil + points entièrement dans le canvas (iframe colonne droite) */
+const camera = new THREE.PerspectiveCamera(30, window.innerWidth/window.innerHeight, 0.1, 200);
 
 /* Lumières */
 scene.add(new THREE.AmbientLight(0xffffff, 0.45));
@@ -142,12 +143,14 @@ let angle = 0;
 let paused = false;
 let speed  = 1.0;
 const TILT       = 0.22;
-const RADIUS     = 3.2;
+/* Rayon d’orbite caméra : plus grand = caméra plus loin — marge autour du globe + fil (R_ARC) + points */
+const RADIUS     = 6.5;
 const BASE_SPEED = (2*Math.PI)/(12*60);
 
 let rafId = 0;
 let loopRunning = false;
 
+/** angle=0 → position initiale (0, RADIUS*sin(TILT), RADIUS), même logique que l’intro figée */
 function applyCameraFromAngle() {
   camera.position.set(
     RADIUS * Math.sin(angle),

@@ -43,6 +43,8 @@
     title="Introduction — fond étoilé"
     src="docs/prompts/intro-stars.html"
   ></iframe>
+  <!-- Reçoit les tap/clics qui traversent l’iframe intro (pointer-events:none) : sinon les événements vont aux iframes 3 globes et exitIntro ne tourne pas. -->
+  <div id="intro-tap-catcher" class="intro-tap-catcher" aria-hidden="true"></div>
 
   <div id="app" data-layout="intro" data-step="1">
     <div class="nebula-bg" aria-hidden="true"></div>
@@ -123,13 +125,15 @@
       <!-- Conteneur média étape 5 : topographie (scrollIndex 4 / data-step 5) -->
       <div id="step05-media-wrap" class="step05-media-wrap">
         <div id="topo-prompt-wrap" class="topo-prompt-wrap" hidden aria-hidden="true">
-          <iframe
-            id="topo-frame"
-            class="topo-prompt-frame"
-            title="Animation topographie — mer, relief, fosse"
-            src="docs/prompts/topographie-animation.html"
-            scrolling="no"
-          ></iframe>
+          <div class="page5-iframe-box">
+            <iframe
+              id="topo-frame"
+              class="topo-prompt-frame"
+              title="Animation topographie — mer, relief, fosse"
+              src="docs/prompts/topographie-animation.html"
+              scrolling="no"
+            ></iframe>
+          </div>
         </div>
       </div>
     </div>

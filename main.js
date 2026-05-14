@@ -608,11 +608,31 @@ scrollApi = initScroll({
 })
 
 const INTRO_NAV_UNBLOCK_MS = 1000
+const INTRO_AUTO_EXIT_MS = 3000
 const introStarsFrameEl = document.getElementById("intro-stars-frame")
+const introTapCatcherEl = document.getElementById("intro-tap-catcher")
 let introNavBlocked = introStarsFrameEl instanceof HTMLIFrameElement
 let introExited = false
+let introIdleExitTimer = 0
+let introStarsWireDone = false
+
+function clearIntroIdleExitTimer() {
+  if (introIdleExitTimer) {
+    window.clearTimeout(introIdleExitTimer)
+    introIdleExitTimer = 0
+  }
+}
+
+function scheduleIntroIdleExit() {
+  clearIntroIdleExitTimer()
+  introIdleExitTimer = window.setTimeout(() => {
+    introIdleExitTimer = 0
+    if (!introExited) exitIntro()
+  }, INTRO_AUTO_EXIT_MS)
+}
 
 function exitIntro() {
+  clearIntroIdleExitTimer()
   if (introExited) return
   introExited = true
 
@@ -714,21 +734,10 @@ function initIntroStarsOverlay() {
   }
 
   function wireIntroReady() {
+    if (introStarsWireDone) return
+    introStarsWireDone = true
     const api = frame.contentWindow?.IntroStars
-    if (api && typeof api.onComplete === "function") {
-      let done = false
-      api.onComplete(() => {
-        if (done) return
-        done = true
-        document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
-          if (!(el instanceof HTMLIFrameElement)) return
-          const ds = el.dataset.src
-          if (ds && (!el.src || el.src === "about:blank")) el.src = ds
-        })
-        const hintEl = document.getElementById("scroll-hint")
-        if (hintEl instanceof HTMLElement) hintEl.style.opacity = "1"
-      })
-    } else {
+    const primeGlobesAndHint = () => {
       document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
         if (!(el instanceof HTMLIFrameElement)) return
         const ds = el.dataset.src
@@ -737,10 +746,35 @@ function initIntroStarsOverlay() {
       const hintEl = document.getElementById("scroll-hint")
       if (hintEl instanceof HTMLElement) hintEl.style.opacity = "1"
     }
+    if (api && typeof api.onComplete === "function") {
+      let done = false
+      api.onComplete(() => {
+        if (done) return
+        done = true
+        primeGlobesAndHint()
+        scheduleIntroIdleExit()
+      })
+    } else {
+      primeGlobesAndHint()
+      scheduleIntroIdleExit()
+    }
   }
 
   if (frame.contentDocument?.readyState === "complete") queueMicrotask(wireIntroReady)
   else frame.addEventListener("load", () => queueMicrotask(wireIntroReady), { once: true })
+
+  if (introTapCatcherEl instanceof HTMLElement) {
+    const onIntroTapLayer = (e) => {
+      if (!document.body.classList.contains("intro-stars-phase") || introExited) return
+      const t = e.target
+      if (t instanceof Element && t.closest("#btn-prev, #section-dots, .section-dot")) return
+      e.preventDefault()
+      e.stopPropagation()
+      exitIntro()
+    }
+    introTapCatcherEl.addEventListener("pointerdown", onIntroTapLayer, { passive: false })
+    introTapCatcherEl.addEventListener("click", onIntroTapLayer, true)
+  }
 }
 
 const NAV_DELAY_MS = 500
@@ -910,7 +944,7 @@ function onTouchEndNav(e) {
   const dist = Math.sqrt(dx * dx + dy * dy)
 
   if (document.body.classList.contains("intro-stars-phase")) {
-    if (dist < 15 && !targetExcludesGlobalNav(/** @type {EventTarget} */ (t.target))) {
+    if (dist < 15) {
       exitIntro()
     }
     return
