@@ -12,6 +12,11 @@ import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
 import { createSphereAnim } from "./src/sphereAnim.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
+import {
+  initStarsBackground,
+  setStarsBackgroundActive,
+  setStarsBackgroundReducedMotion,
+} from "./src/starsBg.js"
 
 const motionRef = {
   reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -25,9 +30,12 @@ if (isIpadLike && !motionRef.reduced) {
 
 window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => {
   motionRef.reduced = e.matches
+  setStarsBackgroundReducedMotion(e.matches)
 })
 
 const appRoot = document.getElementById("app")
+
+initStarsBackground({ reducedMotion: motionRef.reduced })
 const progressBar = document.getElementById("progress-bar")
 const progressTrack = document.querySelector(".progress-track")
 const textOverlay = document.getElementById("text-overlay")
@@ -536,6 +544,7 @@ function updateUi(sectionIndex) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
   updatePrevBtn(sectionIndex)
+  setStarsBackgroundActive(sectionIndex === 0)
 }
 
 const k0 = KEYFRAMES[0]

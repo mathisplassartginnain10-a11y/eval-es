@@ -6,7 +6,7 @@
 <title>Les trois Terres — scène unique</title>
 <!--
   Une scène WebGL + intro séquencée (sprites → zoom caméra → révélation des globes).
-  Layout : sphère bas-gauche, aplatie haut-droite, triangle bas-droite (chevauchement).
+  Layout : sphère bas-gauche, aplatie haut-droite, triangle bas-droite — globes ×1,5 et positions fortement écartées.
   API : window.ThreeGlobes.setSpeed / pause / resume ; à la fin de l’intro (~5,5 s),
   window.parent.postMessage("intro-complete", "*") pour synchroniser la nav parente.
 -->
@@ -14,17 +14,10 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
   canvas { display: block; width: 100% !important; height: 100% !important; }
-  #globe-labels-root {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 10;
-  }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="globe-labels-root" aria-hidden="true"></div>
 <script type="importmap">
 {
   "imports": {
@@ -79,8 +72,10 @@ let rafId = null
 /** @type {ReturnType<typeof setTimeout> | null} */
 let resizeTimer = null
 
-const ORBIT_STEP = (2 * Math.PI) / (12 * 60)
-const SPIN_BASE = 0.0048
+/** Vitesse orbite caméra (rad par image ~30 fps) — valeur de base × facteur pour page 1 plus dynamique. */
+const ORBIT_STEP = ((2 * Math.PI) / (12 * 60)) * 12
+/** Rotation propre des globes (rad par image) — alignée sur le facteur d’accélération. */
+const SPIN_BASE = 0.0048 * 12
 
 const sphereSeg = isIpad ? 24 : 32
 
@@ -90,13 +85,6 @@ let earthPivot = null
 let aplatiePivot = null
 /** @type {THREE.Group | null} */
 let conePivot = null
-
-/** Positions monde des libellés (mise à jour selon aspect) */
-const labelWorldPositions = [
-  new THREE.Vector3(-0.8, -1.6, 0),
-  new THREE.Vector3(1.2, -0.4, 0),
-  new THREE.Vector3(1.4, -2.1, 0),
-]
 
 /** Fond étoilé */
 let starsPoints = null
@@ -113,46 +101,29 @@ let revealScheduled = false
 /** Après 5,5 s : rotation continue + caméra en orbite */
 let animating = false
 
-/** Libellés sous les trois Terres (projection 3D → écran) */
-/** @type {{ el: HTMLDivElement }[]} */
-let globeLabelSlots = []
-const globeLabelTexts = ["Terre_sphère", "Terre_aplatie", "Terre-triangle"]
-const labelProjectVec = new THREE.Vector3()
-
 function getLayoutSnapshot() {
   const aspect = window.innerWidth / Math.max(1, window.innerHeight)
   const narrow = aspect < 1.3
   if (narrow) {
     return {
-      sphere: new THREE.Vector3(-0.6, -0.2, 0),
-      aplatie: new THREE.Vector3(0.9, 0.7, 0),
-      cone: new THREE.Vector3(1.0, -0.6, 0),
-      labels: [
-        new THREE.Vector3(-0.6, -1.5, 0),
-        new THREE.Vector3(0.9, -0.45, 0),
-        new THREE.Vector3(1.0, -1.95, 0),
-      ],
-      cam: new THREE.Vector3(0.3, 0, 10),
-      look: new THREE.Vector3(0.5, 0, 0),
+      sphere: new THREE.Vector3(-2.115, -0.482, 0),
+      aplatie: new THREE.Vector3(1.626, 1.883, 0),
+      cone: new THREE.Vector3(1.97, -1.6, 0),
+      cam: new THREE.Vector3(0.22, 0.05, 16.2),
+      look: new THREE.Vector3(0.52, 0.06, 0),
     }
   }
   return {
-    sphere: new THREE.Vector3(-0.8, -0.3, 0),
-    aplatie: new THREE.Vector3(1.2, 0.9, 0),
-    cone: new THREE.Vector3(1.4, -0.8, 0),
-    labels: [
-      new THREE.Vector3(-0.8, -1.6, 0),
-      new THREE.Vector3(1.2, -0.4, 0),
-      new THREE.Vector3(1.4, -2.1, 0),
-    ],
-    cam: new THREE.Vector3(0.5, 0, 8),
-    look: new THREE.Vector3(0.5, 0, 0),
+    sphere: new THREE.Vector3(-3.353, -0.792, 0),
+    aplatie: new THREE.Vector3(2.407, 2.616, 0),
+    cone: new THREE.Vector3(2.887, -2.184, 0),
+    cam: new THREE.Vector3(0.52, 0.05, 18.2),
+    look: new THREE.Vector3(0.62, -0.06, 0),
   }
 }
 
 function updateLayout() {
   const L = getLayoutSnapshot()
-  for (let i = 0; i < 3; i++) labelWorldPositions[i].copy(L.labels[i])
 
   camera.fov = 50
   camera.aspect = window.innerWidth / Math.max(1, window.innerHeight)
@@ -165,48 +136,6 @@ function updateLayout() {
   if (conePivot) conePivot.position.copy(L.cone)
 
   layoutSeedSprites()
-}
-
-function ensureGlobeLabels() {
-  const root = document.getElementById("globe-labels-root")
-  if (!root || globeLabelSlots.length) return
-  globeLabelTexts.forEach((text, i) => {
-    const div = document.createElement("div")
-    div.textContent = text
-    div.style.cssText = [
-      "position:absolute",
-      "left:0",
-      "top:0",
-      "color:rgba(255,255,255,0.65)",
-      "font-size:12px",
-      "font-family:Inter,system-ui,sans-serif",
-      "text-align:center",
-      "pointer-events:none",
-      "opacity:0",
-      "transition:opacity 0.8s ease",
-      "white-space:nowrap",
-      "transform:translateX(-50%)",
-    ].join(";")
-    root.appendChild(div)
-    globeLabelSlots.push({ el: div })
-    window.setTimeout(() => {
-      div.style.opacity = "1"
-    }, 4500 + i * 300)
-  })
-}
-
-function updateGlobeLabelPositions() {
-  if (!globeLabelSlots.length) return
-  const W = window.innerWidth
-  const H = window.innerHeight
-  globeLabelSlots.forEach((slot, i) => {
-    labelProjectVec.copy(labelWorldPositions[i])
-    labelProjectVec.project(camera)
-    const px = (labelProjectVec.x * 0.5 + 0.5) * W
-    const py = (-labelProjectVec.y * 0.5 + 0.5) * H
-    slot.el.style.left = `${px}px`
-    slot.el.style.top = `${py}px`
-  })
 }
 
 function layoutSeedSprites() {
@@ -260,7 +189,7 @@ function runIntroCameraZoom() {
   const zEnd = L.cam.z
   gsap.fromTo(
     camera.position,
-    { x: L.cam.x, y: L.cam.y, z: Math.max(zEnd + 4, 12) },
+    { x: L.cam.x, y: L.cam.y, z: Math.max(zEnd + 6, 16) },
     {
       x: L.cam.x,
       y: L.cam.y,
@@ -378,7 +307,6 @@ updateLayout()
 runIntroSpritePhase()
 runIntroCameraZoom()
 schedulePostIntro()
-ensureGlobeLabels()
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick)
@@ -387,7 +315,7 @@ function tick(ts) {
   lastFrame = ts
 
   if (starsPoints) {
-    starsPoints.rotation.y += 0.00035 * speed
+    starsPoints.rotation.y += 0.00105 * speed
   }
 
   const pulseT = Date.now() * 0.003
@@ -417,8 +345,6 @@ function tick(ts) {
   } else {
     camera.lookAt(L.look)
   }
-
-  updateGlobeLabelPositions()
 
   renderer.render(scene, camera)
 }
@@ -502,7 +428,7 @@ new THREE.TextureLoader().load(
   "./textures/earth-texture.jpg",
   (earthTex) => {
     earthTex.colorSpace = THREE.SRGBColorSpace
-    const earthR = 0.9
+    const earthR = 1.62
     const globe = new THREE.Mesh(
       new THREE.SphereGeometry(earthR, sphereSeg, sphereSeg),
       new THREE.MeshPhongMaterial({
@@ -546,7 +472,7 @@ new THREE.TextureLoader().load(
       (gltf) => {
         const model = gltf.scene
         applyPhongTextured(model, tex)
-        fitModelInBox(model, 1.3)
+        fitModelInBox(model, 2.34)
         model.rotation.set(0, 0, -Math.PI / 2)
         aplatiePivot = new THREE.Group()
         aplatiePivot.userData.targetScale = 1
@@ -577,7 +503,7 @@ new THREE.TextureLoader().load(
       (gltf) => {
         const model = gltf.scene
         applyPhongTextured(model, tex)
-        fitModelInBox(model, 1.3)
+        fitModelInBox(model, 2.34)
         model.rotation.set(-Math.PI / 2, 0, 0)
         conePivot = new THREE.Group()
         conePivot.userData.targetScale = 1

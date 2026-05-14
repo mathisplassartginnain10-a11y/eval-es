@@ -16,7 +16,7 @@ html {
 
 body {
   margin: 0;
-  background: #000;
+  background: #04050c;
   color: #f5f5f7;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: clamp(0.95rem, 1.1vw, 1.05rem);
@@ -56,20 +56,23 @@ body {
   position: relative;
 }
 
-#app[data-layout="intro"] > .nebula-bg,
-#app[data-step="1"] > .nebula-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
 #app[data-layout="intro"] > .intro-page-meta,
 #app[data-step="1"] > .intro-page-meta {
-  grid-column: 1 / -1;
+  /* Colonne droite (globes) : coin supérieur droit */
+  grid-column: 2;
   grid-row: 1;
   align-self: start;
-  justify-self: stretch;
+  justify-self: end;
+  left: auto;
+  right: 0;
+  width: auto;
+  justify-content: flex-end;
+  padding: clamp(0.65rem, 1.8vh, 1.15rem) clamp(0.75rem, 2.5vw, 1.75rem) 0 0;
+}
+
+#app[data-layout="intro"] .intro-page-meta__subject,
+#app[data-step="1"] .intro-page-meta__subject {
+  padding-right: 0;
 }
 
 #app[data-layout="intro"] > .text-overlay.text-overlay--apple,
@@ -133,6 +136,15 @@ body {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
     align-items: stretch;
+  }
+
+  #app[data-layout="intro"] > .intro-page-meta,
+  #app[data-step="1"] > .intro-page-meta {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
+    padding-right: clamp(1rem, 4vw, 1.5rem);
   }
 
   #app[data-layout="intro"] > .text-overlay.text-overlay--apple,
@@ -587,12 +599,181 @@ body {
   display: none;
 }
 
+/* Fond espace : nébuleuse + deux couches d’étoiles (fixe = toutes les étapes / layouts) */
 .nebula-bg {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 130% 85% at 50% 108%, rgba(48, 36, 92, 0.5) 0%, transparent 58%),
+    radial-gradient(ellipse 95% 70% at 8% 18%, rgba(32, 52, 100, 0.32) 0%, transparent 52%),
+    radial-gradient(ellipse 75% 95% at 92% 38%, rgba(72, 36, 88, 0.24) 0%, transparent 50%),
+    radial-gradient(ellipse 55% 45% at 70% 12%, rgba(24, 60, 80, 0.18) 0%, transparent 45%),
+    #04050c;
+}
+
+.nebula-bg::before,
+.nebula-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  will-change: opacity, transform;
+}
+
+/* Couche 1 — étoiles plus nettes + scintillement */
+.nebula-bg::before {
+  opacity: 0.88;
+  background-image:
+    radial-gradient(1px 1px at 4% 8%, rgba(255, 255, 255, 0.95), transparent),
+    radial-gradient(1.5px 1.5px at 11% 19%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1px 1px at 18% 6%, rgba(255, 250, 235, 0.85), transparent),
+    radial-gradient(1px 1px at 27% 14%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(2px 2px at 35% 28%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 42% 9%, rgba(230, 240, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 51% 22%, rgba(255, 255, 255, 0.65), transparent),
+    radial-gradient(1.5px 1.5px at 58% 11%, rgba(255, 255, 255, 0.88), transparent),
+    radial-gradient(1px 1px at 66% 26%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 73% 7%, rgba(255, 245, 220, 0.8), transparent),
+    radial-gradient(2px 2px at 81% 18%, rgba(255, 255, 255, 0.92), transparent),
+    radial-gradient(1px 1px at 89% 29%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 96% 12%, rgba(240, 248, 255, 0.78), transparent),
+    radial-gradient(1px 1px at 7% 38%, rgba(255, 255, 255, 0.72), transparent),
+    radial-gradient(1.5px 1.5px at 15% 48%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1px 1px at 24% 41%, rgba(255, 255, 255, 0.68), transparent),
+    radial-gradient(1px 1px at 33% 52%, rgba(255, 250, 240, 0.62), transparent),
+    radial-gradient(2px 2px at 40% 44%, rgba(255, 255, 255, 0.85), transparent),
+    radial-gradient(1px 1px at 48% 58%, rgba(255, 255, 255, 0.48), transparent),
+    radial-gradient(1px 1px at 56% 47%, rgba(230, 235, 255, 0.75), transparent),
+    radial-gradient(1px 1px at 64% 61%, rgba(255, 255, 255, 0.58), transparent),
+    radial-gradient(1.5px 1.5px at 72% 51%, rgba(255, 255, 255, 0.82), transparent),
+    radial-gradient(1px 1px at 80% 42%, rgba(255, 255, 255, 0.52), transparent),
+    radial-gradient(1px 1px at 88% 55%, rgba(255, 245, 230, 0.7), transparent),
+    radial-gradient(1px 1px at 95% 48%, rgba(255, 255, 255, 0.65), transparent),
+    radial-gradient(1px 1px at 9% 68%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 17% 78%, rgba(255, 255, 255, 0.78), transparent),
+    radial-gradient(1px 1px at 26% 71%, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1px 1px at 36% 82%, rgba(248, 252, 255, 0.68), transparent),
+    radial-gradient(2px 2px at 45% 74%, rgba(255, 255, 255, 0.88), transparent),
+    radial-gradient(1px 1px at 54% 88%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1px 1px at 62% 79%, rgba(255, 255, 255, 0.62), transparent),
+    radial-gradient(1px 1px at 71% 91%, rgba(255, 250, 240, 0.72), transparent),
+    radial-gradient(1.5px 1.5px at 79% 84%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 87% 72%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 94% 86%, rgba(235, 240, 255, 0.66), transparent),
+    radial-gradient(1px 1px at 12% 92%, rgba(255, 255, 255, 0.58), transparent),
+    radial-gradient(1px 1px at 31% 95%, rgba(255, 255, 255, 0.48), transparent),
+    radial-gradient(1.5px 1.5px at 52% 96%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1px 1px at 68% 94%, rgba(255, 255, 255, 0.52), transparent);
+  animation: nebula-stars-twinkle 6.5s ease-in-out infinite alternate;
+}
+
+/* Couche 2 — étoiles plus lointaines + léger défilement */
+.nebula-bg::after {
+  opacity: 0.55;
+  transform: translate3d(0, 0, 0);
+  background-image:
+    radial-gradient(1px 1px at 6% 14%, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1px 1px at 14% 31%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 22% 24%, rgba(255, 250, 235, 0.4), transparent),
+    radial-gradient(1px 1px at 30% 8%, rgba(255, 255, 255, 0.38), transparent),
+    radial-gradient(1px 1px at 38% 36%, rgba(230, 240, 255, 0.42), transparent),
+    radial-gradient(1px 1px at 46% 19%, rgba(255, 255, 255, 0.33), transparent),
+    radial-gradient(1px 1px at 54% 33%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 62% 15%, rgba(255, 255, 255, 0.36), transparent),
+    radial-gradient(1px 1px at 70% 28%, rgba(255, 245, 220, 0.34), transparent),
+    radial-gradient(1px 1px at 78% 9%, rgba(255, 255, 255, 0.44), transparent),
+    radial-gradient(1px 1px at 86% 24%, rgba(255, 255, 255, 0.32), transparent),
+    radial-gradient(1px 1px at 94% 37%, rgba(240, 248, 255, 0.39), transparent),
+    radial-gradient(1px 1px at 10% 56%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 20% 63%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 28% 49%, rgba(255, 255, 255, 0.38), transparent),
+    radial-gradient(1px 1px at 37% 66%, rgba(255, 250, 240, 0.33), transparent),
+    radial-gradient(1px 1px at 45% 58%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 53% 72%, rgba(255, 255, 255, 0.28), transparent),
+    radial-gradient(1px 1px at 61% 64%, rgba(230, 235, 255, 0.36), transparent),
+    radial-gradient(1px 1px at 69% 78%, rgba(255, 255, 255, 0.34), transparent),
+    radial-gradient(1px 1px at 77% 69%, rgba(255, 255, 255, 0.41), transparent),
+    radial-gradient(1px 1px at 85% 81%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 93% 74%, rgba(255, 245, 230, 0.37), transparent),
+    radial-gradient(1px 1px at 16% 88%, rgba(255, 255, 255, 0.32), transparent),
+    radial-gradient(1px 1px at 34% 91%, rgba(255, 255, 255, 0.36), transparent),
+    radial-gradient(1px 1px at 50% 89%, rgba(248, 252, 255, 0.33), transparent),
+    radial-gradient(1px 1px at 66% 92%, rgba(255, 255, 255, 0.39), transparent),
+    radial-gradient(1px 1px at 82% 90%, rgba(255, 255, 255, 0.31), transparent),
+    radial-gradient(1px 1px at 3% 42%, rgba(255, 255, 255, 0.29), transparent),
+    radial-gradient(1px 1px at 97% 52%, rgba(235, 240, 255, 0.35), transparent);
+  animation: nebula-stars-drift 85s linear infinite, nebula-stars-twinkle-slow 9s ease-in-out infinite alternate;
+}
+
+@keyframes nebula-stars-twinkle {
+  0% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes nebula-stars-twinkle-slow {
+  0% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes nebula-stars-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-2.5%, -1.8%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nebula-bg::before,
+  .nebula-bg::after {
+    animation: none;
+    transform: none;
+  }
+
+  .nebula-bg::before {
+    opacity: 0.82;
+  }
+
+  .nebula-bg::after {
+    opacity: 0.48;
+  }
+}
+
+/* Page 1 : fond noir + canvas étoiles (dérive JS) — la nébuleuse CSS est masquée */
+#app[data-step="1"] {
   background: #000;
+}
+
+#app[data-step="1"] .nebula-bg {
+  display: none !important;
+}
+
+.stars-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+  background: #000;
+}
+
+#app:not([data-step="1"]) .stars-bg {
+  display: none !important;
 }
 
 /* Intro étoiles (iframe plein écran) + crédits persistants + invite à défiler */
@@ -844,7 +1025,7 @@ body.intro-stars-phase {
   line-height: inherit;
 }
 
-/* Page 1 — bandeau crédits (haut gauche / haut droite, uniquement intro) */
+/* Page 1 — bandeau « Exposé ES » (page intro : haut droite de la zone globes) */
 .intro-page-meta {
   display: none;
   position: absolute;
@@ -1402,10 +1583,9 @@ body.intro-stars-phase {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  background: #000;
+  background: transparent;
 }
 
-#app.app--status-only > .nebula-bg,
 #app.app--status-only > .stage-media-wrap,
 #app.app--status-only > .progress-track,
 #app.app--status-only > .text-overlay {
