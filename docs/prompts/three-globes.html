@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Les trois Terres — scène unique</title>
 <!--
   Une scène WebGL + intro séquencée (sprites → zoom caméra → révélation des globes).
@@ -12,8 +12,26 @@
 -->
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-  canvas { display: block; width: 100% !important; height: 100% !important; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #000;
+    overflow: hidden;
+    touch-action: none;
+  }
+  canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    vertical-align: top;
+    background: #000;
+  }
 </style>
 </head>
 <body>
@@ -43,9 +61,18 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: "low-power",
   alpha: false,
 })
-renderer.setPixelRatio(1)
-renderer.setSize(window.innerWidth, window.innerHeight)
+// [FIX] Taille physique correcte + pas de cadre autour du canvas
+const _dpr = Math.min(window.devicePixelRatio || 1, 2)
+renderer.setPixelRatio(_dpr)
+renderer.setSize(window.innerWidth, window.innerHeight, false)
 renderer.setClearColor(0x000000, 1)
+canvas.style.margin = "0"
+canvas.style.padding = "0"
+canvas.style.display = "block"
+canvas.style.border = "none"
+canvas.style.outline = "none"
+canvas.style.width = "100%"
+canvas.style.height = "100%"
 renderer.outputColorSpace = THREE.SRGBColorSpace
 
 const scene = new THREE.Scene()
@@ -384,7 +411,10 @@ window.addEventListener(
     if (resizeTimer) clearTimeout(resizeTimer)
     resizeTimer = window.setTimeout(() => {
       resizeTimer = null
-      renderer.setSize(window.innerWidth, window.innerHeight)
+      const w = window.innerWidth
+      const h = window.innerHeight
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+      renderer.setSize(w, h, false)
       updateLayout()
       if (animating) {
         const L = getLayoutSnapshot()

@@ -15,12 +15,13 @@
       document.head.appendChild(b);
     })();
   </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>La Terre est-elle ronde ? — Exposé ES</title>
   <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/styles/ipad-text-scale.css" />
   <link rel="stylesheet" href="./style.css" />
   <script type="importmap">
   {
@@ -32,6 +33,9 @@
   </script>
 </head>
 <body>
+  <div id="starfield-bg" aria-hidden="true">
+    <canvas id="stars-bg" class="stars-bg" width="300" height="150"></canvas>
+  </div>
   <!-- Plein écran au-dessus de l’app : premier appui sur la page parent → IntroStars.exit() (voir main.js) -->
   <iframe
     id="intro-stars-frame"
@@ -42,7 +46,6 @@
 
   <div id="app" data-layout="intro" data-step="1">
     <div class="nebula-bg" aria-hidden="true"></div>
-    <canvas id="stars-bg" class="stars-bg" aria-hidden="true" width="300" height="150"></canvas>
 
     <header class="intro-page-meta" aria-label="Informations sur l’exposé">
       <p class="intro-page-meta__subject">Exposé ES</p>
@@ -100,20 +103,22 @@
         <div class="erato-swipe-rail erato-swipe-rail--end" aria-hidden="true"></div>
       </div>
       <div id="puits-prompt-wrap" class="puits-prompt-wrap" hidden aria-hidden="true">
-        <iframe
-          id="puits-frame"
-          class="puits-prompt-frame"
-          title="Animation des deux puits — Syène et Alexandrie"
-          src="docs/prompts/puits-animation.html"
-          scrolling="no"
-        ></iframe>
-        <iframe
-          id="earth-orbit-frame"
-          class="earth-orbit-prompt-frame"
-          title="Terre — orbite et fil méridien (500 000 stades)"
-          src="docs/prompts/earth-orbit_avec_fil.html"
-          scrolling="no"
-        ></iframe>
+        <div class="page2-iframe-box">
+          <iframe
+            id="puits-frame"
+            class="puits-prompt-frame"
+            title="Animation des deux puits — Syène et Alexandrie"
+            src="docs/prompts/puits-animation.html"
+            scrolling="no"
+          ></iframe>
+          <iframe
+            id="earth-orbit-frame"
+            class="earth-orbit-prompt-frame"
+            title="Terre — orbite et fil méridien (500 000 stades)"
+            src="docs/prompts/earth-orbit_avec_fil.html"
+            scrolling="no"
+          ></iframe>
+        </div>
       </div>
       <!-- Conteneur média étape 5 : topographie (scrollIndex 4 / data-step 5) -->
       <div id="step05-media-wrap" class="step05-media-wrap">

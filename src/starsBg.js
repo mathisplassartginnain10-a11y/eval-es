@@ -1,5 +1,5 @@
 /**
- * Canvas plein écran : étoiles avec dérive douce + scintillement (étape 1 uniquement, piloté par main.js).
+ * Canvas plein écran : étoiles avec dérive + scintillement (toutes les étapes sauf intro plein écran parent).
  */
 
 const STAR_COUNT = 250
@@ -16,14 +16,20 @@ let reduced = false
 let frame = 0
 let lastFrame = 0
 
-/** @typedef {{ x: number, y: number, r: number, vx: number, vy: number, twinkleSpeed: number, twinkleOffset: number, baseAlpha: number }} Star */
+/** Vitesse horizontale unique (px / frame throttlée ~30 fps) — droite → gauche sur tout l'écran */
+const DRIFT_X = -0.32
+const DRIFT_Y = 0
+
+/** @typedef {{ x: number, y: number, r: number, twinkleSpeed: number, twinkleOffset: number, baseAlpha: number }} Star */
 /** @type {Star[]} */
 let stars = []
 
 function resize() {
   if (!canvas) return
-  canvas.width = window.innerWidth
-  canvas.height = window.innerHeight
+  const W = window.innerWidth
+  const H = window.innerHeight
+  canvas.width = W
+  canvas.height = H
 }
 
 function initStars() {
@@ -35,8 +41,6 @@ function initStars() {
     x: Math.random() * w,
     y: Math.random() * h,
     r: Math.random() * 1.2 + 0.2,
-    vx: (Math.random() - 0.5) * 0.1,
-    vy: (Math.random() - 0.5) * 0.1,
     twinkleSpeed: Math.random() * 0.02 + 0.005,
     twinkleOffset: Math.random() * Math.PI * 2,
     baseAlpha: Math.random() * 0.5 + 0.3,
@@ -67,12 +71,9 @@ function draw(ts) {
   const drift = !reduced
   for (const s of stars) {
     if (drift) {
-      s.x += s.vx
-      s.y += s.vy
-      if (s.x < -2) s.x = w + 2
-      if (s.x > w + 2) s.x = -2
-      if (s.y < -2) s.y = h + 2
-      if (s.y > h + 2) s.y = -2
+      s.x += DRIFT_X
+      s.y += DRIFT_Y
+      if (s.x < -4) s.x = w + 4
     }
     const twinkle = reduced
       ? 0.88
@@ -93,7 +94,8 @@ function startLoop() {
 /** @param {{ reducedMotion?: boolean }} [opts] */
 export function initStarsBackground(opts = {}) {
   reduced = !!opts.reducedMotion
-  canvas = document.getElementById("stars-bg")
+  canvas =
+    document.querySelector("#starfield-bg #stars-bg") ?? document.getElementById("stars-bg")
   if (!(canvas instanceof HTMLCanvasElement)) return
   ctx = canvas.getContext("2d")
   if (!ctx) return
@@ -110,7 +112,7 @@ export function setStarsBackgroundReducedMotion(isReduced) {
   reduced = !!isReduced
 }
 
-/** Actif uniquement sur la page 1 (`sectionIndex === 0` → `data-step="1"`). */
+/** Actif hors phase `intro-stars-phase` (piloté par main.js / updateUi). */
 export function setStarsBackgroundActive(on) {
   active = !!on
   if (!canvas || !ctx) return

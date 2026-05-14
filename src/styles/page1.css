@@ -1,0 +1,77 @@
+/* === [FORCE CLEAR 3D RECT] === */
+/* Suppression globale des bordures/fonds/ombres sur le canvas Three.js et ses conteneurs */
+#canvas3d, #three-container, .threejs-wrapper, .model-canvas, canvas, 
+body > canvas, iframe > canvas, .page1-scene canvas, 
+[style*="canvas"], .threejs-container canvas, .scene-box canvas {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  position: relative !important;
+  overflow: visible !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  tap-highlight-color: transparent !important;
+  focus: none !important;
+  caret-color: transparent !important;
+}
+
+/* Suppression des pseudo-éléments décoratifs parasites */
+#canvas3d::before, #canvas3d::after,
+.threejs-wrapper::before, .threejs-wrapper::after,
+.model-box::before, .model-box::after,
+.scene-container::before, .scene-container::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  background: none !important;
+}
+
+/* Reset agressif des conteneurs parents */
+.page1-model-wrap, .threejs-parent, #model-area, .canvas-box {
+  border: none !important;
+  background: transparent !important !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Safari/iPad specific */
+@media (-webkit-min-device-pixel-ratio: 0) {
+  canvas, #canvas3d, .threejs-wrapper {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+}
+
+/* Fond étoiles plein viewport (aligné index.html — champ unifié gauche + droite) */
+#starfield-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: #000;
+}
+
+@supports (height: 100dvh) {
+  #starfield-bg {
+    height: 100dvh;
+  }
+}
+
+#starfield-bg canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

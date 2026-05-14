@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Page 1</title>
+  <link rel="stylesheet" href="../styles/ipad-text-scale.css" />
+  <link rel="stylesheet" href="../styles/page1.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+  <style>
+/* === [FORCE CLEAR 3D RECT] === */
+/* Suppression globale des bordures/fonds/ombres sur le canvas Three.js et ses conteneurs */
+#canvas3d, #three-container, .threejs-wrapper, .model-canvas, canvas, 
+body > canvas, iframe > canvas, .page1-scene canvas, 
+[style*="canvas"], .threejs-container canvas, .scene-box canvas {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  position: relative !important;
+  overflow: visible !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  tap-highlight-color: transparent !important;
+  focus: none !important;
+  caret-color: transparent !important;
+}
+
+/* Suppression des pseudo-éléments décoratifs parasites */
+#canvas3d::before, #canvas3d::after,
+.threejs-wrapper::before, .threejs-wrapper::after,
+.model-box::before, .model-box::after,
+.scene-container::before, .scene-container::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  background: none !important;
+}
+
+/* Reset agressif des conteneurs parents */
+.page1-model-wrap, .threejs-parent, #model-area, .canvas-box {
+  border: none !important;
+  background: transparent !important !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Safari/iPad specific */
+@media (-webkit-min-device-pixel-ratio: 0) {
+  canvas, #canvas3d, .threejs-wrapper {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+}
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #04050c;
+      color: #f5f5f7;
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    .page1-scene {
+      width: 100%;
+      min-height: min(55vh, 28rem);
+      margin-top: 1rem;
+    }
+
+    #model-area {
+      width: 100%;
+      height: min(55vh, 28rem);
+      max-height: 70vh;
+    }
+
+    #three-container {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <h1 class="text-3xl">Page 1</h1>
+    <p class="text-base">Typographie en <code>rem</code> — échelle iPad via <code>ipad-text-scale.css</code>.</p>
+    <p class="text-sm" style="opacity: 0.75">Utilisez les classes <code>.text-xs</code> … <code>.text-3xl</code> pour les tailles.</p>
+
+    <div class="page1-scene page1-model-wrap threejs-parent" id="model-area">
+      <div id="three-container" class="threejs-wrapper canvas-box scene-container model-box"></div>
+    </div>
+  </div>
+
+  <script type="module" src="../scripts/page1-three.js"></script>
+</body>
+</html>

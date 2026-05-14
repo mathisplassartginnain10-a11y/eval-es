@@ -527,6 +527,10 @@ function updateUi(sectionIndex) {
   if (appRoot) {
     appRoot.dataset.layout = layout
     appRoot.dataset.step = String(sectionIndex + 1)
+    appRoot.classList.toggle("page2-layout", !!kf?.puitsPrompt)
+  }
+  if (textOverlay instanceof HTMLElement) {
+    textOverlay.classList.toggle("page2-text", !!kf?.puitsPrompt)
   }
 
   const spherePage = !!kf?.sphereTwoStep
@@ -566,7 +570,7 @@ function updateUi(sectionIndex) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
   updatePrevBtn(sectionIndex)
-  setStarsBackgroundActive(sectionIndex === 0)
+  setStarsBackgroundActive(!document.body.classList.contains("intro-stars-phase"))
 }
 
 const k0 = KEYFRAMES[0]
@@ -620,6 +624,7 @@ function exitIntro() {
   if (!(frame instanceof HTMLIFrameElement)) {
     document.body.classList.remove("intro-stars-phase")
     document.body.style.overflow = ""
+    setStarsBackgroundActive(true)
     const namesOnly = document.getElementById("persistent-names")
     if (namesOnly instanceof HTMLElement) {
       namesOnly.style.opacity = "1"
@@ -670,6 +675,8 @@ function exitIntro() {
       frame.remove()
       document.body.classList.remove("intro-stars-phase")
       document.body.style.overflow = ""
+
+      setStarsBackgroundActive(true)
 
       const names = document.getElementById("persistent-names")
       if (names instanceof HTMLElement) {

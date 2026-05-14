@@ -1,0 +1,57 @@
+/* ============================================
+   ipad-text-scale.css
+   Optimisé iPad (4:3 & 16:10) + Safe Areas
+   Compatible iOS Safari / Cursor / Three.js
+   ============================================ */
+:root {
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+}
+
+/* Base typography: rem-based scaling */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%; /* Désactive le zoom iOS sur input focus */
+}
+
+/* iPad Breakpoints (portrait / landscape) */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  html { font-size: 20px; }
+}
+@media (min-width: 1025px) and (max-width: 1366px) and (orientation: landscape) {
+  html { font-size: 24px; }
+}
+@media (min-width: 1367px) {
+  html { font-size: 26px; }
+}
+
+/* Text scale utility classes (if needed for overrides) */
+.text-xs  { font-size: 0.85rem; }
+.text-sm  { font-size: 0.95rem; }
+.text-base { font-size: 1rem; }
+.text-lg  { font-size: 1.15rem; }
+.text-xl  { font-size: 1.35rem; }
+.text-2xl { font-size: 1.6rem; }
+.text-3xl { font-size: 1.9rem; }
+
+/* Global safe-area padding */
+body {
+  padding-top: var(--sa-top);
+  padding-bottom: var(--sa-bottom);
+  padding-left: var(--sa-left);
+  padding-right: var(--sa-right);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent layout shift on iPad Safari */
+@media (min-width: 768px) {
+  .page-container {
+    max-width: 90vw;
+    margin-inline: auto;
+    padding-inline: 4vw;
+  }
+}
