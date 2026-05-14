@@ -361,6 +361,60 @@ body {
   z-index: 0;
 }
 
+/* Iframe animation puits (étape 2 — Première partie) */
+#app .stage-media-wrap .puits-prompt-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+#app .stage-media-wrap .puits-prompt-wrap[hidden] {
+  display: none !important;
+}
+
+#puits-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+#puits-frame::-webkit-scrollbar {
+  display: none;
+}
+
+/* Iframe topographie (étape 4 — Troisième partie) */
+#app .stage-media-wrap .topo-prompt-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+#app .stage-media-wrap .topo-prompt-wrap[hidden] {
+  display: none !important;
+}
+
+#topo-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+#topo-frame::-webkit-scrollbar {
+  display: none;
+}
+
 /* Bandes au-dessus de l’iframe : le swipe remonte au document parent (l’iframe ne le transmet pas). */
 #app .stage-media-wrap .erato-swipe-rail {
   position: absolute;
@@ -784,7 +838,8 @@ body {
   height: 100%;
   border: none;
   z-index: 9999;
-  /* Pas d’interaction dans l’iframe : la molette reste sur `window`, les touches remontent en capture sur `document` (mobile). */
+  background: #000;
+  /* Pas d’interaction dans l’iframe : les événements atteignent la page parente (tap = sortie d’intro). */
   pointer-events: none;
 }
 
@@ -798,10 +853,11 @@ body {
   transition: opacity 0.6s ease;
   pointer-events: none;
   font-family: Inter, sans-serif;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
   text-align: left;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .scroll-hint-intro {
@@ -1487,46 +1543,25 @@ body.intro-stars-phase {
   letter-spacing: -0.01em;
 }
 
-/* Text reveal — applied via JS on section change */
+/* Texte : affichage immédiat (pas d’animation d’apparition) */
+.text-overlay .text-overlay__kicker,
+.text-overlay .text-overlay__title,
+.text-overlay .text-overlay__subtitle,
+.text-overlay .text-overlay__body,
+.text-overlay .text-overlay__credit {
+  opacity: 1;
+  transform: none;
+  transition: none;
+  transition-delay: 0s;
+}
+
 .text-overlay.is-visible .text-overlay__title,
 .text-overlay.is-visible .text-overlay__subtitle,
 .text-overlay.is-visible .text-overlay__body,
 .text-overlay.is-visible .text-overlay__kicker,
 .text-overlay.is-visible .text-overlay__credit {
   opacity: 1;
-  transform: translateY(0);
-}
-
-.text-overlay .text-overlay__kicker,
-.text-overlay .text-overlay__title,
-.text-overlay .text-overlay__subtitle,
-.text-overlay .text-overlay__body,
-.text-overlay .text-overlay__credit {
-  opacity: 0;
-  transform: translateY(20px);
-  transition:
-    opacity 0.8s ease,
-    transform 0.8s ease;
-}
-
-.text-overlay .text-overlay__kicker {
-  transition-delay: 0.05s;
-}
-
-.text-overlay .text-overlay__title {
-  transition-delay: 0.1s;
-}
-
-.text-overlay .text-overlay__subtitle {
-  transition-delay: 0.18s;
-}
-
-.text-overlay .text-overlay__body {
-  transition-delay: 0.26s;
-}
-
-.text-overlay .text-overlay__credit {
-  transition-delay: 0.34s;
+  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1541,7 +1576,12 @@ body.intro-stars-phase {
   }
 }
 
-/* ——— Section label ——— */
+/* Libellé de section (bas gauche) — masqué : seul le bouton retour reste visible */
+#section-label {
+  display: none !important;
+}
+
+/* ——— Section label (règles conservées pour cohérence si le bloc réapparaît) ——— */
 .section-label {
   position: absolute;
   left: clamp(1.25rem, 4vw, 2.5rem);
@@ -1604,29 +1644,20 @@ body.intro-stars-phase {
   padding: clamp(0.85rem, 2.2vh, 1.35rem) clamp(1.25rem, 4vw, 2.25rem);
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   align-items: center;
-  column-gap: clamp(0.75rem, 2vw, 1.5rem);
+  column-gap: 0;
   background: #000;
   border-top: none;
 }
 
 #app.app--status-only .app-status-bar .section-label {
-  position: static;
-  grid-column: 1;
-  justify-self: start;
-  margin: 0;
-  text-align: left;
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(168, 148, 128, 0.88);
+  display: none !important;
 }
 
 #app.app--status-only .app-status-bar .step-indicator {
   position: static;
-  grid-column: 2;
+  grid-column: 1;
   justify-self: end;
   margin: 0;
   text-align: right;

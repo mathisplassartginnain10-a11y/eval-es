@@ -8,36 +8,40 @@
 ================================================================
 GUIDE CURSOR — topographie-animation.html
 ================================================================
-Fichier 100% autonome. Animation déclenchée au scroll.
-Fond noir, texte blanc.
+Fichier 100% autonome. Fond noir, texte blanc.
 
-INTÉGRATION :
-  <iframe src="./topographie-animation.html"
-    width="100%" height="420" style="border:none;">
+EMPLACEMENT : docs/prompts/topographie-animation.html
+
+COMPORTEMENT :
+  - Par défaut : fond noir, ligne de mer et titre visibles,
+    montagne et fosse à height=0, rien d'autre affiché.
+  - Au premier clic/tap : animation se lance (5 secondes).
+
+INTÉGRATION dans index.html — à placer dans le conteneur
+média de l'étape concernée (ex: data-step="4" ou step--4) :
+
+  <iframe
+    id="topo-frame"
+    src="docs/prompts/topographie-animation.html"
+    style="width:100%; height:100%; border:none; overflow:hidden;"
+    scrolling="no">
   </iframe>
 
-SCROLL PILOTÉ (GSAP) :
-  ScrollTrigger.create({
-    trigger: '#section-topo',
-    start: 'top center',
-    end: 'bottom center',
-    scrub: true,
-    onUpdate: self => {
-      const iframe = document.querySelector('iframe[src*="topographie"]');
-      if(iframe?.contentWindow?.TopoAnim)
-        iframe.contentWindow.TopoAnim.seek(self.progress);
-    }
-  });
+CSS à ajouter :
+  #topo-frame {
+    overflow: hidden;
+    scrollbar-width: none;
+  }
+  #topo-frame::-webkit-scrollbar { display: none; }
 
-SÉQUENCE (t = 0 → 1) :
-  0.00 → 0.15 : titre apparaît
-  0.15 → 0.55 : montagne + valeur Everest (+8 849 m)
-  0.55 → 0.80 : fosse + valeur Mariannes (-11 034 m)
-  0.80 → 1.00 : accolade ≈ 20 km + texte bas
+DÉCLENCHEMENT depuis index.html si besoin :
+  document.getElementById('topo-frame')
+    .contentWindow.TopoAnim.play();
 
 API window.TopoAnim :
-  .seek(t)   positionne à t (0 → 1) pour scrub
-  .play()    lance automatiquement
+  .play()    Lance l'animation au clic
+  .reset()   Remet à zéro
+  .seek(t)   Positionne à t (0 → 1)
 ================================================================
 -->
 <style>
@@ -278,33 +282,50 @@ function animLoop(ts){
   else playing = false;
 }
 
-/* ── Intersection Observer — déclenche au scroll ── */
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if(e.isIntersecting && !playing && _t < 0.01){
-      playing  = true;
-      startTs  = null;
-      rafId    = requestAnimationFrame(animLoop);
-    }
-  });
-}, { threshold: 0.3 });
-observer.observe(canvas);
-
-/* ── Dessin initial ── */
+/* ── Dessin initial — état de base ── */
 draw(0);
+
+/* ── Hint tap ── */
+const hint = document.createElement('div');
+hint.style.cssText = [
+  'position:fixed','bottom:1.2rem','left:50%',
+  'transform:translateX(-50%)',
+  'color:rgba(255,255,255,0.35)',
+  'font-size:11px','letter-spacing:.15em','text-transform:uppercase',
+  'pointer-events:none','font-family:Inter,system-ui,sans-serif',
+  'transition:opacity .5s ease','z-index:10'
+].join(';');
+hint.textContent = 'Appuyer pour lancer';
+document.body.appendChild(hint);
+
+/* ── Déclenchement au clic/tap ── */
+let started = false;
+
+function startAnim(){
+  if(started) return;
+  started = true;
+  hint.style.opacity = '0';
+  playing = true;
+  startTs = null;
+  rafId   = requestAnimationFrame(animLoop);
+}
+
+window.addEventListener('click',      startAnim, { once: true });
+window.addEventListener('touchstart', startAnim, { once: true, passive: true });
 
 /* ── API publique ── */
 window.TopoAnim = {
+  play(){ startAnim(); },
+  reset(){
+    if(rafId){ cancelAnimationFrame(rafId); playing = false; }
+    _t = 0; started = false;
+    hint.style.opacity = '1';
+    draw(0);
+  },
   seek(t){
     if(rafId){ cancelAnimationFrame(rafId); playing = false; }
     _t = Math.max(0, Math.min(1, t));
     draw(_t);
-  },
-  play(){
-    if(playing) return;
-    playing = true;
-    startTs = null;
-    rafId   = requestAnimationFrame(animLoop);
   }
 };
 </script>

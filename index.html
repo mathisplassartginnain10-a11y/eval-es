@@ -32,6 +32,14 @@
   </script>
 </head>
 <body>
+  <!-- Plein écran au-dessus de l’app : premier appui sur la page parent → IntroStars.exit() (voir main.js) -->
+  <iframe
+    id="intro-stars-frame"
+    class="intro-stars-frame"
+    title="Introduction — fond étoilé"
+    src="docs/prompts/intro-stars.html"
+  ></iframe>
+
   <div id="app" data-layout="intro" data-step="1">
     <div class="nebula-bg" aria-hidden="true"></div>
     <canvas id="stars-bg" class="stars-bg" aria-hidden="true" width="300" height="150"></canvas>
@@ -91,6 +99,24 @@
         <div class="erato-swipe-rail erato-swipe-rail--start" aria-hidden="true"></div>
         <div class="erato-swipe-rail erato-swipe-rail--end" aria-hidden="true"></div>
       </div>
+      <div id="puits-prompt-wrap" class="puits-prompt-wrap" hidden aria-hidden="true">
+        <iframe
+          id="puits-frame"
+          class="puits-prompt-frame"
+          title="Animation des deux puits — Syène et Alexandrie"
+          src="docs/prompts/puits-animation.html"
+          scrolling="no"
+        ></iframe>
+      </div>
+      <div id="topo-prompt-wrap" class="topo-prompt-wrap" hidden aria-hidden="true">
+        <iframe
+          id="topo-frame"
+          class="topo-prompt-frame"
+          title="Animation topographie — mer, relief, fosse"
+          src="docs/prompts/topographie-animation.html"
+          scrolling="no"
+        ></iframe>
+      </div>
     </div>
 
     <div class="progress-track" aria-hidden="true">
@@ -117,15 +143,9 @@
 
   <div id="scroll-root" class="scroll-root"></div>
 
-  <iframe
-    id="intro-stars-frame"
-    class="intro-stars-frame"
-    title="Introduction — fond étoilé"
-    src="docs/prompts/intro-stars.html"
-  ></iframe>
   <div id="persistent-names" class="persistent-names" aria-hidden="true" aria-label="Auteurs">
     Mathis PLASSART GINNAIN<br />
-    Maximilien FAVRE
+    et Maximilien FAVRE
   </div>
   <button
     type="button"

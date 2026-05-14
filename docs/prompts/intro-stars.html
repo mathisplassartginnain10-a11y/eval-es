@@ -3,163 +3,227 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Intro — Fond étoilé</title>
+<title>Intro</title>
 <!--
 ================================================================
 GUIDE CURSOR — intro-stars.html
 ================================================================
-Fichier autonome. Fond étoilé animé uniquement (pas de texte ici :
-les noms sont affichés une seule fois dans la page parente,
-#persistent-names).
+SÉQUENCE COMPLÈTE :
+  0s → 4s  : étoiles fusent (warp) + "Présenté par" + noms en grand
+  4s → 5s  : étoiles ralentissent, noms fade-out
+  5s → 6s  : titre "LA TERRE N'EST PAS RONDE" apparaît en grand
+  6s → ∞   : idle, attend le tap
 
-SÉQUENCE INTERNE :
-  Phase 1 (0-3s)   : étoiles se déplacent vers la caméra (effet warp)
-  Phase 2 (3-4.5s) : étoiles ralentissent et s arrêtent
-  Puis idle jusqu’au 1er geste (scroll / molette / clic côté parent, ou clic ici en ouverture seule).
-
-AU SCROLL / CLIC — Cursor doit :
-  1. Appeler window.IntroStars.start() puis window.IntroStars.exit() → fade-out fond étoilé
-  2. Zoomer les 3 iframes Terres depuis scale 0.05 → 1
-
-API window.IntroStars :
-  .start()         démarre la boucle d’animation (appelé par la page parente au 1er geste)
-  .exit()          fade-out (800ms)
-  .onComplete(fn)  callback quand la séquence étoiles a atteint la fin logique (~8,5 s)
-  .getStarPositions() retourne [{x,y,r}] pour que Cursor
-                    puisse positionner les 3 iframes Terres au moment du zoom
+AU TAP SUR LA PAGE PARENTE (index) : IntroStars.exit() est appelé depuis main.js — pas depuis cette iframe.
+API :
+  .exit()
+  .onComplete(fn)
 ================================================================
 -->
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:Inter,system-ui,sans-serif}
-  #c{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:Inter,system-ui,sans-serif}
+#c{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+
+/* Noms */
+#intro-names{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  z-index:2;pointer-events:none;
+  opacity:0;
+}
+#label-by{
+  font-size:clamp(14px,2vw,22px);
+  color:#fff;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  margin-bottom:1.2rem;
+  opacity:0;
+}
+#label-names{
+  font-size:clamp(30px,6vw,80px);
+  font-weight:700;
+  color:#fff;
+  text-align:center;
+  line-height:1.2;
+  opacity:0;
+}
+#label-names span{
+  display:block;
+  font-size:1em;
+  font-weight:700;
+  color:#fff;
+  margin-top:.1em;
+}
+
+/* Titre */
+#intro-title{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:flex-start;
+  padding-left:6vw;
+  z-index:2;pointer-events:none;
+  opacity:0;
+}
+#title-text{
+  font-size:clamp(42px,9vw,130px);
+  font-weight:900;
+  color:#fff;
+  line-height:1.0;
+  letter-spacing:-.01em;
+  text-transform:uppercase;
+}
+
+/* Noms compacts haut gauche */
+#persistent-names{
+  position:fixed;
+  top:.9rem;left:1.4rem;
+  z-index:10;pointer-events:none;
+  opacity:0;
+  font-size:12px;font-weight:500;
+  color:rgba(255,255,255,0.55);
+  line-height:1.5;
+  transition:opacity .6s ease;
+}
+
+/* Hint tap */
+#tap-hint{
+  position:fixed;bottom:2rem;left:50%;
+  transform:translateX(-50%);
+  color:rgba(255,255,255,0.35);
+  font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+  pointer-events:none;opacity:0;
+  transition:opacity .5s ease;z-index:3;
+}
 </style>
 </head>
 <body>
+
 <canvas id="c"></canvas>
+
+<div id="intro-names">
+  <div id="label-by">Présenté par</div>
+  <div id="label-names">
+    Mathis PLASSART GINNAIN
+    <span>et Maximilien FAVRE</span>
+  </div>
+</div>
+
+<div id="intro-title">
+  <div id="title-text">LA TERRE<br>N'EST PAS<br>RONDE</div>
+</div>
+
+<div id="persistent-names">
+  Mathis PLASSART GINNAIN<br>et Maximilien FAVRE
+</div>
+
+<div id="tap-hint">Appuyer pour continuer</div>
+
 <script>
-const canvas = document.getElementById('c');
-const ctx    = canvas.getContext('2d');
+const canvas  = document.getElementById('c');
+const ctx     = canvas.getContext('2d');
+
+const elNames    = document.getElementById('intro-names');
+const elBy       = document.getElementById('label-by');
+const elNamesLbl = document.getElementById('label-names');
+const elTitle    = document.getElementById('intro-title');
+const elPersist  = document.getElementById('persistent-names');
+const elHint     = document.getElementById('tap-hint');
 
 function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
 
 /* ── Étoiles ── */
-const N = 320;
-const stars = Array.from({length:N}, (_, i) => ({
-  /* position en coordonnées "espace" centrées sur 0 */
-  x: (Math.random() - 0.5) * 2,
-  y: (Math.random() - 0.5) * 2,
-  z: Math.random(),           /* profondeur 0=loin 1=près */
-  r: Math.random() * 1.3 + 0.2,
-  twinkle: Math.random() * Math.PI * 2,
-  speed:   Math.random() * 0.015 + 0.004,
-  /* Marquer 3 étoiles comme "terres" */
-  isSeed: i < 3,
+const N = 300;
+const stars = Array.from({length:N}, () => ({
+  x: (Math.random()-.5)*2,
+  y: (Math.random()-.5)*2,
+  z: Math.random(),
+  r: Math.random()*1.3+0.2,
+  tw: Math.random()*Math.PI*2,
+  sp: Math.random()*.015+.004,
 }));
 
-/* Positionner les 3 "seeds" à des positions connues */
-const SEED_POS = [
-  {x:-0.28, y:0.05},
-  {x: 0.0,  y:-0.12},
-  {x: 0.28, y:0.08},
-];
-stars.slice(0,3).forEach((s,i)=>{
-  s.x = SEED_POS[i].x;
-  s.y = SEED_POS[i].y;
-  s.z = 0.5;
-  s.r = 1.8;
-});
-
-/* ── Timings (ms) — fin séquence = même instant qu’ancienne fin « compact » ── */
-const T_WARP_DUR    = 3000;
-const T_SLOW_DUR    = 1500;
-const T_BY_START    = T_WARP_DUR + T_SLOW_DUR + 200;
-const T_NAMES_START = T_BY_START + 600;
-const T_NAMES_DUR   = 900;
-const T_COMPACT     = T_NAMES_START + T_NAMES_DUR + 1200;
-const T_COMPACT_DUR = 1100;
-const T_INTRO_DONE_MS = T_COMPACT + T_COMPACT_DUR;
+/* ── Timings (ms depuis le démarrage) ── */
+// Phase 1 : étoiles fusent + noms : 0 → 4000ms
+// Phase 2 : ralentissement + noms fade-out : 4000 → 5200ms
+// Phase 3 : titre apparaît : 5000 → 6200ms
+// Phase 4 : idle
+const T_WARP_END    = 20000; // étoiles fusent 20s ou jusqu au tap
+const T_SLOW_DUR    = 3500; // ralentissement plus doux
+const T_BY_IN       = 600;   // durée fade-in "présenté par"
+const T_BY_START    = 300;
+const T_NAMES_IN    = 800;
+const T_NAMES_START = 800;
+const T_NAMES_OUT   = 6000;  // début fade-out noms
+const T_NAMES_OUT_DUR = 600;
+const T_TITLE_IN    = 7000;  // début apparition titre
+const T_TITLE_DUR   = 3000;
+const T_HINT        = 20500; // afficher hint
 
 let startTs    = null;
-let isCompact  = false;
 let isExiting  = false;
 let exitStart  = null;
 let _onComplete = null;
+let phase4Done = false;
 
 function ease(t){ return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2 }
-function clamp(t){ return Math.max(0,Math.min(1,t)) }
+function cl(t){ return Math.max(0,Math.min(1,t)) }
+function sub(e,s,d){ return ease(cl((e-s)/d)) }
 
-/* ── Calcul vitesse du warp ── */
 function warpSpeed(elapsed){
-  if(elapsed < T_WARP_DUR){
-    return ease(clamp(elapsed/T_WARP_DUR));
+  if(elapsed <= T_WARP_END){
+    // Accélération progressive pendant 4s
+    return ease(cl(elapsed / T_WARP_END));
   } else {
-    const t = clamp((elapsed - T_WARP_DUR) / T_SLOW_DUR);
-    return 1 - ease(t);
+    // Décélération sur T_SLOW_DUR
+    return 1 - ease(cl((elapsed - T_WARP_END) / T_SLOW_DUR));
   }
 }
 
-function drawStars(elapsed, globalAlpha){
-  const W = canvas.width, H = canvas.height;
-  const cx = W/2, cy = H/2;
+function drawStars(elapsed, ga){
+  const W=canvas.width, H=canvas.height, cx=W/2, cy=H/2;
   ctx.clearRect(0,0,W,H);
 
   const spd = warpSpeed(elapsed);
+
   if(spd > 0.001){
     stars.forEach(s => {
-      s.z += spd * 0.018;
-      if(s.z > 1){ s.z -= 1; }
+      s.z += spd * 0.020;
+      if(s.z > 1) s.z -= 1;
     });
   }
 
   stars.forEach(s => {
-    const perspective = 1 / (1.2 - s.z * 0.8);
-    const sx = cx + s.x * W * 0.6 * perspective;
-    const sy = cy + s.y * H * 0.6 * perspective;
-    const sr = s.r * perspective * 0.8;
+    const p  = 1/(1.2 - s.z*.8);
+    const sx = cx + s.x*W*.6*p;
+    const sy = cy + s.y*H*.6*p;
+    const sr = s.r*p*.8;
 
-    if(spd > 0.05){
-      const trailLen = spd * 18 * perspective;
-      const dx = s.x * W * 0.6 * perspective - s.x * W * 0.6 * (1/(1.2-(s.z-0.015)*0.8));
-      const dy = s.y * H * 0.6 * perspective - s.y * H * 0.6 * (1/(1.2-(s.z-0.015)*0.8));
-      const nx = dx===0&&dy===0?0:dx/Math.sqrt(dx*dx+dy*dy);
-      const ny = dx===0&&dy===0?-1:dy/Math.sqrt(dx*dx+dy*dy);
-      const grad = ctx.createLinearGradient(
-        sx - nx*trailLen, sy - ny*trailLen, sx, sy
-      );
-      grad.addColorStop(0, `rgba(255,255,255,0)`);
-      grad.addColorStop(1, `rgba(255,255,255,${Math.min(0.7, spd * globalAlpha)})`);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth   = sr * 1.2;
+    // Traînée quand rapide
+    if(spd > 0.08){
+      const trailLen = spd * 22 * p;
+      const pPrev = 1/(1.2-(s.z-.02)*.8);
+      const px = cx + s.x*W*.6*pPrev;
+      const py = cy + s.y*H*.6*pPrev;
+      const dx = sx-px, dy = sy-py;
+      const len = Math.sqrt(dx*dx+dy*dy)||1;
+      const g = ctx.createLinearGradient(sx-dx/len*trailLen,sy-dy/len*trailLen,sx,sy);
+      g.addColorStop(0,'rgba(255,255,255,0)');
+      g.addColorStop(1,`rgba(255,255,255,${Math.min(.7,spd*ga)})`);
+      ctx.strokeStyle=g; ctx.lineWidth=sr*1.2;
       ctx.beginPath();
-      ctx.moveTo(sx - nx*trailLen, sy - ny*trailLen);
-      ctx.lineTo(sx, sy);
-      ctx.stroke();
+      ctx.moveTo(sx-dx/len*trailLen,sy-dy/len*trailLen);
+      ctx.lineTo(sx,sy); ctx.stroke();
     }
 
-    const twinkle = spd > 0.1 ? 1 : 0.7 + 0.3*Math.sin(s.twinkle + elapsed*s.speed*0.001);
+    const twinkle = spd>.1?1:.7+.3*Math.sin(s.tw+elapsed*s.sp*.001);
     ctx.beginPath();
-    ctx.arc(sx, sy, Math.max(0.3, sr), 0, Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${Math.min(1, twinkle * globalAlpha * (0.4 + s.z*0.6))})`;
+    ctx.arc(sx,sy,Math.max(.3,sr),0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${Math.min(1,twinkle*ga*(.4+s.z*.6))})`;
     ctx.fill();
   });
-}
-
-let introStarted = false;
-
-function startIntro(){
-  if(introStarted) return;
-  introStarted = true;
-  requestAnimationFrame(loop);
-}
-
-function paintStaticStars(){
-  drawStars(0, 1);
-}
-
-function onResize(){
-  resize();
-  if(!introStarted) paintStaticStars();
 }
 
 function loop(ts){
@@ -167,49 +231,81 @@ function loop(ts){
   if(!startTs) startTs = ts;
   const elapsed = ts - startTs;
 
-  let globalAlpha = 1;
+  let ga = 1;
   if(isExiting){
     if(!exitStart) exitStart = ts;
-    globalAlpha = 1 - ease(clamp((ts-exitStart)/800));
-    canvas.style.opacity = globalAlpha;
-    if(globalAlpha <= 0) return;
+    ga = 1 - ease(cl((ts-exitStart)/800));
+    canvas.style.opacity = ga;
+    if(ga <= 0) return;
   }
 
-  drawStars(elapsed, globalAlpha);
+  drawStars(elapsed, ga);
 
-  if(elapsed > T_INTRO_DONE_MS && !isCompact && !isExiting){
-    isCompact = true;
-    if(_onComplete) _onComplete();
+  /* Noms — apparition */
+  elNames.style.opacity   = sub(elapsed, T_BY_START-100, 300);
+  elBy.style.opacity      = sub(elapsed, T_BY_START, T_BY_IN);
+  elNamesLbl.style.opacity = sub(elapsed, T_NAMES_START, T_NAMES_IN);
+
+  /* Noms — disparition à partir de T_NAMES_OUT */
+  if(elapsed > T_NAMES_OUT){
+    const outT = sub(elapsed, T_NAMES_OUT, T_NAMES_OUT_DUR);
+    elNames.style.opacity = (1 - outT) * parseFloat(elNames.style.opacity||1);
+  }
+
+  /* Titre — apparition mot par mot */
+  if(elapsed > T_TITLE_IN && !elTitle._split){
+    elTitle._split = true;
+    const titleEl = elTitle.querySelector('#title-text');
+    const lines = ['LA TERRE', "N\'EST PAS", 'RONDE'];
+    titleEl.innerHTML = lines.map(line =>
+      '<div>' + line.split('').map((ch,i) =>
+        ch === ' ' ? ' ' :
+        '<span class="tc" style="display:inline-block;opacity:0;transform:translateY(22px);' +
+        'transition:opacity 0.35s ease,transform 0.35s ease;">' + ch + '</span>'
+      ).join('') + '</div>'
+    ).join('');
+    const spans = elTitle.querySelectorAll('.tc');
+    spans.forEach((sp,i) => {
+      setTimeout(() => {
+        sp.style.opacity = '1';
+        sp.style.transform = 'translateY(0)';
+      }, i * 60);
+    });
+    elTitle.style.opacity = '1';
+  }
+
+  /* Hint appuyer */
+  if(elapsed > T_HINT && !phase4Done){
+    elHint.style.opacity = sub(elapsed, T_HINT, 600);
+    /* Noms compacts */
+    elPersist.style.opacity = sub(elapsed, T_HINT, 800);
+    if(elapsed > T_HINT + 800){
+      phase4Done = true;
+      if(_onComplete) _onComplete();
+    }
   }
 }
 
-resize();
-window.addEventListener('resize', onResize);
-paintStaticStars();
-window.addEventListener('click', (e) => {
-  if (e.sourceCapabilities?.firesTouchEvents) return
-  startIntro()
-}, { passive: true });
+/* Démarrer immédiatement */
+requestAnimationFrame(loop);
 
+/* Sortie : uniquement la page parente (index) appelle window.IntroStars.exit() — pas d’écouteurs ici. */
+
+/* ── API publique ── */
 window.IntroStars = {
-  start: startIntro,
   exit(){
-    isExiting = true
+    isExiting = true;
+    setTimeout(() => {
+      document.getElementById('c').style.display      = 'none';
+      document.getElementById('intro-names').style.display = 'none';
+      document.getElementById('intro-title').style.display = 'none';
+      document.getElementById('tap-hint').style.display    = 'none';
+    }, 900);
   },
-  onComplete(fn){
-    _onComplete = fn;
-    if (isCompact && typeof fn === "function") fn();
-  },
+  onComplete(fn){ _onComplete = fn; },
   getSeedPositions(){
-    const W = canvas.width, H = canvas.height;
-    const cx = W/2, cy = H/2;
-    return stars.slice(0,3).map(s => {
-      const p = 1/(1.2-s.z*0.8);
-      return {
-        x: cx + s.x*W*0.6*p,
-        y: cy + s.y*H*0.6*p
-      };
-    });
+    const W=canvas.width, H=canvas.height, cx=W/2, cy=H/2;
+    return [{x:cx-W*.15,y:cy},{x:cx,y:cy-H*.1},{x:cx+W*.15,y:cy+H*.08}];
   }
 };
 </script>

@@ -51,6 +51,8 @@ const stageSingle = document.getElementById("stage-single")
 const stageSphereHost = document.getElementById("stage-sphere-host")
 const stageTilesRoot = document.getElementById("stage-tiles")
 const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
+const puitsPromptWrap = document.getElementById("puits-prompt-wrap")
+const topoPromptWrap = document.getElementById("topo-prompt-wrap")
 const introClipsWrap = document.getElementById("intro-clips-wrap")
 const stageMediaWrap = document.getElementById("stage-media-wrap")
 const scrollRoot = document.getElementById("scroll-root")
@@ -71,6 +73,14 @@ if (!stageSphereHost) {
 
 if (!eratoPromptWrap) {
   throw new Error("Conteneur #erato-prompt-wrap requis (index.html).")
+}
+
+if (!puitsPromptWrap) {
+  throw new Error("Conteneur #puits-prompt-wrap requis (index.html).")
+}
+
+if (!topoPromptWrap) {
+  throw new Error("Conteneur #topo-prompt-wrap requis (index.html).")
 }
 
 if (!introClipsWrap) {
@@ -195,7 +205,7 @@ function fillTextContent(key) {
   textSubtitle.hidden = !st
 
   textBody.innerHTML = block.paragraphes
-    .map((p) => `<p class="text-overlay__p" data-anim="fade-up">${escapeHtml(p)}</p>`)
+    .map((p) => `<p class="text-overlay__p">${escapeHtml(p)}</p>`)
     .join("")
 
   if (block.credit) {
@@ -253,22 +263,8 @@ function collectTextOverlayTweenTargets() {
   return [...parts, ...ps]
 }
 
-/** Cibles pour la timeline d’entrée (paragraphes séparés pour le stagger). */
-function collectTextEnterTimelineTargets() {
-  if (!textOverlay || textOverlay.hidden) return []
-  const parts = [textKicker, textTitle, textSubtitle, textCredit].filter(
-    (el) => el instanceof HTMLElement && !el.hidden
-  )
-  const ps =
-    textBody instanceof HTMLElement && !textBody.hidden
-      ? [...textBody.querySelectorAll("p")]
-      : []
-  return [...parts, ...ps]
-}
-
 /**
- * Avant la frame d’entrée : colonne média + texte en état « caché » pour éviter
- * un flash d’opacité 1 puis tween (les transitions CSS seules restaient souvent invisibles).
+ * Avant la frame d’entrée : colonne média en état « caché » (le texte reste visible, sans tween).
  */
 function primePageEnterHidden(sectionIndex) {
   if (motionRef.reduced || !(stageMediaWrap instanceof HTMLElement)) return
@@ -276,12 +272,11 @@ function primePageEnterHidden(sectionIndex) {
   killPageEnterTimeline()
   snapPageEnterLayerComplete()
 
-  const textTargets = collectTextEnterTimelineTargets()
+  const textTargets = collectTextOverlayTweenTargets()
   const killList = [stageMediaWrap, ...textTargets]
   if (introPageMeta instanceof HTMLElement) killList.push(introPageMeta)
   gsap.killTweensOf(killList)
 
-  if (textOverlay && !textOverlay.hidden) textOverlay.classList.remove("is-visible")
   stageMediaWrap.classList.remove("stage-media-wrap--enter")
   if (introPageMeta instanceof HTMLElement) {
     introPageMeta.classList.remove("intro-page-meta--enter")
@@ -291,31 +286,9 @@ function primePageEnterHidden(sectionIndex) {
   }
 
   gsap.set(stageMediaWrap, { autoAlpha: 0, y: 24, force3D: true })
-
-  const isIntroPoster = textOverlay?.classList.contains("text-overlay--intro-poster")
-  const isPartTitle = textTitle instanceof HTMLElement && textTitle.classList.contains("partie-title")
-  const primeText =
-    sectionIndex === 0 && isIntroPoster
-      ? textTargets.filter((el) => el !== textTitle)
-      : isPartTitle && !(sectionIndex === 0 && isIntroPoster)
-        ? textTargets.filter((el) => el !== textTitle)
-        : textTargets
-  if (primeText.length) gsap.set(primeText, { autoAlpha: 0, y: 24, force3D: true })
-  if (sectionIndex === 0 && isIntroPoster && textTitle instanceof HTMLElement) {
-    const inners = textTitle.querySelectorAll(".title-word__inner")
-    if (inners.length) {
-      gsap.set(inners, { yPercent: 118, autoAlpha: 0, force3D: true })
-      gsap.set(textTitle, { autoAlpha: 1, y: 0, clearProps: "transform" })
-    }
-  } else if (isPartTitle && textTitle instanceof HTMLElement) {
-    gsap.set(textTitle, { x: -48, autoAlpha: 0, force3D: true })
-  }
-  if (sectionIndex === 0 && introPageMeta instanceof HTMLElement) {
-    gsap.set(introPageMeta, { autoAlpha: 0, y: 24 })
-  }
 }
 
-function triggerPageEnterEffects(sectionIndex) {
+function triggerPageEnterEffects() {
   if (!(stageMediaWrap instanceof HTMLElement)) return
 
   if (motionRef.reduced) {
@@ -324,22 +297,12 @@ function triggerPageEnterEffects(sectionIndex) {
     return
   }
 
-  const textTargetsAll = collectTextEnterTimelineTargets()
-  const isIntroPoster = textOverlay?.classList.contains("text-overlay--intro-poster")
-  const isPartTitle = textTitle instanceof HTMLElement && textTitle.classList.contains("partie-title")
-
-  let textForStagger = textTargetsAll
-  if (sectionIndex === 0 && isIntroPoster) {
-    textForStagger = textTargetsAll.filter((el) => el !== textTitle)
-  } else if (isPartTitle && !isIntroPoster) {
-    textForStagger = textTargetsAll.filter((el) => el !== textTitle)
+  if (textOverlay && !textOverlay.hidden) {
+    textOverlay.classList.add("is-visible")
   }
-
-  const introTargets = sectionIndex === 0 && introPageMeta instanceof HTMLElement ? [introPageMeta] : []
 
   const ease = "power2.out"
   const dur = isIpadLike ? 0.72 : 0.88
-  const stagger = isIpadLike ? 0.045 : 0.08
 
   pageEnterTimeline = gsap.timeline({
     onComplete: () => {
@@ -350,7 +313,6 @@ function triggerPageEnterEffects(sectionIndex) {
       const innersDone = textTitle?.querySelectorAll?.(".title-word__inner") ?? []
       if (innersDone.length) gsap.set(innersDone, { clearProps: "opacity,visibility,transform" })
       if (textOverlay && !textOverlay.hidden) textOverlay.classList.add("is-visible")
-      if (introTargets.length) gsap.set(introTargets, { clearProps: "opacity,visibility,transform" })
     },
   })
 
@@ -360,38 +322,6 @@ function triggerPageEnterEffects(sectionIndex) {
     { autoAlpha: 1, y: 0, duration: dur, ease },
     0
   )
-  if (textForStagger.length) {
-    pageEnterTimeline.fromTo(
-      textForStagger,
-      { autoAlpha: 0, y: 24, force3D: true },
-      { autoAlpha: 1, y: 0, duration: dur, ease, stagger },
-      0.08
-    )
-  }
-  if (sectionIndex === 0 && isIntroPoster && textTitle) {
-    const inners = textTitle.querySelectorAll(".title-word__inner")
-    if (inners.length) {
-      const wDur = isIpadLike ? 0.58 : 0.92
-      const wSt = isIpadLike ? 0.04 : 0.085
-      pageEnterTimeline.fromTo(
-        inners,
-        { yPercent: 118, autoAlpha: 0, force3D: true },
-        { yPercent: 0, autoAlpha: 1, duration: wDur, stagger: wSt, ease: "expo.out" },
-        0.18
-      )
-    }
-  }
-  if (isPartTitle && !isIntroPoster && textTitle instanceof HTMLElement) {
-    pageEnterTimeline.fromTo(
-      textTitle,
-      { x: -44, autoAlpha: 0, force3D: true },
-      { x: 0, autoAlpha: 1, duration: isIpadLike ? 0.62 : 0.82, ease: "power3.out" },
-      0.1
-    )
-  }
-  if (introTargets.length) {
-    pageEnterTimeline.fromTo(introTargets, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: dur, ease }, 0.05)
-  }
 }
 
 function applyTextIfChanged(textKey) {
@@ -417,6 +347,10 @@ function applySlideForIndex(index, meta = {}) {
     stageMediaWrap.setAttribute("aria-hidden", "false")
     eratoPromptWrap.hidden = true
     eratoPromptWrap.setAttribute("aria-hidden", "true")
+    puitsPromptWrap.hidden = true
+    puitsPromptWrap.setAttribute("aria-hidden", "true")
+    topoPromptWrap.hidden = true
+    topoPromptWrap.setAttribute("aria-hidden", "true")
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
@@ -428,6 +362,60 @@ function applySlideForIndex(index, meta = {}) {
 
   introClipsWrap.hidden = true
   introClipsWrap.setAttribute("aria-hidden", "true")
+
+  puitsPromptWrap.hidden = true
+  puitsPromptWrap.setAttribute("aria-hidden", "true")
+
+  topoPromptWrap.hidden = true
+  topoPromptWrap.setAttribute("aria-hidden", "true")
+
+  if (kf.puitsPrompt) {
+    eratoPromptWrap.hidden = true
+    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    sphereAnimApi?.reset()
+    stageSphereHost.hidden = true
+    stageSphereHost.setAttribute("aria-hidden", "true")
+    stageTilesRoot.hidden = true
+    stageSingle.hidden = true
+    slideStage.clear()
+    puitsPromptWrap.hidden = false
+    puitsPromptWrap.setAttribute("aria-hidden", "false")
+    queueMicrotask(() => {
+      const fr = document.getElementById("puits-frame")
+      if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
+        try {
+          fr.contentWindow.PuitsAnim?.reset?.()
+        } catch (_) {
+          /* cross-origin ou script pas encore chargé */
+        }
+      }
+    })
+    return
+  }
+
+  if (kf.topoPrompt) {
+    eratoPromptWrap.hidden = true
+    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    sphereAnimApi?.reset()
+    stageSphereHost.hidden = true
+    stageSphereHost.setAttribute("aria-hidden", "true")
+    stageTilesRoot.hidden = true
+    stageSingle.hidden = true
+    slideStage.clear()
+    topoPromptWrap.hidden = false
+    topoPromptWrap.setAttribute("aria-hidden", "false")
+    queueMicrotask(() => {
+      const fr = document.getElementById("topo-frame")
+      if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
+        try {
+          fr.contentWindow.TopoAnim?.reset?.()
+        } catch (_) {
+          /* cross-origin ou script pas encore chargé */
+        }
+      }
+    })
+    return
+  }
 
   if (kf.eratoTwoStep) {
     const showIframe = sphereSub === 1
@@ -539,7 +527,9 @@ function updateUi(sectionIndex) {
   })
   updateDotsVisualState(sectionIndex, dots, { reducedMotion: motionRef.reduced })
 
-  sectionLabelEl.textContent = SECTION_LABELS[sectionIndex] ?? ""
+  if (sectionLabelEl) {
+    sectionLabelEl.textContent = ""
+  }
   if (stepIndicatorEl) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
@@ -554,7 +544,7 @@ applyTextIfChanged(k0.textSection)
 if (!motionRef.reduced) primePageEnterHidden(0)
 requestAnimationFrame(() => {
   requestAnimationFrame(() => {
-    triggerPageEnterEffects(0)
+    triggerPageEnterEffects()
   })
 })
 
@@ -569,7 +559,7 @@ scrollApi = initScroll({
     if (!motionRef.reduced) primePageEnterHidden(idx)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        triggerPageEnterEffects(idx)
+        triggerPageEnterEffects()
       })
     })
   },
@@ -577,6 +567,136 @@ scrollApi = initScroll({
   /** `updateUi` est déjà appelé dans `onTransitionStart` — évite double recalcul layout / dots. */
   onProgressUi: () => {}
 })
+
+const INTRO_NAV_UNBLOCK_MS = 1000
+const introStarsFrameEl = document.getElementById("intro-stars-frame")
+let introNavBlocked = introStarsFrameEl instanceof HTMLIFrameElement
+let introExited = false
+
+function exitIntro() {
+  if (introExited) return
+  introExited = true
+
+  window.setTimeout(() => {
+    introNavBlocked = false
+  }, INTRO_NAV_UNBLOCK_MS)
+
+  const frame = document.getElementById("intro-stars-frame")
+  if (!(frame instanceof HTMLIFrameElement)) {
+    document.body.classList.remove("intro-stars-phase")
+    document.body.style.overflow = ""
+    const namesOnly = document.getElementById("persistent-names")
+    if (namesOnly instanceof HTMLElement) {
+      namesOnly.style.opacity = "1"
+      namesOnly.setAttribute("aria-hidden", "false")
+    }
+    return
+  }
+
+  try {
+    frame.contentWindow?.IntroStars?.exit?.()
+  } catch (_) {
+    /* iframe cross-origin ou API absente */
+  }
+
+  document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
+    if (!(el instanceof HTMLIFrameElement)) return
+    const ds = el.dataset.src
+    if (ds && (!el.src || el.src === "about:blank")) el.src = ds
+  })
+
+  snapPageEnterLayerComplete()
+
+  const clipFrames = () =>
+    [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
+
+  for (const f of clipFrames()) {
+    f.style.transformOrigin = "center center"
+    f.style.transform = "scale(0.05)"
+    f.style.transition = "none"
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      for (const f of clipFrames()) {
+        f.style.transition = "transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)"
+        f.style.transform = "scale(1)"
+      }
+    })
+  })
+
+  const hint = document.getElementById("scroll-hint")
+  if (hint instanceof HTMLElement) hint.style.opacity = "0"
+
+  window.setTimeout(() => {
+    frame.style.transition = "opacity 0.8s ease"
+    frame.style.opacity = "0"
+    window.setTimeout(() => {
+      frame.remove()
+      document.body.classList.remove("intro-stars-phase")
+      document.body.style.overflow = ""
+
+      const names = document.getElementById("persistent-names")
+      if (names instanceof HTMLElement) {
+        names.style.opacity = "1"
+        names.setAttribute("aria-hidden", "false")
+      }
+    }, 800)
+  }, 100)
+
+  scrollToSection(0, motionRef.reduced, scrollApi)
+}
+
+function initIntroStarsOverlay() {
+  const frame = document.getElementById("intro-stars-frame")
+  if (!(frame instanceof HTMLIFrameElement)) {
+    introNavBlocked = false
+    introExited = true
+    return
+  }
+
+  introNavBlocked = true
+  introExited = false
+  document.body.classList.add("intro-stars-phase")
+  document.body.style.overflow = "hidden"
+
+  const clipFrames = () =>
+    [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
+
+  for (const el of clipFrames()) {
+    el.style.transformOrigin = "center center"
+    el.style.transform = "scale(0.05)"
+  }
+
+  function wireIntroReady() {
+    const api = frame.contentWindow?.IntroStars
+    if (api && typeof api.onComplete === "function") {
+      let done = false
+      api.onComplete(() => {
+        if (done) return
+        done = true
+        document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
+          if (!(el instanceof HTMLIFrameElement)) return
+          const ds = el.dataset.src
+          if (ds && (!el.src || el.src === "about:blank")) el.src = ds
+        })
+        const hintEl = document.getElementById("scroll-hint")
+        if (hintEl instanceof HTMLElement) hintEl.style.opacity = "1"
+      })
+    } else {
+      document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
+        if (!(el instanceof HTMLIFrameElement)) return
+        const ds = el.dataset.src
+        if (ds && (!el.src || el.src === "about:blank")) el.src = ds
+      })
+      const hintEl = document.getElementById("scroll-hint")
+      if (hintEl instanceof HTMLElement) hintEl.style.opacity = "1"
+    }
+  }
+
+  if (frame.contentDocument?.readyState === "complete") queueMicrotask(wireIntroReady)
+  else frame.addEventListener("load", () => queueMicrotask(wireIntroReady), { once: true })
+}
 
 const NAV_DELAY_MS = 500
 let lastNavTime = 0
@@ -591,7 +711,7 @@ function goToPrevStep() {
 }
 
 function handleNav(direction = "forward") {
-  if (document.body.classList.contains("intro-stars-phase")) return
+  if (introNavBlocked) return
   const now = Date.now()
   if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
   navLocked = true
@@ -612,7 +732,12 @@ function targetExcludesGlobalNav(el) {
 }
 
 function onGlobalClickNav(e) {
-  if (document.body.classList.contains("intro-stars-phase")) return
+  if (document.body.classList.contains("intro-stars-phase")) {
+    e.preventDefault()
+    e.stopPropagation()
+    exitIntro()
+    return
+  }
   if (targetExcludesGlobalNav(/** @type {EventTarget} */ (e.target))) return
   handleNav("forward")
 }
@@ -633,9 +758,9 @@ function onTouchEndNav(e) {
   const dy = t.clientY - touchNavStartY
   const dist = Math.sqrt(dx * dx + dy * dy)
 
-  if (document.body.classList.contains("intro-stars-phase") && introStarsExitIntro) {
+  if (document.body.classList.contains("intro-stars-phase")) {
     if (dist < 15 && !targetExcludesGlobalNav(/** @type {EventTarget} */ (t.target))) {
-      introStarsExitIntro(true)
+      exitIntro()
     }
     return
   }
@@ -667,157 +792,6 @@ document.addEventListener(
   { passive: false, capture: true }
 )
 
-/** @type {null | (() => void)} */
-let introStarsExitIntro = null
-
-function initIntroStarsOverlay() {
-  const frame = document.getElementById("intro-stars-frame")
-  if (!(frame instanceof HTMLIFrameElement)) return
-
-  document.body.classList.add("intro-stars-phase")
-  document.body.style.overflow = "hidden"
-
-  const clipFrames = () =>
-    [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
-
-  for (const el of clipFrames()) {
-    el.style.transformOrigin = "center center"
-    el.style.transform = "scale(0.05)"
-  }
-
-  let exited = false
-  let introPhase = 0
-  let lastIntroBounceTs = 0
-  const INTRO_BOUNCE_GAP_MS = 450
-
-  function bumpIntroInteraction(fromDirect = false) {
-    if (exited) return
-    if (!fromDirect) {
-      const now = Date.now()
-      if (now - lastIntroBounceTs < INTRO_BOUNCE_GAP_MS) return
-      lastIntroBounceTs = now
-    } else {
-      lastIntroBounceTs = Date.now()
-    }
-    if (introPhase === 0) {
-      introPhase = 1
-      try {
-        frame.contentWindow?.IntroStars?.start?.()
-      } catch (_) {
-        /* iframe cross-origin ou API absente */
-      }
-      const names = document.getElementById("persistent-names")
-      if (names instanceof HTMLElement) {
-        names.style.opacity = "1"
-        names.setAttribute("aria-hidden", "false")
-      }
-      return
-    }
-    exitIntro()
-  }
-
-  function onIntroClick(e) {
-    if (exited) return
-    if (e.sourceCapabilities?.firesTouchEvents) return
-    const el = e.target
-    if (el instanceof Element) {
-      if (
-        el.closest(
-          "#section-dots, a, button, [role=\"button\"], input, textarea, select, label, .section-dot, #btn-prev"
-        )
-      ) {
-        return
-      }
-    }
-    bumpIntroInteraction(true)
-  }
-
-  function exitIntro() {
-    if (exited) return
-    exited = true
-    introStarsExitIntro = null
-    window.removeEventListener("click", onIntroClick, true)
-
-    document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
-      if (!(el instanceof HTMLIFrameElement)) return
-      const ds = el.dataset.src
-      if (ds && (!el.src || el.src === "about:blank")) el.src = ds
-    })
-
-    try {
-      frame.contentWindow?.IntroStars?.start?.()
-    } catch (_) {
-      /* iframe cross-origin ou API absente */
-    }
-    frame.contentWindow?.IntroStars?.exit?.()
-
-    snapPageEnterLayerComplete()
-
-    for (const f of clipFrames()) {
-      f.style.transform = "scale(0.05)"
-      f.style.transition = "none"
-      f.style.transformOrigin = "center center"
-    }
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        for (const f of clipFrames()) {
-          f.style.transition = "transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)"
-          f.style.transform = "scale(1)"
-        }
-      })
-    })
-
-    setTimeout(() => {
-      frame.style.transition = "opacity 0.8s ease"
-      frame.style.opacity = "0"
-      setTimeout(() => {
-        frame.remove()
-        document.body.classList.remove("intro-stars-phase")
-        document.body.style.overflow = ""
-      }, 800)
-    }, 100)
-
-    const hint = document.getElementById("scroll-hint")
-    if (hint instanceof HTMLElement) hint.style.opacity = "0"
-
-    scrollToSection(0, motionRef.reduced, scrollApi)
-  }
-
-  introStarsExitIntro = bumpIntroInteraction
-
-  function wireIntroReady() {
-    const api = frame.contentWindow?.IntroStars
-    if (api && typeof api.onComplete === "function") {
-      let done = false
-      api.onComplete(() => {
-        if (done) return
-        done = true
-        document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
-          if (!(el instanceof HTMLIFrameElement)) return
-          const ds = el.dataset.src
-          if (ds && (!el.src || el.src === "about:blank")) el.src = ds
-        })
-        const hint = document.getElementById("scroll-hint")
-        if (hint instanceof HTMLElement) hint.style.opacity = "1"
-      })
-    } else {
-      document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
-        if (!(el instanceof HTMLIFrameElement)) return
-        const ds = el.dataset.src
-        if (ds && (!el.src || el.src === "about:blank")) el.src = ds
-      })
-      const hint = document.getElementById("scroll-hint")
-      if (hint instanceof HTMLElement) hint.style.opacity = "1"
-    }
-  }
-
-  if (frame.contentDocument?.readyState === "complete") queueMicrotask(wireIntroReady)
-  else frame.addEventListener("load", () => queueMicrotask(wireIntroReady), { once: true })
-
-  window.addEventListener("click", onIntroClick, true)
-}
-
 initIntroStarsOverlay()
 
 dots.forEach((btn) => {
@@ -843,12 +817,12 @@ window.addEventListener("keydown", (e) => {
   const t = e.target
   if (t && (t.isContentEditable || (t.closest && t.closest("input, textarea, select")))) return
 
-  const introFrame = document.getElementById("intro-stars-frame")
-  const introDownKeys = e.key === " " || e.key === "ArrowDown" || e.key === "PageDown"
+  const introKeysExit =
+    e.key === "Enter" || e.key === " " || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown"
 
-  if (introFrame && introStarsExitIntro && introDownKeys) {
+  if (document.body.classList.contains("intro-stars-phase") && introKeysExit) {
     e.preventDefault()
-    introStarsExitIntro(true)
+    exitIntro()
     return
   }
 

@@ -7,7 +7,8 @@
  * - `loopSkipTailSec` (ex. `1/30` à 30 ips) → reboucle un peu avant la fin pour éviter la saccade si la dernière image ne colle pas au début.
  * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
  * - `sphereTwoStep: true` → 1er swipe = état figé, 2e = animation sphère (`src/sphereAnim.js`), 3e = panneau suivant.
- * - `eratoTwoStep: true` → même logique page 2 : 1er swipe = arrivée (média seul), 2e = iframe `docs/prompts/eratosthene-animation.html`, 3e = panneau suivant.
+ * - `puitsPrompt: true` → iframe `docs/prompts/puits-animation.html` plein cadre (étape « Première partie »), sans `loading="lazy"`.
+ * - `topoPrompt: true` → iframe `docs/prompts/topographie-animation.html` plein cadre (étape 4), sans `loading="lazy"`.
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -31,7 +32,7 @@ function docsUrl(relativePathUnderDocs) {
  */
 
 /**
- * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean }} SectionKeyframe
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsPrompt?: boolean, topoPrompt?: boolean }} SectionKeyframe
  */
 
 /**
@@ -50,11 +51,12 @@ export const KEYFRAMES = [
     textSection: "step01",
     media: { type: "image", file: "intro-terre-plate.png" }
   },
-  /* Étape 2 : texte « Première partie / Eratosthène » — média visuel à remplacer (fichier dans docs/media/) */
-  { scrollIndex: 1, textSection: "step02", media: PLACEHOLDER },
+  /* Étape 2 : iframe puits (clic dans l’iframe pour lancer l’animation) */
+  { scrollIndex: 1, textSection: "step02", puitsPrompt: true },
   /* Étape 3 : même panneau — 1er swipe = sphère figée, 2e = animation (voir scroll.js sphereSubStep) */
   { scrollIndex: 2, textSection: "step03", sphereTwoStep: true },
-  { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },
+  /* Étape 4 : iframe topographie */
+  { scrollIndex: 3, textSection: "step04", topoPrompt: true },
   { scrollIndex: 4, textSection: "step05", media: PLACEHOLDER },
   { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER }
 ]
