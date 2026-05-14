@@ -1218,8 +1218,9 @@ body.intro-stars-phase #scroll-hint {
   }
 }
 
-/* ——— Progress ——— */
+/* ——— Progress (masqué : barre du haut retirée) ——— */
 .progress-track {
+  display: none;
   position: absolute;
   top: 0;
   left: 0;
