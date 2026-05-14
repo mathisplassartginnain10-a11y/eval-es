@@ -62,7 +62,7 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
           locked = false
           setBodyLock(false)
           syncScrollDom(index)
-          onTransitionComplete(index, kf, meta)
+          onTransitionComplete(index, kf, { ...meta, subStepOnly: true })
         })
       }
     })

@@ -145,21 +145,56 @@ const TILT       = 0.22;
 const RADIUS     = 3.2;
 const BASE_SPEED = (2*Math.PI)/(12*60);
 
-function animate(){
-  requestAnimationFrame(animate);
-  if(!paused){
+let rafId = 0;
+let loopRunning = false;
+
+function applyCameraFromAngle() {
+  camera.position.set(
+    RADIUS * Math.sin(angle),
+    RADIUS * Math.sin(TILT),
+    RADIUS * Math.cos(angle)
+  );
+  camera.lookAt(0, 0, 0);
+}
+
+function animate() {
+  if (!loopRunning) return;
+  if (!paused) {
     angle += BASE_SPEED * speed;
-    camera.position.set(
-      RADIUS * Math.sin(angle),
-      RADIUS * Math.sin(TILT),
-      RADIUS * Math.cos(angle)
-    );
-    camera.lookAt(0,0,0);
+    applyCameraFromAngle();
   }
   updateLabel();
   renderer.render(scene, camera);
+  rafId = requestAnimationFrame(animate);
 }
-animate();
+
+function startAnimFromParent() {
+  paused = false;
+  if (loopRunning) return;
+  loopRunning = true;
+  rafId = requestAnimationFrame(animate);
+}
+
+function resetAnimFromParent() {
+  paused = true;
+  loopRunning = false;
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = 0;
+  angle = 0;
+  applyCameraFromAngle();
+  updateLabel();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data === 'play') startAnimFromParent();
+  if (e.data === 'reset') resetAnimFromParent();
+});
+
+/* État initial figé — la boucle démarre sur message « play » depuis le parent */
+applyCameraFromAngle();
+updateLabel();
+renderer.render(scene, camera);
 
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);

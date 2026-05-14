@@ -361,6 +361,12 @@ body {
   z-index: 0;
 }
 
+/* Étape 2 (data-step="2") : superposition puits + globe orbite */
+#app[data-step="2"] #stage-media-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
 /* Iframe animation puits (étape 2 — Première partie) */
 #app .stage-media-wrap .puits-prompt-wrap {
   position: absolute;
@@ -374,7 +380,10 @@ body {
   display: none !important;
 }
 
-#puits-frame {
+#puits-frame,
+#earth-orbit-frame {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
@@ -384,11 +393,31 @@ body {
   scrollbar-width: none;
 }
 
-#puits-frame::-webkit-scrollbar {
+#puits-frame {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+#earth-orbit-frame {
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+#puits-frame::-webkit-scrollbar,
+#earth-orbit-frame::-webkit-scrollbar {
   display: none;
 }
 
-/* Iframe topographie (étape 4 — Troisième partie) */
+/* Conteneur média étape 5 (topographie) */
+#app .stage-media-wrap .step05-media-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+/* Iframe topographie (étape 5) */
 #app .stage-media-wrap .topo-prompt-wrap {
   position: absolute;
   inset: 0;
@@ -879,6 +908,11 @@ body {
 
 body.intro-stars-phase {
   overflow: hidden;
+}
+
+/* Une seule invite : celle de l’iframe intro-stars — pas le doublon #scroll-hint du parent (z-index au-dessus). */
+body.intro-stars-phase #scroll-hint {
+  display: none !important;
 }
 
 /* Retour étape précédente (tap / clic ailleurs = avant) */

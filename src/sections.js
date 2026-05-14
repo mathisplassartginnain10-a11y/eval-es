@@ -8,7 +8,7 @@
  * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
  * - `sphereTwoStep: true` → 1er swipe = état figé, 2e = animation sphère (`src/sphereAnim.js`), 3e = panneau suivant.
  * - `puitsPrompt: true` → iframe `docs/prompts/puits-animation.html` plein cadre (étape « Première partie »), sans `loading="lazy"`.
- * - `topoPrompt: true` → iframe `docs/prompts/topographie-animation.html` plein cadre (étape 4), sans `loading="lazy"`.
+ * - `topoPrompt: true` → iframe `docs/prompts/topographie-animation.html` plein cadre (étape 5), sans `loading="lazy"`.
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -55,9 +55,10 @@ export const KEYFRAMES = [
   { scrollIndex: 1, textSection: "step02", puitsPrompt: true },
   /* Étape 3 : même panneau — 1er swipe = sphère figée, 2e = animation (voir scroll.js sphereSubStep) */
   { scrollIndex: 2, textSection: "step03", sphereTwoStep: true },
-  /* Étape 4 : iframe topographie */
-  { scrollIndex: 3, textSection: "step04", topoPrompt: true },
-  { scrollIndex: 4, textSection: "step05", media: PLACEHOLDER },
+  /* Étape 4 : média placeholder (topographie déplacée à l’étape 5) */
+  { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },
+  /* Étape 5 : iframe topographie */
+  { scrollIndex: 4, textSection: "step05", topoPrompt: true },
   { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER }
 ]
 

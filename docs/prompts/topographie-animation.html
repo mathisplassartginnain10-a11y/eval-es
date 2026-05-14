@@ -298,7 +298,7 @@ hint.style.cssText = [
 hint.textContent = 'Appuyer pour lancer';
 document.body.appendChild(hint);
 
-/* ── Déclenchement au clic/tap ── */
+/* ── Déclenchement sur message du parent (nav globale → postMessage « play ») ── */
 let started = false;
 
 function startAnim(){
@@ -310,8 +310,9 @@ function startAnim(){
   rafId   = requestAnimationFrame(animLoop);
 }
 
-window.addEventListener('click',      startAnim, { once: true });
-window.addEventListener('touchstart', startAnim, { once: true, passive: true });
+window.addEventListener('message', (e) => {
+  if (e.data === 'play') startAnim();
+});
 
 /* ── API publique ── */
 window.TopoAnim = {

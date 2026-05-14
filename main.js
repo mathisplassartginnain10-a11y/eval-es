@@ -336,10 +336,51 @@ function applyTextForSection(textKey) {
   applyTextIfChanged(textKey)
 }
 
+/** Remet l’étape 2 (puits + globe orbite) pour un nouvel affichage ou un retour arrière. */
+function resetPuitsDualIframes() {
+  const puits = document.getElementById("puits-frame")
+  const earth = document.getElementById("earth-orbit-frame")
+  if (puits instanceof HTMLIFrameElement) {
+    puits.style.transition = "none"
+    puits.style.opacity = "1"
+    puits.style.pointerEvents = "auto"
+  }
+  if (earth instanceof HTMLIFrameElement) {
+    earth.style.transition = "none"
+    earth.style.opacity = "0"
+    earth.style.pointerEvents = "none"
+  }
+  queueMicrotask(() => {
+    try {
+      puits?.contentWindow?.postMessage("reset", "*")
+    } catch (_) {}
+    try {
+      earth?.contentWindow?.postMessage("reset", "*")
+    } catch (_) {}
+  })
+}
+
 function applySlideForIndex(index, meta = {}) {
   const kf = KEYFRAMES[index]
 
   const sphereSub = meta.sphereSubStep
+
+  if (index !== 1) {
+    const pf = document.getElementById("puits-frame")
+    const ef = document.getElementById("earth-orbit-frame")
+    queueMicrotask(() => {
+      try {
+        pf?.contentWindow?.postMessage("reset", "*")
+      } catch (_) {
+        /* iframe absente ou cross-origin */
+      }
+      try {
+        ef?.contentWindow?.postMessage("reset", "*")
+      } catch (_) {
+        /* idem */
+      }
+    })
+  }
 
   if (index === 0) {
     introClipsWrap.hidden = false
@@ -380,16 +421,7 @@ function applySlideForIndex(index, meta = {}) {
     slideStage.clear()
     puitsPromptWrap.hidden = false
     puitsPromptWrap.setAttribute("aria-hidden", "false")
-    queueMicrotask(() => {
-      const fr = document.getElementById("puits-frame")
-      if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
-        try {
-          fr.contentWindow.PuitsAnim?.reset?.()
-        } catch (_) {
-          /* cross-origin ou script pas encore chargé */
-        }
-      }
-    })
+    resetPuitsDualIframes()
     return
   }
 
@@ -563,7 +595,10 @@ scrollApi = initScroll({
       })
     })
   },
-  onTransitionComplete: () => {},
+  onTransitionComplete: (_idx, _kf, meta = {}) => {
+    if (meta.subStepOnly) return
+    resetSectionAnimClickIndex()
+  },
   /** `updateUi` est déjà appelé dans `onTransitionStart` — évite double recalcul layout / dots. */
   onProgressUi: () => {}
 })
@@ -641,6 +676,9 @@ function exitIntro() {
         names.style.opacity = "1"
         names.setAttribute("aria-hidden", "false")
       }
+
+      const hintAfter = document.getElementById("scroll-hint")
+      if (hintAfter instanceof HTMLElement) hintAfter.style.opacity = "1"
     }, 800)
   }, 100)
 
@@ -702,6 +740,56 @@ const NAV_DELAY_MS = 500
 let lastNavTime = 0
 let navLocked = false
 
+/** Registre des animations par index de section (`KEYFRAMES` / `scrollIndex`). */
+const STEP_ANIMATIONS = {
+  0: [],
+  1: [
+    () => triggerIframeAnim("puits-frame"),
+    () => {
+      const puits = document.getElementById("puits-frame")
+      const earth = document.getElementById("earth-orbit-frame")
+      if (!(puits instanceof HTMLElement) || !(earth instanceof HTMLIFrameElement)) return
+      puits.style.transition = "opacity 0.8s ease"
+      puits.style.opacity = "0"
+      window.setTimeout(() => {
+        puits.style.pointerEvents = "none"
+      }, 800)
+      earth.style.transition = "opacity 0.8s ease"
+      earth.style.opacity = "1"
+      earth.style.pointerEvents = "auto"
+      window.setTimeout(() => {
+        earth.contentWindow?.postMessage("play", "*")
+      }, 400)
+    },
+  ],
+  2: [],
+  3: [],
+  4: [() => triggerIframeAnim("topo-frame")],
+  5: [],
+}
+
+function triggerIframeAnim(iframeId) {
+  const f = document.getElementById(iframeId)
+  f?.contentWindow?.postMessage("play", "*")
+}
+
+/** Nombre d’animations déjà déclenchées sur la section courante (hors intro / hors panneaux two-step). */
+let sectionAnimClickIndex = 0
+
+function resetSectionAnimClickIndex() {
+  sectionAnimClickIndex = 0
+}
+
+function getCurrentKeyframe() {
+  const i = scrollApi?.getIndex?.() ?? 0
+  return KEYFRAMES[i]
+}
+
+function currentSectionUsesScrollTwoStep() {
+  const kf = getCurrentKeyframe()
+  return !!(kf?.sphereTwoStep || kf?.eratoTwoStep)
+}
+
 function goToNextStep() {
   scrollApi?.stepBy(1)
 }
@@ -710,24 +798,80 @@ function goToPrevStep() {
   scrollApi?.stepBy(-1)
 }
 
+/**
+ * Avance d’une « unité » : soit l’animation suivante de l’étape, soit passage à l’étape suivante.
+ * Intro (index 0) et panneaux `sphereTwoStep` / `eratoTwoStep` restent gérés comme avant (`stepBy`).
+ */
+function tryAdvanceForwardFromUserGesture(now) {
+  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
+
+  const idx = scrollApi?.getIndex?.() ?? 0
+
+  if (idx === 0) {
+    navLocked = true
+    lastNavTime = now
+    goToNextStep()
+    window.setTimeout(() => {
+      navLocked = false
+    }, NAV_DELAY_MS)
+    return
+  }
+
+  if (currentSectionUsesScrollTwoStep()) {
+    navLocked = true
+    lastNavTime = now
+    goToNextStep()
+    window.setTimeout(() => {
+      navLocked = false
+    }, NAV_DELAY_MS)
+    return
+  }
+
+  const anims = STEP_ANIMATIONS[idx] || []
+
+  if (sectionAnimClickIndex < anims.length) {
+    navLocked = true
+    lastNavTime = now
+    const fn = anims[sectionAnimClickIndex]
+    if (typeof fn === "function") fn()
+    sectionAnimClickIndex++
+    window.setTimeout(() => {
+      navLocked = false
+    }, NAV_DELAY_MS)
+    return
+  }
+
+  navLocked = true
+  lastNavTime = now
+  sectionAnimClickIndex = 0
+  goToNextStep()
+  window.setTimeout(() => {
+    navLocked = false
+  }, NAV_DELAY_MS)
+}
+
 function handleNav(direction = "forward") {
   if (introNavBlocked) return
   const now = Date.now()
   if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
-  navLocked = true
-  lastNavTime = now
-  if (direction === "forward") goToNextStep()
-  else goToPrevStep()
-  window.setTimeout(() => {
-    navLocked = false
-  }, NAV_DELAY_MS)
+  if (direction === "backward") {
+    navLocked = true
+    lastNavTime = now
+    resetSectionAnimClickIndex()
+    goToPrevStep()
+    window.setTimeout(() => {
+      navLocked = false
+    }, NAV_DELAY_MS)
+    return
+  }
+  tryAdvanceForwardFromUserGesture(now)
 }
 
 function targetExcludesGlobalNav(el) {
   if (!(el instanceof Element)) return true
   if (el.isContentEditable || el.closest("[contenteditable]")) return true
   return !!el.closest(
-    "#section-dots, #btn-prev, .section-dot, .nav-dot, .nav-btn, a, button, [role=\"button\"], input, textarea, select, label, iframe"
+    "#section-dots, #btn-prev, .section-dot, .nav-dot, .nav-btn, .nav-btn-prev, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
   )
 }
 
@@ -797,6 +941,7 @@ initIntroStarsOverlay()
 dots.forEach((btn) => {
   btn.addEventListener("click", () => {
     const idx = Number.parseInt(btn.dataset.section, 10)
+    resetSectionAnimClickIndex()
     scrollToSection(idx, motionRef.reduced, scrollApi)
   })
 })

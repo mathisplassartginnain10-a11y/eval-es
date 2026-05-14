@@ -204,7 +204,7 @@ function animLoop(ts){
   }
 }
 
-/* Démarrage au clic/tap */
+/* Démarrage sur message du parent (évite le double déclenchement avec la nav globale) */
 function startAnim(){
   if(started) return;
   started = true;
@@ -213,9 +213,6 @@ function startAnim(){
   startTs  = null;
   rafId    = requestAnimationFrame(animLoop);
 }
-
-window.addEventListener('click',      startAnim, { once: true });
-window.addEventListener('touchstart', startAnim, { once: true, passive: true });
 
 /* État initial : image seule */
 applyInitialStatic();
@@ -236,6 +233,11 @@ window.PuitsAnim = {
     render(Math.max(0, Math.min(1, t)));
   },
 };
+
+window.addEventListener('message', (e) => {
+  if (e.data === 'play') startAnim();
+  if (e.data === 'reset') window.PuitsAnim?.reset?.();
+});
 </script>
 
 </body>
