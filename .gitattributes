@@ -1,0 +1,3 @@
+# Évite la normalisation CRLF sur les HTML contenant une chaîne base64 (sinon corruption au clone).
+docs/prompts/terre-aplatie-orbit.html binary
+docs/prompts/terre-cone-orbit.html binary

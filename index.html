@@ -25,7 +25,8 @@
   <script type="importmap">
   {
     "imports": {
-      "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/+esm",
+      "gsap": "https://esm.sh/gsap@3.12.5",
+      "gsap/ScrollTrigger": "https://esm.sh/gsap@3.12.5/ScrollTrigger",
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
     }
   }
@@ -42,7 +43,7 @@
 
     <!-- Média uniquement dans la moitié droite (le texte reste à gauche, z-index plus haut) -->
     <div class="stage-media-wrap" id="stage-media-wrap" aria-hidden="true">
-      <!-- Intro : iframes → docs/prompts/ (fichiers non modifiés ici) -->
+      <!-- Intro : trois iframes (sphère, aplatie, cône) — docs/prompts/ -->
       <div id="intro-clips-wrap" class="intro-clips-wrap" hidden aria-hidden="true">
         <div class="intro-clip intro-clip--sphere">
           <iframe
@@ -59,7 +60,7 @@
             class="intro-clip-frame"
             title="Terre aplatie — caméra orbitale"
             src="docs/prompts/terre-aplatie-orbit.html"
-            loading="lazy"
+            loading="eager"
           ></iframe>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
@@ -69,7 +70,7 @@
             class="intro-clip-frame"
             title="Terre cône — caméra orbitale"
             src="docs/prompts/terre-cone-orbit.html"
-            loading="lazy"
+            loading="eager"
           ></iframe>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
@@ -110,6 +111,21 @@
         ></iframe>
         <div class="erato-swipe-rail erato-swipe-rail--start" aria-hidden="true"></div>
         <div class="erato-swipe-rail erato-swipe-rail--end" aria-hidden="true"></div>
+      </div>
+      <div id="puits-stage-wrap" class="puits-stage-wrap" hidden aria-hidden="true">
+        <div id="puits-scroll-scroller" class="puits-scroll-scroller">
+          <section id="section-puits" class="section-puits" aria-label="Animation puits">
+            <div class="section-puits__sticky">
+              <iframe
+                id="puits-prompt-frame"
+                class="puits-prompt-frame"
+                title="Animation puits"
+                src="docs/prompts/puits-animation.html"
+                loading="lazy"
+              ></iframe>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
 
