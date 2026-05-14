@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amplitude topographique</title>
+<!--
+================================================================
+GUIDE CURSOR — topographie-animation.html
+================================================================
+Fichier 100% autonome. Animation déclenchée au scroll.
+Fond noir, texte blanc.
+
+INTÉGRATION :
+  <iframe src="./topographie-animation.html"
+    width="100%" height="420" style="border:none;">
+  </iframe>
+
+SCROLL PILOTÉ (GSAP) :
+  ScrollTrigger.create({
+    trigger: '#section-topo',
+    start: 'top center',
+    end: 'bottom center',
+    scrub: true,
+    onUpdate: self => {
+      const iframe = document.querySelector('iframe[src*="topographie"]');
+      if(iframe?.contentWindow?.TopoAnim)
+        iframe.contentWindow.TopoAnim.seek(self.progress);
+    }
+  });
+
+SÉQUENCE (t = 0 → 1) :
+  0.00 → 0.15 : titre apparaît
+  0.15 → 0.55 : montagne + valeur Everest (+8 849 m)
+  0.55 → 0.80 : fosse + valeur Mariannes (-11 034 m)
+  0.80 → 1.00 : accolade ≈ 20 km + texte bas
+
+API window.TopoAnim :
+  .seek(t)   positionne à t (0 → 1) pour scrub
+  .play()    lance automatiquement
+================================================================
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{
+    width:100%;height:100%;
+    background:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+/* ── Dimensions responsive ── */
+function resize(){
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); draw(_t); });
+
+const TOTAL_DUR = 5000;
+
+/* ── Phases ── */
+const P_TITRE  = [0,    0.12];
+const P_MTN    = [0.12, 0.52];
+const P_TRENCH = [0.50, 0.78];
+const P_END    = [0.78, 1.00];
+
+let _t = 0;
+
+function ease(t){ return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2 }
+function sub(t,s,e){ return ease(Math.max(0,Math.min(1,(t-s)/(e-s)))) }
+
+/* ── Dessin ── */
+function draw(progress){
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  /* Constantes adaptées à la taille */
+  const SEA_Y    = H * 0.48;
+  const MTN_X    = W * 0.30;
+  const TRN_X    = W * 0.65;
+  const TRN_W    = W * 0.16;
+  const MAX_MTN  = Math.min(H * 0.38, 160);
+  const MAX_TRN  = Math.min(H * 0.32, 130);
+
+  const titreT  = sub(progress, P_TITRE[0],  P_TITRE[1]);
+  const mtnT    = sub(progress, P_MTN[0],    P_MTN[1]);
+  const trenchT = sub(progress, P_TRENCH[0], P_TRENCH[1]);
+  const endT    = sub(progress, P_END[0],    P_END[1]);
+
+  const mtnH    = mtnT    * MAX_MTN;
+  const trenchH = trenchT * MAX_TRN;
+
+  /* ── Fond fosse ── */
+  if(trenchH > 1){
+    ctx.fillStyle = 'rgba(20,60,120,0.32)';
+    ctx.beginPath();
+    ctx.moveTo(TRN_X - TRN_W/2, SEA_Y);
+    ctx.lineTo(TRN_X + TRN_W/2, SEA_Y);
+    ctx.lineTo(TRN_X + TRN_W/2 * 0.7, SEA_Y + trenchH);
+    ctx.lineTo(TRN_X - TRN_W/2 * 0.7, SEA_Y + trenchH);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  /* ── Ligne de mer ── */
+  ctx.strokeStyle = '#3a8fd4';
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.06, SEA_Y);
+  ctx.lineTo(W * 0.94, SEA_Y);
+  ctx.stroke();
+
+  /* Label "Mer" */
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font      = `${Math.max(11,W*0.016)}px Inter,sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('Mer', W * 0.06, SEA_Y - 8);
+
+  /* ── Montagne ── */
+  if(mtnH > 1){
+    const base = 75 * mtnT;
+    ctx.fillStyle   = 'rgba(210,210,210,0.15)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(MTN_X - base, SEA_Y);
+    ctx.lineTo(MTN_X,        SEA_Y - mtnH);
+    ctx.lineTo(MTN_X + base, SEA_Y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    /* Flèche rouge */
+    const arrowX = MTN_X + base + 18;
+    drawArrow(ctx, arrowX, SEA_Y, arrowX, SEA_Y - mtnH, '#e05252', 'up');
+
+    /* Valeur */
+    const val   = Math.round(8849 * mtnT);
+    const fsize = Math.max(11, W * 0.016);
+    ctx.fillStyle = '#e05252';
+    ctx.font      = `500 ${fsize}px Inter,sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText('+' + val.toLocaleString('fr-FR') + ' m', arrowX + 10, SEA_Y - mtnH/2 + 5);
+
+    if(mtnT > 0.88){
+      ctx.globalAlpha = (mtnT - 0.88) / 0.12;
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font      = `${fsize * 0.9}px Inter,sans-serif`;
+      ctx.fillText('Everest', arrowX + 10, SEA_Y - mtnH/2 + 5 + fsize + 2);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ── Fosse ── */
+  if(trenchH > 1){
+    const arrowX = TRN_X + TRN_W/2 + 18;
+    drawArrow(ctx, arrowX, SEA_Y, arrowX, SEA_Y + trenchH, '#4ECDC4', 'down');
+
+    const val   = Math.round(11034 * trenchT);
+    const fsize = Math.max(11, W * 0.016);
+    ctx.fillStyle = '#4ECDC4';
+    ctx.font      = `500 ${fsize}px Inter,sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText('-' + val.toLocaleString('fr-FR') + ' m', arrowX + 10, SEA_Y + trenchH/2 + 5);
+
+    if(trenchT > 0.88){
+      ctx.globalAlpha = (trenchT - 0.88) / 0.12;
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font      = `${fsize * 0.9}px Inter,sans-serif`;
+      ctx.fillText('Mariannes', arrowX + 10, SEA_Y + trenchH/2 + 5 + fsize + 2);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ── Accolade écart total ── */
+  if(endT > 0 && mtnH > 0 && trenchH > 0){
+    const bx   = W * 0.91;
+    const topY = SEA_Y - mtnH;
+    const botY = SEA_Y + trenchH;
+    ctx.globalAlpha = endT;
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx - 6, topY); ctx.lineTo(bx, topY);
+    ctx.lineTo(bx, botY);
+    ctx.lineTo(bx - 6, botY);
+    ctx.stroke();
+
+    const fsize = Math.max(10, W * 0.014);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.font      = `${fsize}px Inter,sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText('Écart', bx + 5, (topY+botY)/2 - fsize*0.6);
+    ctx.fillText('≈ 20 km', bx + 5, (topY+botY)/2 + fsize*0.8);
+    ctx.globalAlpha = 1;
+  }
+
+  /* ── Texte bas ── */
+  if(endT > 0){
+    ctx.globalAlpha = endT;
+    const fsize = Math.max(11, W * 0.015);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font      = `${fsize}px Inter,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText("Soit 0,3 % du rayon terrestre — invisible à l'échelle planétaire", W/2, SEA_Y + MAX_TRN + fsize * 2.5);
+    ctx.globalAlpha = 1;
+  }
+
+  /* ── Titre ── */
+  if(titreT > 0){
+    ctx.globalAlpha = titreT;
+    const fsize = Math.max(13, W * 0.020);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font      = `500 ${fsize}px Inter,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Amplitude topographique de la surface terrestre', W/2, H * 0.09);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ── Flèches ── */
+function drawArrow(ctx, x1, y1, x2, y2, color, dir){
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  const aw = 5, ah = 8;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if(dir === 'up'){
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - aw, y2 + ah);
+    ctx.lineTo(x2 + aw, y2 + ah);
+  } else {
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - aw, y2 - ah);
+    ctx.lineTo(x2 + aw, y2 - ah);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  /* Tick départ */
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x1 - 6, y1);
+  ctx.lineTo(x1 + 6, y1);
+  ctx.stroke();
+}
+
+/* ── Mode auto (play) ── */
+let startTs  = null;
+let playing  = false;
+let rafId    = null;
+
+function animLoop(ts){
+  if(!startTs) startTs = ts;
+  const raw = Math.min((ts - startTs) / TOTAL_DUR, 1);
+  _t = ease(raw);
+  draw(_t);
+  if(raw < 1) rafId = requestAnimationFrame(animLoop);
+  else playing = false;
+}
+
+/* ── Intersection Observer — déclenche au scroll ── */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting && !playing && _t < 0.01){
+      playing  = true;
+      startTs  = null;
+      rafId    = requestAnimationFrame(animLoop);
+    }
+  });
+}, { threshold: 0.3 });
+observer.observe(canvas);
+
+/* ── Dessin initial ── */
+draw(0);
+
+/* ── API publique ── */
+window.TopoAnim = {
+  seek(t){
+    if(rafId){ cancelAnimationFrame(rafId); playing = false; }
+    _t = Math.max(0, Math.min(1, t));
+    draw(_t);
+  },
+  play(){
+    if(playing) return;
+    playing = true;
+    startTs = null;
+    rafId   = requestAnimationFrame(animLoop);
+  }
+};
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import gsap from "gsap"
 import { createSlideStage } from "./src/slideStage.js"
-import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
+import { initScroll, scrollToSection, SECTION_COUNT, killPuitsScrollTrigger, setupPuitsScrollTrigger } from "./src/scroll.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
 import { createSphereAnim } from "./src/sphereAnim.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
@@ -29,6 +29,7 @@ const stageSingle = document.getElementById("stage-single")
 const stageSphereHost = document.getElementById("stage-sphere-host")
 const stageTilesRoot = document.getElementById("stage-tiles")
 const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
+const puitsStageWrap = document.getElementById("puits-stage-wrap")
 const introClipsWrap = document.getElementById("intro-clips-wrap")
 const stageMediaWrap = document.getElementById("stage-media-wrap")
 const scrollRoot = document.getElementById("scroll-root")
@@ -49,6 +50,10 @@ if (!stageSphereHost) {
 
 if (!eratoPromptWrap) {
   throw new Error("Conteneur #erato-prompt-wrap requis (index.html).")
+}
+
+if (!puitsStageWrap) {
+  throw new Error("Conteneur #puits-stage-wrap requis (index.html).")
 }
 
 if (!introClipsWrap) {
@@ -282,6 +287,12 @@ function applyTextForSection(textKey) {
 
 function applySlideForIndex(index, meta = {}) {
   const kf = KEYFRAMES[index]
+  if (!kf?.puitsScrollSection) {
+    killPuitsScrollTrigger()
+    puitsStageWrap.hidden = true
+    puitsStageWrap.setAttribute("aria-hidden", "true")
+  }
+
   const sphereSub = meta.sphereSubStep
 
   if (index === 0) {
@@ -301,6 +312,27 @@ function applySlideForIndex(index, meta = {}) {
 
   introClipsWrap.hidden = true
   introClipsWrap.setAttribute("aria-hidden", "true")
+
+  if (kf.puitsScrollSection) {
+    stageTilesRoot.hidden = true
+    sphereAnimApi?.reset()
+    stageSphereHost.hidden = true
+    stageSphereHost.setAttribute("aria-hidden", "true")
+    eratoPromptWrap.hidden = true
+    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    stageSingle.hidden = true
+    slideStage.clear()
+    puitsStageWrap.hidden = false
+    puitsStageWrap.setAttribute("aria-hidden", "false")
+    const puitsScroller = document.getElementById("puits-scroll-scroller")
+    if (puitsScroller instanceof HTMLElement) puitsScroller.scrollTop = 0
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setupPuitsScrollTrigger()
+      })
+    })
+    return
+  }
 
   if (kf.eratoTwoStep) {
     const showIframe = sphereSub === 1

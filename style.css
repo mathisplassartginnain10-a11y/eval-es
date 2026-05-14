@@ -197,6 +197,51 @@ body {
   display: none !important;
 }
 
+/* Iframe puits + zone scroll interne (ScrollTrigger, voir src/scroll.js) */
+#app .stage-media-wrap .puits-stage-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+#app .stage-media-wrap .puits-stage-wrap[hidden] {
+  display: none !important;
+}
+
+#app .stage-media-wrap .puits-scroll-scroller {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+#app .stage-media-wrap .section-puits {
+  position: relative;
+  min-height: 260vh;
+}
+
+#app .stage-media-wrap .section-puits__sticky {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  min-height: min(100vh, 100%);
+  box-sizing: border-box;
+}
+
+#app .stage-media-wrap .puits-prompt-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border: 0;
+  display: block;
+  background: #0a0a12;
+}
+
 #app .stage-media-wrap .erato-prompt-frame {
   width: 100%;
   height: 100%;
@@ -453,7 +498,9 @@ body {
   background: #000;
 }
 
-/* Page 1 — trois pastilles (sphère, aplatie, cône) : iframes docs/prompts */
+/* Page 1 — trois pastilles (sphère, aplatie, cône) : iframes docs/prompts
+   Colonnes minmax(0,1fr) + pastilles width ≤ 100 % : évite que la sphère (colonne 1)
+   ne déborde et ne masque les deux iframes de droite (min-width:auto par défaut). */
 .intro-clips-wrap {
   position: absolute;
   inset: 0;
@@ -461,12 +508,13 @@ body {
   display: none;
   box-sizing: border-box;
   padding: clamp(0.5rem, 1.8vmin, 1.25rem) clamp(0.35rem, 1.2vw, 0.85rem);
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   justify-items: center;
   gap: clamp(0.15rem, 0.75vmin, 0.4rem);
   pointer-events: none;
+  overflow: hidden;
 }
 
 .intro-clips-wrap:not([hidden]) {
@@ -475,13 +523,14 @@ body {
 
 .intro-clip {
   position: relative;
+  box-sizing: border-box;
+  min-width: 0;
+  width: min(100%, clamp(8.5rem, 38vmin, 17.5rem));
+  max-width: 100%;
   aspect-ratio: 1;
-  width: clamp(10rem, 44vmin, 19.5rem);
-  max-width: min(50vw, 20.5rem);
   border-radius: 0.55rem;
   overflow: hidden;
-  flex-shrink: 0;
-  box-sizing: border-box;
+  flex-shrink: 1;
   border: none;
   background: rgba(0, 0, 0, 0.4);
   box-shadow: inset 0 0 0 1px rgba(255, 245, 224, 0.12);
@@ -691,8 +740,8 @@ body {
 
 @media (max-width: 540px) {
   .intro-clip {
-    width: clamp(7.25rem, 56vmin, 14rem);
-    max-width: min(58vw, 14rem);
+    width: min(100%, clamp(6.75rem, 50vmin, 12.5rem));
+    max-width: 100%;
   }
 
   .intro-clip__label {

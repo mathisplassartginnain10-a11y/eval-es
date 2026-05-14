@@ -1,5 +1,8 @@
 import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { KEYFRAMES, SECTION_COUNT } from "./sections.js"
+
+gsap.registerPlugin(ScrollTrigger)
 
 const ANIM_DURATION_S = 0.025
 const PAUSE_AFTER_MS = 20
@@ -153,11 +156,17 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
     return !!(el && typeof el.closest === "function" && el.closest("#section-dots"))
   }
 
+  function targetIsPuitsScroller(el) {
+    return !!(el && typeof el.closest === "function" && el.closest("#puits-scroll-scroller"))
+  }
+
   function onWheel(e) {
     if (locked) {
       e.preventDefault()
       return
     }
+    const t = e.target
+    if (targetIsPuitsScroller(/** @type {Node | null} */ (t))) return
     const dy = e.deltaY
     if (dy > 0 && wheelSum < 0) wheelSum = 0
     else if (dy < 0 && wheelSum > 0) wheelSum = 0
@@ -186,6 +195,10 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
       return
     }
     if (targetIsDotsScroller(/** @type {EventTarget | null} */ (e.target))) {
+      touchGesture = null
+      return
+    }
+    if (targetIsPuitsScroller(/** @type {EventTarget | null} */ (e.target))) {
       touchGesture = null
       return
     }
@@ -304,6 +317,41 @@ export function scrollToSection(index, reducedMotion, api) {
   const p = root?.children[i]
   const y = p instanceof HTMLElement ? p.offsetTop : i * window.innerHeight
   window.scrollTo({ top: y, behavior: reducedMotion ? "auto" : "smooth" })
+}
+
+/** @type {ScrollTrigger | null} */
+let puitsScrollTriggerInstance = null
+
+export function killPuitsScrollTrigger() {
+  puitsScrollTriggerInstance?.kill()
+  puitsScrollTriggerInstance = null
+}
+
+/**
+ * Pilote `PuitsAnim.seek(t)` (t ∈ [0,1]) dans l’iframe `puits-animation.html`
+ * via le scroll du conteneur `#puits-scroll-scroller` (le document ne défile pas).
+ */
+export function setupPuitsScrollTrigger() {
+  killPuitsScrollTrigger()
+  const scroller = document.getElementById("puits-scroll-scroller")
+  const section = document.getElementById("section-puits")
+  if (!(scroller instanceof HTMLElement) || !(section instanceof HTMLElement)) return
+
+  puitsScrollTriggerInstance = ScrollTrigger.create({
+    id: "puits-iframe-scrub",
+    trigger: "#section-puits",
+    scroller,
+    start: "top center",
+    end: "bottom center",
+    scrub: true,
+    onUpdate: (self) => {
+      const iframe = document.querySelector('iframe[src*="puits-animation"]')
+      if (iframe?.contentWindow?.PuitsAnim) {
+        iframe.contentWindow.PuitsAnim.seek(self.progress)
+      }
+    }
+  })
+  ScrollTrigger.refresh()
 }
 
 export { SECTION_COUNT }
