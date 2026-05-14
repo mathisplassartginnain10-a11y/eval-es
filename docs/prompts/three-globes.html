@@ -7,16 +7,24 @@
 <!--
   Une scène WebGL + intro séquencée (sprites → zoom caméra → révélation des globes).
   GSAP pour la timeline ; Three.js pour le rendu.
-  API : window.ThreeGlobes.setSpeed / pause / resume
+  API : window.ThreeGlobes.setSpeed / pause / resume ; à la fin de l’intro (~5,5 s),
+  window.parent.postMessage("intro-complete", "*") pour synchroniser la nav parente.
 -->
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
   canvas { display: block; width: 100% !important; height: 100% !important; }
+  #globe-labels-root {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="globe-labels-root" aria-hidden="true"></div>
 <script type="importmap">
 {
   "imports": {
@@ -99,6 +107,56 @@ let earthAssetReady = false
 let revealScheduled = false
 /** Après 5,5 s : rotation continue + caméra en orbite */
 let animating = false
+
+/** Libellés sous les trois Terres (projection 3D → écran) */
+/** @type {{ el: HTMLDivElement }[]} */
+let globeLabelSlots = []
+const globeLabelTexts = ["Sphère parfaite", "Sphéroïde oblate", "Théorie plate"]
+const labelProjectVec = new THREE.Vector3()
+
+function ensureGlobeLabels() {
+  const root = document.getElementById("globe-labels-root")
+  if (!root || globeLabelSlots.length) return
+  globeLabelTexts.forEach((text, i) => {
+    const div = document.createElement("div")
+    div.textContent = text
+    div.style.cssText = [
+      "position:absolute",
+      "left:0",
+      "top:0",
+      "color:rgba(255,255,255,0.65)",
+      "font-size:12px",
+      "font-family:Inter,system-ui,sans-serif",
+      "text-align:center",
+      "pointer-events:none",
+      "opacity:0",
+      "transition:opacity 0.8s ease",
+      "white-space:nowrap",
+      "transform:translateX(-50%)",
+    ].join(";")
+    root.appendChild(div)
+    globeLabelSlots.push({ el: div })
+    window.setTimeout(() => {
+      div.style.opacity = "1"
+    }, 4500 + i * 300)
+  })
+}
+
+function updateGlobeLabelPositions() {
+  if (!globeLabelSlots.length) return
+  const W = window.innerWidth
+  const H = window.innerHeight
+  const s = spread()
+  const xs = [-s, 0, s]
+  globeLabelSlots.forEach((slot, i) => {
+    labelProjectVec.set(xs[i], GLOBES_Y - 0.95, 0)
+    labelProjectVec.project(camera)
+    const px = (labelProjectVec.x * 0.5 + 0.5) * W
+    const py = (-labelProjectVec.y * 0.5 + 0.5) * H
+    slot.el.style.left = `${px}px`
+    slot.el.style.top = `${py}px`
+  })
+}
 
 function spread() {
   const w = window.innerWidth
@@ -257,6 +315,13 @@ function revealGlobes() {
 function schedulePostIntro() {
   window.setTimeout(() => {
     animating = true
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage("intro-complete", "*")
+      }
+    } catch (_) {
+      /* ignore */
+    }
   }, 5500)
 }
 
@@ -270,6 +335,7 @@ camera.lookAt(0, GLOBES_Y, 0)
 runIntroSpritePhase()
 runIntroCameraZoom()
 schedulePostIntro()
+ensureGlobeLabels()
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick)
@@ -308,6 +374,8 @@ function tick(ts) {
   } else {
     camera.lookAt(0, GLOBES_Y, 0)
   }
+
+  updateGlobeLabelPositions()
 
   renderer.render(scene, camera)
 }

@@ -92,6 +92,7 @@
         <div class="erato-swipe-rail erato-swipe-rail--start" aria-hidden="true"></div>
         <div class="erato-swipe-rail erato-swipe-rail--end" aria-hidden="true"></div>
       </div>
+      <!-- Animation puits : affichée à l’étape 2 (index KEYFRAMES 1), voir src/sections.js -->
       <div id="puits-stage-wrap" class="puits-stage-wrap" hidden aria-hidden="true">
         <div id="puits-scroll-scroller" class="puits-scroll-scroller">
           <section id="section-puits" class="section-puits" aria-label="Animation puits">
@@ -101,7 +102,7 @@
                 class="puits-prompt-frame"
                 title="Animation puits"
                 src="docs/prompts/puits-animation.html"
-                loading="lazy"
+                scrolling="no"
               ></iframe>
             </div>
           </section>
@@ -180,10 +181,27 @@
         });
       }
 
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", wireIntroIframes);
-      } else {
+      function wireThreeGlobesNavSync() {
+        const threeGlobesFrame = document.getElementById("three-globes-frame");
+        window.addEventListener("message", (e) => {
+          if (e.data !== "intro-complete") return;
+          if (!(threeGlobesFrame instanceof HTMLIFrameElement)) return;
+          if (!threeGlobesFrame.contentWindow || e.source !== threeGlobesFrame.contentWindow) return;
+          const nav = document.getElementById("section-dots");
+          if (nav) nav.setAttribute("data-globes-intro", "complete");
+          nav?.querySelector(".section-dot")?.classList.add("section-dot--globes-intro-complete");
+        });
+      }
+
+      function wireIntroAndGlobesNav() {
         wireIntroIframes();
+        wireThreeGlobesNavSync();
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", wireIntroAndGlobesNav);
+      } else {
+        wireIntroAndGlobesNav();
       }
     })();
   </script>

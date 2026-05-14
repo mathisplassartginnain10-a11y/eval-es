@@ -621,6 +621,11 @@ function initIntroStarsOverlay() {
     if (safetyUnlockTimer) window.clearTimeout(safetyUnlockTimer)
     setIntroStarsInteractionGuards(null)
 
+    try {
+      frame.contentWindow?.IntroStars?.start?.()
+    } catch (_) {
+      /* iframe cross-origin ou API absente */
+    }
     frame.contentWindow?.IntroStars?.exit?.()
 
     snapPageEnterLayerComplete()

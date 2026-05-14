@@ -7,14 +7,22 @@
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{
-    width:100%;height:100%;
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    width:100%;
+    height:100%;
     background:#000;
     display:flex;
     align-items:center;
     justify-content:center;
+  }
+  #wrap{
+    position:relative;
+    width:min(860px,100vw);
+    max-height:100vh;
     overflow:hidden;
   }
-  #wrap{position:relative;width:min(860px,100vw)}
   #img{width:100%;height:auto;display:block;opacity:0}
   #svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible}
   .lg{opacity:0}

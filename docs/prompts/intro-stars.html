@@ -14,16 +14,17 @@ SÉQUENCE INTERNE :
   Phase 1 (0-3s)   : étoiles se déplacent vers la caméra (effet warp)
   Phase 2 (3-4.5s) : étoiles ralentissent et s arrêtent
   Phase 3 (4.5-6s) : "Présenté par" + noms apparaissent en grand
-  Phase 4 (6-7.5s) : texte se réduit → coin haut droite
+  Phase 4 (6-7.5s) : texte se réduit → coin haut gauche
   Après             : idle, attend le scroll
 
 AU SCROLL — Cursor doit :
-  1. Appeler window.IntroStars.exit() → fade-out fond étoilé
+  1. Appeler window.IntroStars.start() puis window.IntroStars.exit() → fade-out fond étoilé
   2. Zoomer les 3 iframes Terres depuis scale 0.05 → 1
      (effet : les étoiles deviennent les 3 Terres)
-  3. Garder le texte compact en haut à droite
+  3. Garder le texte compact en haut gauche
 
 API window.IntroStars :
+  .start()         démarre la boucle d’animation (appelé par la page parente au 1er geste)
   .exit()          fade-out (800ms)
   .onComplete(fn)  callback quand texte compact en place
   .getStarPositions() retourne [{x,y,r}] pour que Cursor
@@ -57,13 +58,13 @@ API window.IntroStars :
     font-size:.88em;margin-top:.25em;
   }
   #intro-text.compact{
-    inset:auto;top:.9rem;right:1.4rem;
-    flex-direction:column;align-items:flex-end;opacity:1;
+    inset:auto;top:.9rem;left:1.4rem;right:auto;
+    flex-direction:column;align-items:flex-start;opacity:1;
   }
   #intro-text.compact #label-by{display:none}
   #intro-text.compact #label-names{
     font-size:11px;color:rgba(255,255,255,0.5);
-    line-height:1.4;text-align:right;
+    line-height:1.4;text-align:left;
   }
   #intro-text.compact #label-names span{
     display:block;font-size:11px;
@@ -88,8 +89,6 @@ const lBy    = document.getElementById('label-by');
 const lNames = document.getElementById('label-names');
 
 function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
-resize();
-window.addEventListener('resize', resize);
 
 /* ── Étoiles ── */
 const N = 320;
@@ -204,6 +203,23 @@ function drawStars(elapsed, globalAlpha){
   });
 }
 
+let introStarted = false;
+
+function startIntro(){
+  if(introStarted) return;
+  introStarted = true;
+  requestAnimationFrame(loop);
+}
+
+function paintStaticStars(){
+  drawStars(0, 1);
+}
+
+function onResize(){
+  resize();
+  if(!introStarted) paintStaticStars();
+}
+
 /* ── Boucle principale ── */
 function loop(ts){
   requestAnimationFrame(loop);
@@ -242,10 +258,17 @@ function loop(ts){
     }
   }
 }
-requestAnimationFrame(loop);
+
+resize();
+window.addEventListener('resize', onResize);
+paintStaticStars();
+window.addEventListener('scroll', startIntro, { once: true, passive: true });
+window.addEventListener('touchstart', startIntro, { once: true, passive: true });
+window.addEventListener('wheel', startIntro, { once: true, passive: true });
 
 /* ── API publique ── */
 window.IntroStars = {
+  start: startIntro,
   exit(){
     isExiting = true;
   },
