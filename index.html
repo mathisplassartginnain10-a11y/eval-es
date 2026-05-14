@@ -49,8 +49,7 @@
           <iframe
             class="intro-clip-frame"
             title="Terre — sphère (vue orbitale)"
-            src="docs/prompts/earth-orbit.html"
-            loading="eager"
+            data-src="docs/prompts/earth-orbit.html"
           ></iframe>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
@@ -59,8 +58,7 @@
           <iframe
             class="intro-clip-frame"
             title="Terre aplatie — caméra orbitale"
-            src="docs/prompts/terre-aplatie-orbit.html"
-            loading="eager"
+            data-src="docs/prompts/terre-aplatie-orbit.html"
           ></iframe>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
@@ -69,8 +67,7 @@
           <iframe
             class="intro-clip-frame"
             title="Terre cône — caméra orbitale"
-            src="docs/prompts/terre-cone-orbit.html"
-            loading="eager"
+            data-src="docs/prompts/terre-cone-orbit.html"
           ></iframe>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
@@ -150,6 +147,51 @@
   </div>
 
   <div id="scroll-root" class="scroll-root"></div>
+
+  <script>
+    (function () {
+      const iframeObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const iframe = entry.target;
+            if (!(iframe instanceof HTMLIFrameElement)) return;
+            const ds = iframe.dataset.src;
+            if (!ds) return;
+            if (!iframe.src || iframe.src === "about:blank") {
+              iframe.src = ds;
+            }
+            iframeObserver.unobserve(iframe);
+          });
+        },
+        { rootMargin: "400px" }
+      );
+
+      const pauseObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const iframe = entry.target;
+            if (!(iframe instanceof HTMLIFrameElement) || !iframe.contentWindow) return;
+            iframe.contentWindow.postMessage(entry.isIntersecting ? "resume" : "pause", "*");
+          });
+        },
+        { threshold: 0.1 }
+      );
+
+      function wireIntroIframes() {
+        document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((f) => {
+          iframeObserver.observe(f);
+          pauseObserver.observe(f);
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", wireIntroIframes);
+      } else {
+        wireIntroIframes();
+      }
+    })();
+  </script>
 
   <!-- ?v= incrémente si le navigateur garde une vieille copie de sections.js (ex. ancien nom de vidéo). -->
   <script type="module" src="./main.js"></script>
