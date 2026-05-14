@@ -249,7 +249,10 @@ window.IntroStars = {
   exit(){
     isExiting = true;
   },
-  onComplete(fn){ _onComplete = fn; },
+  onComplete(fn){
+    _onComplete = fn;
+    if (isCompact && typeof fn === "function") fn();
+  },
   /* Retourne les positions écran des 3 "seeds" pour que Cursor
      puisse y placer les 3 iframes Terres au moment du zoom */
   getSeedPositions(){

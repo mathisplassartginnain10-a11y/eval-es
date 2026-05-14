@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Les trois Terres — scène unique</title>
+<!--
+  Une scène WebGL + intro séquencée (sprites → zoom caméra → révélation des globes).
+  GSAP pour la timeline ; Three.js pour le rendu.
+  API : window.ThreeGlobes.setSpeed / pause / resume
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100% !important; height: 100% !important; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "gsap": "https://esm.sh/gsap@3.12.5"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three"
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
+import gsap from "gsap"
+
+const isIpad =
+  /iPad/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+
+const canvas = document.getElementById("c")
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: false,
+  powerPreference: "low-power",
+  alpha: false,
+})
+renderer.setPixelRatio(1)
+renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setClearColor(0x000000, 1)
+renderer.outputColorSpace = THREE.SRGBColorSpace
+
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(
+  42,
+  window.innerWidth / Math.max(1, window.innerHeight),
+  0.1,
+  200
+)
+
+scene.add(new THREE.AmbientLight(0xffffff, isIpad ? 0.42 : 0.48))
+const sun = new THREE.DirectionalLight(0xffffff, isIpad ? 1.05 : 1.2)
+sun.position.set(6, 3, 5)
+scene.add(sun)
+
+const TARGET_FPS = 30
+const FRAME_MS = 1000 / TARGET_FPS
+let lastFrame = 0
+let orbitAngle = 0
+let paused = false
+let speed = 1
+/** @type {number | null} */
+let rafId = null
+/** @type {ReturnType<typeof setTimeout> | null} */
+let resizeTimer = null
+
+const ORBIT_STEP = (2 * Math.PI) / (12 * 60)
+const SPIN_BASE = 0.0048
+
+const sphereSeg = isIpad ? 24 : 32
+
+const GLOBES_Y = 0.5
+
+/** @type {THREE.Group | null} */
+let earthPivot = null
+/** @type {THREE.Group | null} */
+let aplatiePivot = null
+/** @type {THREE.Group | null} */
+let conePivot = null
+
+/** Fond étoilé */
+let starsPoints = null
+
+/** Sprites « graines » (ordre : gauche, centre, droite) */
+/** @type {THREE.Sprite[]} */
+const seedSprites = []
+
+/** Début intro (ms) */
+const startTime = Date.now()
+let glbLoaded = 0
+let earthAssetReady = false
+let revealScheduled = false
+/** Après 5,5 s : rotation continue + caméra en orbite */
+let animating = false
+
+function spread() {
+  const w = window.innerWidth
+  if (w < 420) return 1.55
+  if (w < 640) return 2.25
+  return 3.2
+}
+
+function finalCamZ() {
+  const s = spread()
+  return Math.max(9, 8 + s * 0.5)
+}
+
+function addStarfield() {
+  const n = isIpad ? 1200 : 2200
+  const pos = new Float32Array(n * 3)
+  for (let i = 0; i < n * 3; i += 3) {
+    const r = 40 + Math.random() * 55
+    const th = Math.random() * Math.PI * 2
+    const ph = Math.acos(2 * Math.random() - 1)
+    pos[i] = r * Math.sin(ph) * Math.cos(th)
+    pos[i + 1] = r * Math.sin(ph) * Math.sin(th)
+    pos[i + 2] = r * Math.cos(ph)
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3))
+  const mat = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: isIpad ? 0.045 : 0.055,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  })
+  starsPoints = new THREE.Points(geo, mat)
+  scene.add(starsPoints)
+}
+
+function layoutSeedSprites() {
+  const s = spread()
+  const xs = [-s, 0, s]
+  seedSprites.forEach((spr, i) => {
+    spr.position.set(xs[i], GLOBES_Y, 0)
+  })
+}
+
+function createSeedSprites() {
+  const gold = new THREE.Color(0xffd27a)
+  const xs = [-spread(), 0, spread()]
+  for (let i = 0; i < 3; i++) {
+    const mat = new THREE.SpriteMaterial({
+      color: gold,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+    const sprite = new THREE.Sprite(mat)
+    sprite.position.set(xs[i], GLOBES_Y, 0)
+    sprite.scale.set(0.15, 0.15, 1)
+    sprite.userData.baseScale = 0.22
+    scene.add(sprite)
+    seedSprites.push(sprite)
+  }
+}
+
+function runIntroSpritePhase() {
+  seedSprites.forEach((sprite, i) => {
+    gsap.to(sprite.material, {
+      opacity: 0.92,
+      duration: 0.6,
+      delay: 0.5 + i * 0.3,
+      ease: "power2.out",
+    })
+    gsap.to(sprite.scale, {
+      x: 0.25,
+      y: 0.25,
+      z: 1,
+      duration: 0.8,
+      delay: 0.5 + i * 0.3,
+      ease: "elastic.out(1, 0.5)",
+    })
+  })
+}
+
+function runIntroCameraZoom() {
+  const zEnd = finalCamZ()
+  gsap.to(camera.position, {
+    z: zEnd,
+    duration: 1.5,
+    delay: 2.0,
+    ease: "power3.inOut",
+    onUpdate: () => {
+      camera.lookAt(0, GLOBES_Y, 0)
+    },
+  })
+}
+
+/**
+ * Centre le modèle à l’origine et applique un scale uniforme (sans rotation).
+ */
+function fitModelInBox(model, targetMax) {
+  const box = new THREE.Box3().setFromObject(model)
+  const size = box.getSize(new THREE.Vector3())
+  const ctr = box.getCenter(new THREE.Vector3())
+  const sc = targetMax / Math.max(size.x, size.y, size.z, 1e-6)
+  model.scale.setScalar(sc)
+  model.position.copy(ctr.clone().multiplyScalar(-sc))
+}
+
+function layoutGlobes() {
+  const s = spread()
+  if (earthPivot) earthPivot.position.set(-s, GLOBES_Y, 0)
+  if (aplatiePivot) aplatiePivot.position.set(0, GLOBES_Y, 0)
+  if (conePivot) conePivot.position.set(s, GLOBES_Y, 0)
+}
+
+function scheduleRevealIfReady() {
+  if (!earthAssetReady || glbLoaded < 2 || revealScheduled) return
+  revealScheduled = true
+  const elapsed = Date.now() - startTime
+  const remaining = Math.max(0, 3500 - elapsed)
+  window.setTimeout(() => revealGlobes(), remaining)
+}
+
+function revealGlobes() {
+  const pivots = [earthPivot, aplatiePivot, conePivot]
+  pivots.forEach((pivot, i) => {
+    const spr = seedSprites[i]
+    if (!pivot || !spr) return
+
+    pivot.visible = true
+    const target = pivot.userData.targetScale ?? 1
+    pivot.scale.setScalar(0.001)
+
+    gsap.to(spr.material, {
+      opacity: 0,
+      duration: 0.4,
+      delay: i * 0.25,
+    })
+
+    gsap.to(pivot.scale, {
+      x: target,
+      y: target,
+      z: target,
+      duration: 1.0,
+      delay: i * 0.25,
+      ease: "back.out(1.4)",
+      onComplete: () => {
+        if (spr.parent) scene.remove(spr)
+      },
+    })
+  })
+}
+
+/** Lance la rotation « infinie » et l’orbite caméra après la séquence intro */
+function schedulePostIntro() {
+  window.setTimeout(() => {
+    animating = true
+  }, 5500)
+}
+
+const loader = new GLTFLoader()
+
+/* ——— Setup intro immédiat ——— */
+addStarfield()
+createSeedSprites()
+camera.position.set(0, 2.5, 22)
+camera.lookAt(0, GLOBES_Y, 0)
+runIntroSpritePhase()
+runIntroCameraZoom()
+schedulePostIntro()
+
+function tick(ts) {
+  rafId = requestAnimationFrame(tick)
+  if (paused || document.hidden) return
+  if (ts - lastFrame < FRAME_MS) return
+  lastFrame = ts
+
+  if (starsPoints) {
+    starsPoints.rotation.y += 0.00035 * speed
+  }
+
+  const pulseT = Date.now() * 0.003
+  seedSprites.forEach((spr, i) => {
+    if (!spr.parent) return
+    const m = spr.material
+    const elapsed = Date.now() - startTime
+    if (m.opacity > 0.08 && elapsed > 2200) {
+      const base = spr.userData.baseScale ?? 0.22
+      const pulse = 0.8 + 0.2 * Math.sin(pulseT + i * 1.2)
+      spr.scale.set(base * pulse, base * pulse, 1)
+    }
+  })
+
+  if (animating) {
+    orbitAngle += ORBIT_STEP * speed
+    const s = spread()
+    const dist = finalCamZ()
+    const wobble = Math.sin(orbitAngle * 0.12) * 0.35
+    camera.position.set(wobble, 2.5 + Math.sin(orbitAngle * 0.08) * 0.08, dist)
+    camera.lookAt(0, GLOBES_Y, 0)
+
+    const sp = SPIN_BASE * speed
+    if (earthPivot?.visible) earthPivot.rotation.y += sp
+    if (aplatiePivot?.visible) aplatiePivot.rotation.z += sp
+    if (conePivot?.visible) conePivot.rotation.z += sp
+  } else {
+    camera.lookAt(0, GLOBES_Y, 0)
+  }
+
+  renderer.render(scene, camera)
+}
+
+function startLoop() {
+  if (rafId != null) cancelAnimationFrame(rafId)
+  lastFrame = 0
+  rafId = requestAnimationFrame(tick)
+}
+
+startLoop()
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    paused = true
+    if (rafId != null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+  } else {
+    paused = false
+    startLoop()
+  }
+})
+
+window.addEventListener("message", (e) => {
+  if (e.data === "pause") paused = true
+  if (e.data === "resume") {
+    paused = false
+    if (rafId == null) startLoop()
+  }
+})
+
+window.addEventListener(
+  "resize",
+  () => {
+    if (resizeTimer) clearTimeout(resizeTimer)
+    resizeTimer = window.setTimeout(() => {
+      resizeTimer = null
+      renderer.setSize(window.innerWidth, window.innerHeight)
+      camera.aspect = window.innerWidth / Math.max(1, window.innerHeight)
+      camera.updateProjectionMatrix()
+      layoutGlobes()
+      layoutSeedSprites()
+      if (animating) {
+        const dist = finalCamZ()
+        camera.position.z = dist
+      }
+    }, 300)
+  },
+  { passive: true }
+)
+
+/* ——— Terre sphère (gauche) ——— */
+new THREE.TextureLoader().load(
+  "./textures/earth-texture.jpg",
+  (earthTex) => {
+    earthTex.colorSpace = THREE.SRGBColorSpace
+    const globe = new THREE.Mesh(
+      new THREE.SphereGeometry(1, sphereSeg, sphereSeg),
+      new THREE.MeshPhongMaterial({
+        map: earthTex,
+        specular: new THREE.Color(0x1a3355),
+        shininess: 18,
+      })
+    )
+    earthPivot = new THREE.Group()
+    earthPivot.userData.targetScale = 1
+    earthPivot.add(globe)
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(1.04, Math.min(sphereSeg, 28), Math.min(sphereSeg, 28)),
+      new THREE.MeshPhongMaterial({
+        color: 0x4499ff,
+        transparent: true,
+        opacity: 0.07,
+        side: THREE.BackSide,
+      })
+    )
+    earthPivot.add(halo)
+    earthPivot.visible = false
+    layoutGlobes()
+    scene.add(earthPivot)
+    earthAssetReady = true
+    scheduleRevealIfReady()
+  },
+  undefined,
+  () => {
+    earthAssetReady = true
+    scheduleRevealIfReady()
+  }
+)
+
+/* ——— Terre aplatie (centre) ——— */
+new THREE.TextureLoader().load(
+  "./textures/aplatie-texture.png",
+  (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    loader.load(
+      "./models/terre-aplatie.glb",
+      (gltf) => {
+        const model = gltf.scene
+        applyPhongTextured(model, tex)
+        fitModelInBox(model, 2.0)
+        model.rotation.set(-Math.PI / 2, 0, 0)
+        aplatiePivot = new THREE.Group()
+        aplatiePivot.userData.targetScale = 1
+        aplatiePivot.add(model)
+        aplatiePivot.visible = false
+        layoutGlobes()
+        scene.add(aplatiePivot)
+        glbLoaded += 1
+        scheduleRevealIfReady()
+      },
+      undefined,
+      () => {
+        glbLoaded += 1
+        scheduleRevealIfReady()
+      }
+    )
+  },
+  undefined,
+  () => {}
+)
+
+/* ——— Terre cône (droite) ——— */
+new THREE.TextureLoader().load(
+  "./textures/cone-texture.png",
+  (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    loader.load(
+      "./models/terre-cone.glb",
+      (gltf) => {
+        const model = gltf.scene
+        applyPhongTextured(model, tex)
+        fitModelInBox(model, 2.2)
+        model.rotation.set(-Math.PI / 2, 0, 0)
+        conePivot = new THREE.Group()
+        conePivot.userData.targetScale = 1
+        conePivot.add(model)
+        conePivot.visible = false
+        layoutGlobes()
+        scene.add(conePivot)
+        glbLoaded += 1
+        scheduleRevealIfReady()
+      },
+      undefined,
+      () => {
+        glbLoaded += 1
+        scheduleRevealIfReady()
+      }
+    )
+  },
+  undefined,
+  () => {}
+)
+
+function applyPhongTextured(root, tex) {
+  root.traverse((c) => {
+    if (c.isMesh) {
+      c.material = new THREE.MeshPhongMaterial({
+        map: tex,
+        specular: new THREE.Color(0x111122),
+        shininess: 10,
+      })
+    }
+  })
+}
+
+window.ThreeGlobes = {
+  setSpeed(v) {
+    speed = typeof v === "number" && v > 0 ? v : 1
+  },
+  pause() {
+    paused = true
+  },
+  resume() {
+    paused = false
+    if (rafId == null) startLoop()
+  },
+}
+</script>
+</body>
+</html>

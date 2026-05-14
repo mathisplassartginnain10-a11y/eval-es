@@ -43,31 +43,14 @@
 
     <!-- Média uniquement dans la moitié droite (le texte reste à gauche, z-index plus haut) -->
     <div class="stage-media-wrap" id="stage-media-wrap" aria-hidden="true">
-      <!-- Intro : trois iframes (sphère, aplatie, cône) — docs/prompts/ -->
-      <div id="intro-clips-wrap" class="intro-clips-wrap" hidden aria-hidden="true">
-        <div class="intro-clip intro-clip--sphere">
+      <!-- Intro : une seule scène WebGL (3 globes) — iPad / Safari -->
+      <div id="intro-clips-wrap" class="intro-clips-wrap intro-clips-wrap--unified" hidden aria-hidden="true">
+        <div class="intro-clip intro-clip--unified">
           <iframe
+            id="three-globes-frame"
             class="intro-clip-frame"
-            title="Terre — sphère (vue orbitale)"
-            data-src="docs/prompts/earth-orbit.html"
-          ></iframe>
-          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
-          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
-        </div>
-        <div class="intro-clip intro-clip--aplatie">
-          <iframe
-            class="intro-clip-frame"
-            title="Terre aplatie — caméra orbitale"
-            data-src="docs/prompts/terre-aplatie-orbit.html"
-          ></iframe>
-          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
-          <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
-        </div>
-        <div class="intro-clip intro-clip--triangle">
-          <iframe
-            class="intro-clip-frame"
-            title="Terre cône — caméra orbitale"
-            data-src="docs/prompts/terre-cone-orbit.html"
+            title="Les trois Terres — sphère, aplatie, cône"
+            data-src="docs/prompts/three-globes.html"
           ></iframe>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
@@ -141,12 +124,24 @@
     </div>
 
     <div class="app-status-bar" aria-label="Navigation de l’exposé">
-      <p class="section-label" id="section-label" aria-live="polite" aria-atomic="true"></p>
-      <p class="step-indicator" id="step-indicator" aria-live="polite" aria-atomic="true"></p>
+      <p class="section-label step-label" id="section-label" aria-live="polite" aria-atomic="true"></p>
+      <p class="step-indicator step-label step-label--muted" id="step-indicator" aria-live="polite" aria-atomic="true"></p>
     </div>
   </div>
 
   <div id="scroll-root" class="scroll-root"></div>
+
+  <iframe
+    id="intro-stars-frame"
+    class="intro-stars-frame"
+    title="Introduction — fond étoilé"
+    src="docs/prompts/intro-stars.html"
+  ></iframe>
+  <div id="persistent-names" class="persistent-names" aria-hidden="true">
+    Mathis PLASSART GINNAIN<br />
+    Maximilien FAVRE
+  </div>
+  <p id="scroll-hint" class="scroll-hint-intro" aria-hidden="true">Défiler</p>
 
   <script>
     (function () {

@@ -29,8 +29,23 @@ function hasTwoStep(kf) {
  * Navigation une étape à la fois (molette, swipe, clavier via main).
  * Swipe tactile : suivi par identifiant de doigt, rejet du geste majoritairement horizontal, pastilles latérales exclues (`#section-dots`), `touchcancel`, anti double-frappe court. Les iframes ne remontent pas les touches : bandes `.intro-clip-swipe-rail--start|end` et `.erato-swipe-rail--start|end` au-dessus ; le canvas sphère reste en `pointer-events: none`.
  * Verrou court pendant la transition — les médias sont pilotés dans les callbacks.
- * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep?, subStepOnly? }` sur les panneaux à deux temps (`sphereTwoStep`, `eratoTwoStep`). `subStepOnly: true` = changement de sous-étape sans changement de page (pas d’animation d’entrée globale).
+ * `onTransitionStart` / `onTransitionComplete` reçoivent un 3ᵉ argument optionnel `{ sphereSubStep?, subStepOnly? }` sur les panneaux à deux temps (`sphereTwoStep`, `eratoTwoStep`). `subStepOnly: true` = changement de sous-étape sans changement de page (pas d’animation d’entrée globale). Garde `wheel` optionnel pour l’intro étoiles (`setIntroStarsInteractionGuards`) ; le premier `touchmove` pour quitter l’intro est dans `main.js`.
  */
+/** @type {null | ((e: WheelEvent) => boolean)} */
+let introWheelGuard = null
+
+/**
+ * Pendant l’intro étoiles : consomme le premier wheel pour ne pas avancer les sections.
+ * @param {{ wheel?: (e: WheelEvent) => boolean } | null} guards
+ */
+export function setIntroStarsInteractionGuards(guards) {
+  if (!guards) {
+    introWheelGuard = null
+    return
+  }
+  introWheelGuard = guards.wheel ?? null
+}
+
 export function initScroll({ reducedMotion, onTransitionStart, onTransitionComplete, onProgressUi }) {
   let currentIndex = 0
   /** Sur un panneau à deux temps : 0 = état d’arrivée, 1 = animation / iframe */
@@ -162,6 +177,10 @@ export function initScroll({ reducedMotion, onTransitionStart, onTransitionCompl
 
   function onWheel(e) {
     if (locked) {
+      e.preventDefault()
+      return
+    }
+    if (introWheelGuard?.(e)) {
       e.preventDefault()
       return
     }

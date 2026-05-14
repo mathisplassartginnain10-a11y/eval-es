@@ -1,12 +1,27 @@
 import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { createSlideStage } from "./src/slideStage.js"
-import { initScroll, scrollToSection, SECTION_COUNT, killPuitsScrollTrigger, setupPuitsScrollTrigger } from "./src/scroll.js"
+import {
+  bindScrollTriggerResizeRefresh,
+  configureGsapPerformance,
+  detectIpadLike,
+  initLayoutEntranceAnimations,
+  setupDotsScrollFeedback,
+  setupFinePointerHoverNudges,
+} from "./src/textAnimations.js"
+import { initScroll, scrollToSection, SECTION_COUNT, killPuitsScrollTrigger, setupPuitsScrollTrigger, setIntroStarsInteractionGuards } from "./src/scroll.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
 import { createSphereAnim } from "./src/sphereAnim.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 
 const motionRef = {
-  reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+}
+
+const isIpadLike = detectIpadLike()
+configureGsapPerformance({ reducedMotion: motionRef.reduced, isIpad: isIpadLike })
+if (isIpadLike && !motionRef.reduced) {
+  gsap.globalTimeline.timeScale(1.28)
 }
 
 window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => {
@@ -113,6 +128,13 @@ function buildScrollShell() {
 buildScrollShell()
 const dots = [...document.querySelectorAll(".section-dot")]
 
+bindScrollTriggerResizeRefresh()
+initLayoutEntranceAnimations({ reducedMotion: motionRef.reduced })
+if (!motionRef.reduced) {
+  setupDotsScrollFeedback(scrollRoot, dots)
+}
+setupFinePointerHoverNudges()
+
 let lastTextKey = null
 /** @type {ReturnType<initScroll> | null} */
 let scrollApi = null
@@ -137,7 +159,25 @@ function fillTextContent(key) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-  const titreHtml = titreLines.map((line) => escapeHtml(line)).join("<br />")
+
+  let titreHtml
+  if (block.introPoster && titreLines.length) {
+    titreHtml = titreLines
+      .map((line) => {
+        const words = line.split(/\s+/).filter(Boolean)
+        return words
+          .map(
+            (w) =>
+              `<span class="title-word"><span class="title-word__inner">${escapeHtml(w)}</span></span>`
+          )
+          .join(" ")
+      })
+      .join("<br />")
+  } else {
+    titreHtml = titreLines.map((line) => escapeHtml(line)).join("<br />")
+  }
+
+  textTitle.classList.toggle("partie-title", !!block.partTitle)
   textTitle.innerHTML = `<span class="text-overlay__title-inner">${titreHtml}</span>`
   textOverlay.classList.toggle("text-overlay--stacked-title", titreLines.length > 1)
   textOverlay.classList.toggle("text-overlay--title-rule", !!block.titleUnderline)
@@ -147,7 +187,9 @@ function fillTextContent(key) {
   textSubtitle.textContent = st
   textSubtitle.hidden = !st
 
-  textBody.innerHTML = block.paragraphes.map((p) => `<p>${escapeHtml(p)}</p>`).join("")
+  textBody.innerHTML = block.paragraphes
+    .map((p) => `<p class="text-overlay__p" data-anim="fade-up">${escapeHtml(p)}</p>`)
+    .join("")
 
   if (block.credit) {
     textCredit.textContent = block.credit
@@ -176,13 +218,13 @@ function snapPageEnterLayerComplete() {
   gsap.killTweensOf(stageMediaWrap)
   gsap.set(stageMediaWrap, { autoAlpha: 1, clearProps: "opacity,visibility,transform" })
 
-  const textEls = [textKicker, textTitle, textSubtitle, textBody, textCredit].filter((el) => el instanceof HTMLElement)
-  gsap.killTweensOf(textEls)
+  const textEls = collectTextOverlayTweenTargets()
+  if (textEls.length) gsap.killTweensOf(textEls)
   if (textOverlay && !textOverlay.hidden) {
-    gsap.set(textEls, { autoAlpha: 1, clearProps: "opacity,visibility,transform" })
+    if (textEls.length) gsap.set(textEls, { autoAlpha: 1, clearProps: "opacity,visibility,transform" })
     textOverlay.classList.add("is-visible")
   } else {
-    gsap.set(textEls, { clearProps: "opacity,visibility,transform" })
+    if (textEls.length) gsap.set(textEls, { clearProps: "opacity,visibility,transform" })
   }
 
   if (introPageMeta instanceof HTMLElement) {
@@ -191,11 +233,30 @@ function snapPageEnterLayerComplete() {
   }
 }
 
-/** Blocs texte visibles pour l’entrée (hors `[hidden]`). */
-function collectTextEnterTargets() {
+/** Éléments texte pour kill / snap (inclut les paragraphes du corps). */
+function collectTextOverlayTweenTargets() {
   if (!textOverlay || textOverlay.hidden) return []
-  const parts = [textKicker, textTitle, textSubtitle, textBody, textCredit]
-  return parts.filter((el) => el instanceof HTMLElement && !el.hidden)
+  const parts = [textKicker, textTitle, textSubtitle, textBody, textCredit].filter(
+    (el) => el instanceof HTMLElement && !el.hidden
+  )
+  const ps =
+    textBody instanceof HTMLElement && !textBody.hidden
+      ? [...textBody.querySelectorAll("p")]
+      : []
+  return [...parts, ...ps]
+}
+
+/** Cibles pour la timeline d’entrée (paragraphes séparés pour le stagger). */
+function collectTextEnterTimelineTargets() {
+  if (!textOverlay || textOverlay.hidden) return []
+  const parts = [textKicker, textTitle, textSubtitle, textCredit].filter(
+    (el) => el instanceof HTMLElement && !el.hidden
+  )
+  const ps =
+    textBody instanceof HTMLElement && !textBody.hidden
+      ? [...textBody.querySelectorAll("p")]
+      : []
+  return [...parts, ...ps]
 }
 
 /**
@@ -208,7 +269,7 @@ function primePageEnterHidden(sectionIndex) {
   killPageEnterTimeline()
   snapPageEnterLayerComplete()
 
-  const textTargets = collectTextEnterTargets()
+  const textTargets = collectTextEnterTimelineTargets()
   const killList = [stageMediaWrap, ...textTargets]
   if (introPageMeta instanceof HTMLElement) killList.push(introPageMeta)
   gsap.killTweensOf(killList)
@@ -223,7 +284,25 @@ function primePageEnterHidden(sectionIndex) {
   }
 
   gsap.set(stageMediaWrap, { autoAlpha: 0, y: 24, force3D: true })
-  if (textTargets.length) gsap.set(textTargets, { autoAlpha: 0, y: 24, force3D: true })
+
+  const isIntroPoster = textOverlay?.classList.contains("text-overlay--intro-poster")
+  const isPartTitle = textTitle instanceof HTMLElement && textTitle.classList.contains("partie-title")
+  const primeText =
+    sectionIndex === 0 && isIntroPoster
+      ? textTargets.filter((el) => el !== textTitle)
+      : isPartTitle && !(sectionIndex === 0 && isIntroPoster)
+        ? textTargets.filter((el) => el !== textTitle)
+        : textTargets
+  if (primeText.length) gsap.set(primeText, { autoAlpha: 0, y: 24, force3D: true })
+  if (sectionIndex === 0 && isIntroPoster && textTitle instanceof HTMLElement) {
+    const inners = textTitle.querySelectorAll(".title-word__inner")
+    if (inners.length) {
+      gsap.set(inners, { yPercent: 118, autoAlpha: 0, force3D: true })
+      gsap.set(textTitle, { autoAlpha: 1, y: 0, clearProps: "transform" })
+    }
+  } else if (isPartTitle && textTitle instanceof HTMLElement) {
+    gsap.set(textTitle, { x: -48, autoAlpha: 0, force3D: true })
+  }
   if (sectionIndex === 0 && introPageMeta instanceof HTMLElement) {
     gsap.set(introPageMeta, { autoAlpha: 0, y: 24 })
   }
@@ -238,20 +317,34 @@ function triggerPageEnterEffects(sectionIndex) {
     return
   }
 
-  const textTargets = collectTextEnterTargets()
+  const textTargetsAll = collectTextEnterTimelineTargets()
+  const isIntroPoster = textOverlay?.classList.contains("text-overlay--intro-poster")
+  const isPartTitle = textTitle instanceof HTMLElement && textTitle.classList.contains("partie-title")
+
+  let textForStagger = textTargetsAll
+  if (sectionIndex === 0 && isIntroPoster) {
+    textForStagger = textTargetsAll.filter((el) => el !== textTitle)
+  } else if (isPartTitle && !isIntroPoster) {
+    textForStagger = textTargetsAll.filter((el) => el !== textTitle)
+  }
+
   const introTargets = sectionIndex === 0 && introPageMeta instanceof HTMLElement ? [introPageMeta] : []
 
   const ease = "power2.out"
-  const dur = 0.88
+  const dur = isIpadLike ? 0.72 : 0.88
+  const stagger = isIpadLike ? 0.045 : 0.08
 
   pageEnterTimeline = gsap.timeline({
     onComplete: () => {
       pageEnterTimeline = null
       gsap.set(stageMediaWrap, { clearProps: "opacity,visibility,transform" })
-      if (textTargets.length) gsap.set(textTargets, { clearProps: "opacity,visibility,transform" })
+      const clearEls = collectTextOverlayTweenTargets()
+      if (clearEls.length) gsap.set(clearEls, { clearProps: "opacity,visibility,transform" })
+      const innersDone = textTitle?.querySelectorAll?.(".title-word__inner") ?? []
+      if (innersDone.length) gsap.set(innersDone, { clearProps: "opacity,visibility,transform" })
       if (textOverlay && !textOverlay.hidden) textOverlay.classList.add("is-visible")
       if (introTargets.length) gsap.set(introTargets, { clearProps: "opacity,visibility,transform" })
-    }
+    },
   })
 
   pageEnterTimeline.fromTo(
@@ -260,12 +353,33 @@ function triggerPageEnterEffects(sectionIndex) {
     { autoAlpha: 1, y: 0, duration: dur, ease },
     0
   )
-  if (textTargets.length) {
+  if (textForStagger.length) {
     pageEnterTimeline.fromTo(
-      textTargets,
+      textForStagger,
       { autoAlpha: 0, y: 24, force3D: true },
-      { autoAlpha: 1, y: 0, duration: dur, ease, stagger: 0.08 },
+      { autoAlpha: 1, y: 0, duration: dur, ease, stagger },
       0.08
+    )
+  }
+  if (sectionIndex === 0 && isIntroPoster && textTitle) {
+    const inners = textTitle.querySelectorAll(".title-word__inner")
+    if (inners.length) {
+      const wDur = isIpadLike ? 0.58 : 0.92
+      const wSt = isIpadLike ? 0.04 : 0.085
+      pageEnterTimeline.fromTo(
+        inners,
+        { yPercent: 118, autoAlpha: 0, force3D: true },
+        { yPercent: 0, autoAlpha: 1, duration: wDur, stagger: wSt, ease: "expo.out" },
+        0.18
+      )
+    }
+  }
+  if (isPartTitle && !isIntroPoster && textTitle instanceof HTMLElement) {
+    pageEnterTimeline.fromTo(
+      textTitle,
+      { x: -44, autoAlpha: 0, force3D: true },
+      { x: 0, autoAlpha: 1, duration: isIpadLike ? 0.62 : 0.82, ease: "power3.out" },
+      0.1
     )
   }
   if (introTargets.length) {
@@ -422,7 +536,20 @@ function updateUi(sectionIndex) {
     textOverlay.setAttribute("aria-hidden", spherePage ? "true" : "false")
   }
 
-  progressBar.style.width = `${((sectionIndex + 1) / SECTION_COUNT) * 100}%`
+  const pct = ((sectionIndex + 1) / SECTION_COUNT) * 100
+  if (progressBar instanceof HTMLElement) {
+    if (motionRef.reduced) {
+      gsap.killTweensOf(progressBar)
+      progressBar.style.width = `${pct}%`
+    } else {
+      gsap.to(progressBar, {
+        width: `${pct}%`,
+        duration: isIpadLike ? 0.34 : 0.48,
+        ease: "power2.out",
+        overwrite: "auto",
+      })
+    }
+  }
 
   dots.forEach((d, i) => {
     d.classList.toggle("is-active", i === sectionIndex)
@@ -466,6 +593,131 @@ scrollApi = initScroll({
   onProgressUi: () => {}
 })
 
+/** @type {null | (() => void)} */
+let introStarsExitIntro = null
+
+function initIntroStarsOverlay() {
+  const frame = document.getElementById("intro-stars-frame")
+  if (!(frame instanceof HTMLIFrameElement)) return
+
+  document.body.classList.add("intro-stars-phase")
+  document.body.style.overflow = "hidden"
+
+  const clipFrames = () =>
+    [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
+
+  for (const el of clipFrames()) {
+    el.style.transformOrigin = "center center"
+    el.style.transform = "scale(0.05)"
+  }
+
+  let exited = false
+  let safetyUnlockTimer = 0
+
+  function exitIntro() {
+    if (exited) return
+    exited = true
+    introStarsExitIntro = null
+    if (safetyUnlockTimer) window.clearTimeout(safetyUnlockTimer)
+    setIntroStarsInteractionGuards(null)
+
+    frame.contentWindow?.IntroStars?.exit?.()
+
+    snapPageEnterLayerComplete()
+
+    for (const f of clipFrames()) {
+      f.style.transform = "scale(0.05)"
+      f.style.transition = "none"
+      f.style.transformOrigin = "center center"
+    }
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        for (const f of clipFrames()) {
+          f.style.transition = "transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)"
+          f.style.transform = "scale(1)"
+        }
+      })
+    })
+
+    setTimeout(() => {
+      frame.style.transition = "opacity 0.8s ease"
+      frame.style.opacity = "0"
+      setTimeout(() => {
+        frame.remove()
+        document.body.classList.remove("intro-stars-phase")
+        document.body.style.overflow = ""
+      }, 800)
+    }, 100)
+
+    const names = document.getElementById("persistent-names")
+    if (names instanceof HTMLElement) names.style.opacity = "1"
+
+    const hint = document.getElementById("scroll-hint")
+    if (hint instanceof HTMLElement) hint.style.opacity = "0"
+  }
+
+  introStarsExitIntro = exitIntro
+
+  setIntroStarsInteractionGuards({
+    wheel: () => {
+      if (exited) return false
+      exitIntro()
+      return true
+    },
+  })
+
+  safetyUnlockTimer = window.setTimeout(() => {
+    if (!exited) {
+      document.body.style.overflow = ""
+      document.body.classList.remove("intro-stars-phase")
+    }
+  }, 4000)
+
+  function wireIntroReady() {
+    const api = frame.contentWindow?.IntroStars
+    if (api && typeof api.onComplete === "function") {
+      let done = false
+      api.onComplete(() => {
+        if (done) return
+        done = true
+        if (safetyUnlockTimer) window.clearTimeout(safetyUnlockTimer)
+        document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
+          if (!(el instanceof HTMLIFrameElement)) return
+          const ds = el.dataset.src
+          if (ds && (!el.src || el.src === "about:blank")) el.src = ds
+        })
+        document.body.style.overflow = ""
+        document.body.classList.remove("intro-stars-phase")
+        const hint = document.getElementById("scroll-hint")
+        if (hint instanceof HTMLElement) hint.style.opacity = "1"
+      })
+    } else {
+      if (safetyUnlockTimer) window.clearTimeout(safetyUnlockTimer)
+      document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
+        if (!(el instanceof HTMLIFrameElement)) return
+        const ds = el.dataset.src
+        if (ds && (!el.src || el.src === "about:blank")) el.src = ds
+      })
+      document.body.style.overflow = ""
+      document.body.classList.remove("intro-stars-phase")
+      const hint = document.getElementById("scroll-hint")
+      if (hint instanceof HTMLElement) hint.style.opacity = "1"
+    }
+  }
+
+  if (frame.contentDocument?.readyState === "complete") queueMicrotask(wireIntroReady)
+  else frame.addEventListener("load", () => queueMicrotask(wireIntroReady), { once: true })
+
+  const onFirstScrollLike = () => {
+    introStarsExitIntro?.()
+  }
+  window.addEventListener("scroll", onFirstScrollLike, { passive: true, once: true })
+  window.addEventListener("touchmove", onFirstScrollLike, { passive: true, once: true })
+}
+
+initIntroStarsOverlay()
+
 dots.forEach((btn) => {
   btn.addEventListener("click", () => {
     const idx = Number.parseInt(btn.dataset.section, 10)
@@ -475,12 +727,22 @@ dots.forEach((btn) => {
 
 window.addEventListener("load", () => {
   scrollApi?.refresh()
+  ScrollTrigger.refresh()
 })
 
 window.addEventListener("keydown", (e) => {
   if (e.defaultPrevented) return
   const t = e.target
   if (t && (t.isContentEditable || (t.closest && t.closest("input, textarea, select")))) return
+
+  if (document.getElementById("intro-stars-frame") && introStarsExitIntro) {
+    if (e.key === " " || e.key === "ArrowDown" || e.key === "PageDown") {
+      e.preventDefault()
+      introStarsExitIntro()
+      return
+    }
+  }
+
   if (scrollApi?.isLocked?.()) return
 
   if (e.key === "ArrowDown" || e.key === "PageDown") {
