@@ -607,41 +607,114 @@ scrollApi = initScroll({
   onProgressUi: () => {}
 })
 
-const INTRO_NAV_UNBLOCK_MS = 1000
-const INTRO_AUTO_EXIT_MS = 3000
+const INTRO_AUTO_EXIT_MS = 5000
 const introStarsFrameEl = document.getElementById("intro-stars-frame")
 const introTapCatcherEl = document.getElementById("intro-tap-catcher")
-let introNavBlocked = introStarsFrameEl instanceof HTMLIFrameElement
-let introExited = false
-let introIdleExitTimer = 0
-let introStarsWireDone = false
 
-function clearIntroIdleExitTimer() {
-  if (introIdleExitTimer) {
-    window.clearTimeout(introIdleExitTimer)
-    introIdleExitTimer = 0
+let introExited = false
+/** Tant que true, la navigation par swipe / clavier est bloquée (phase intro). */
+let introActive = introStarsFrameEl instanceof HTMLIFrameElement
+/** true quand l’iframe signale la fin de la séquence (idle + globes prêts). */
+let introReady = false
+let introStarsWireDone = false
+let introGlobesPrimed = false
+let introAutoExitTimer = 0
+
+function clearIntroAutoExitTimer() {
+  if (introAutoExitTimer) {
+    window.clearTimeout(introAutoExitTimer)
+    introAutoExitTimer = 0
   }
 }
 
-function scheduleIntroIdleExit() {
-  clearIntroIdleExitTimer()
-  introIdleExitTimer = window.setTimeout(() => {
-    introIdleExitTimer = 0
-    if (!introExited) exitIntro()
-  }, INTRO_AUTO_EXIT_MS)
+function primeIntroGlobesAndHint() {
+  if (introGlobesPrimed) return
+  introGlobesPrimed = true
+  document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
+    if (!(el instanceof HTMLIFrameElement)) return
+    const ds = el.dataset.src
+    if (ds && (!el.src || el.src === "about:blank")) el.src = ds
+  })
+  const hintEl = document.getElementById("scroll-hint")
+  if (hintEl instanceof HTMLElement) hintEl.style.opacity = "1"
+}
+
+function onIntroWindowClick(e) {
+  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
+  if (e.target instanceof Element && e.target.closest("#btn-prev, #section-dots, .section-dot")) return
+  e.preventDefault()
+  e.stopPropagation()
+  exitIntro()
+}
+
+function onIntroTouchEnd() {
+  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
+  exitIntro()
+}
+
+function onIntroKeydown(e) {
+  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
+  const t = e.target
+  if (t && (t.isContentEditable || (t.closest && t.closest("input, textarea, select")))) return
+  const introKeysExit =
+    e.key === "Enter" || e.key === " " || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown"
+  if (!introKeysExit) return
+  e.preventDefault()
+  e.stopPropagation()
+  exitIntro()
+}
+
+function onIntroMessage(e) {
+  if (!(introStarsFrameEl instanceof HTMLIFrameElement) || e.source !== introStarsFrameEl.contentWindow) return
+  if (e.data === "intro-complete") {
+    primeIntroGlobesAndHint()
+    introReady = true
+    return
+  }
+  if (e.data === "intro-tap" || e.data === "intro-complete-tap") {
+    if (document.body.classList.contains("intro-stars-phase")) exitIntro()
+  }
+}
+
+function onIntroTapCatcherPointer(e) {
+  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
+  if (e.target instanceof Element && e.target.closest("#btn-prev, #section-dots, .section-dot")) return
+  e.preventDefault()
+  e.stopPropagation()
+  exitIntro()
+}
+
+function attachIntroInteractionListeners() {
+  window.addEventListener("click", onIntroWindowClick, true)
+  window.addEventListener("touchend", onIntroTouchEnd, { passive: true })
+  window.addEventListener("keydown", onIntroKeydown, true)
+  window.addEventListener("message", onIntroMessage, false)
+  if (introTapCatcherEl instanceof HTMLElement) {
+    introTapCatcherEl.addEventListener("pointerdown", onIntroTapCatcherPointer, { passive: false })
+    introTapCatcherEl.addEventListener("click", onIntroTapCatcherPointer, true)
+  }
+}
+
+function detachIntroInteractionListeners() {
+  window.removeEventListener("click", onIntroWindowClick, true)
+  window.removeEventListener("touchend", onIntroTouchEnd, { passive: true })
+  window.removeEventListener("keydown", onIntroKeydown, true)
+  window.removeEventListener("message", onIntroMessage, false)
+  if (introTapCatcherEl instanceof HTMLElement) {
+    introTapCatcherEl.removeEventListener("pointerdown", onIntroTapCatcherPointer, { passive: false })
+    introTapCatcherEl.removeEventListener("click", onIntroTapCatcherPointer, true)
+  }
 }
 
 function exitIntro() {
-  clearIntroIdleExitTimer()
   if (introExited) return
   introExited = true
-
-  window.setTimeout(() => {
-    introNavBlocked = false
-  }, INTRO_NAV_UNBLOCK_MS)
+  clearIntroAutoExitTimer()
+  detachIntroInteractionListeners()
 
   const frame = document.getElementById("intro-stars-frame")
   if (!(frame instanceof HTMLIFrameElement)) {
+    introActive = false
     document.body.classList.remove("intro-stars-phase")
     document.body.style.overflow = ""
     setStarsBackgroundActive(true)
@@ -697,6 +770,7 @@ function exitIntro() {
       document.body.style.overflow = ""
 
       setStarsBackgroundActive(true)
+      introActive = false
 
       const names = document.getElementById("persistent-names")
       if (names instanceof HTMLElement) {
@@ -715,13 +789,15 @@ function exitIntro() {
 function initIntroStarsOverlay() {
   const frame = document.getElementById("intro-stars-frame")
   if (!(frame instanceof HTMLIFrameElement)) {
-    introNavBlocked = false
+    introActive = false
     introExited = true
     return
   }
 
-  introNavBlocked = true
+  introActive = true
   introExited = false
+  introReady = false
+  introGlobesPrimed = false
   document.body.classList.add("intro-stars-phase")
   document.body.style.overflow = "hidden"
 
@@ -737,44 +813,33 @@ function initIntroStarsOverlay() {
     if (introStarsWireDone) return
     introStarsWireDone = true
     const api = frame.contentWindow?.IntroStars
-    const primeGlobesAndHint = () => {
-      document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
-        if (!(el instanceof HTMLIFrameElement)) return
-        const ds = el.dataset.src
-        if (ds && (!el.src || el.src === "about:blank")) el.src = ds
-      })
-      const hintEl = document.getElementById("scroll-hint")
-      if (hintEl instanceof HTMLElement) hintEl.style.opacity = "1"
+    const scheduleAutoExit = () => {
+      clearIntroAutoExitTimer()
+      introAutoExitTimer = window.setTimeout(() => {
+        introAutoExitTimer = 0
+        if (!introExited) exitIntro()
+      }, INTRO_AUTO_EXIT_MS)
     }
     if (api && typeof api.onComplete === "function") {
       let done = false
       api.onComplete(() => {
         if (done) return
         done = true
-        primeGlobesAndHint()
-        scheduleIntroIdleExit()
+        primeIntroGlobesAndHint()
+        introReady = true
+        scheduleAutoExit()
       })
     } else {
-      primeGlobesAndHint()
-      scheduleIntroIdleExit()
+      primeIntroGlobesAndHint()
+      introReady = true
+      scheduleAutoExit()
     }
   }
 
   if (frame.contentDocument?.readyState === "complete") queueMicrotask(wireIntroReady)
   else frame.addEventListener("load", () => queueMicrotask(wireIntroReady), { once: true })
 
-  if (introTapCatcherEl instanceof HTMLElement) {
-    const onIntroTapLayer = (e) => {
-      if (!document.body.classList.contains("intro-stars-phase") || introExited) return
-      const t = e.target
-      if (t instanceof Element && t.closest("#btn-prev, #section-dots, .section-dot")) return
-      e.preventDefault()
-      e.stopPropagation()
-      exitIntro()
-    }
-    introTapCatcherEl.addEventListener("pointerdown", onIntroTapLayer, { passive: false })
-    introTapCatcherEl.addEventListener("click", onIntroTapLayer, true)
-  }
+  attachIntroInteractionListeners()
 }
 
 const NAV_DELAY_MS = 500
@@ -892,7 +957,7 @@ function tryAdvanceForwardFromUserGesture(now) {
 }
 
 function handleNav(direction = "forward") {
-  if (introNavBlocked) return
+  if (introActive) return
   const now = Date.now()
   if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
   if (direction === "backward") {
@@ -917,12 +982,6 @@ function targetExcludesGlobalNav(el) {
 }
 
 function onGlobalClickNav(e) {
-  if (document.body.classList.contains("intro-stars-phase")) {
-    e.preventDefault()
-    e.stopPropagation()
-    exitIntro()
-    return
-  }
   if (targetExcludesGlobalNav(/** @type {EventTarget} */ (e.target))) return
   handleNav("forward")
 }
@@ -942,13 +1001,6 @@ function onTouchEndNav(e) {
   const dx = t.clientX - touchNavStartX
   const dy = t.clientY - touchNavStartY
   const dist = Math.sqrt(dx * dx + dy * dy)
-
-  if (document.body.classList.contains("intro-stars-phase")) {
-    if (dist < 15) {
-      exitIntro()
-    }
-    return
-  }
 
   if (dist >= 15) return
   if (targetExcludesGlobalNav(/** @type {EventTarget} */ (t.target))) return
@@ -1002,15 +1054,6 @@ window.addEventListener("keydown", (e) => {
   if (e.defaultPrevented) return
   const t = e.target
   if (t && (t.isContentEditable || (t.closest && t.closest("input, textarea, select")))) return
-
-  const introKeysExit =
-    e.key === "Enter" || e.key === " " || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown"
-
-  if (document.body.classList.contains("intro-stars-phase") && introKeysExit) {
-    e.preventDefault()
-    exitIntro()
-    return
-  }
 
   const forwardKeys = ["ArrowRight", "ArrowDown", "Enter", "PageDown"]
   if (e.key === " " || forwardKeys.includes(e.key)) {

@@ -8,16 +8,14 @@
 ================================================================
 GUIDE CURSOR — intro-stars.html
 ================================================================
-SÉQUENCE COMPLÈTE :
-  0s → 4s  : étoiles fusent (warp) + "Présenté par" + noms en grand
-  4s → 5s  : étoiles ralentissent, noms fade-out
-  5s → 6s  : titre "LA TERRE N'EST PAS RONDE" apparaît en grand
-  6s → ∞   : idle, attend le tap
+SÉQUENCE : warp → noms → titre → idle (hint « Appuyer »).
 
-AU TAP SUR LA PAGE PARENTE (index) : IntroStars.exit() est appelé depuis main.js — pas depuis cette iframe.
-API :
-  .exit()
-  .onComplete(fn)
+Messages postMessage vers la page parente (index / main.js) :
+  • "intro-complete" — idle atteint, prêt pour le tap (le parent charge les 3 globes, etc.).
+  • "intro-tap"      — interaction utilisateur après idle (ou accélération avant) ; le parent appelle exitIntro().
+
+La page parente appelle encore IntroStars.exit() pour le fondu de sortie.
+API : .exit()  .onComplete(fn)  .getSeedPositions()
 ================================================================
 -->
 <style>
@@ -282,6 +280,11 @@ function loop(ts){
     if(elapsed > T_HINT + 800){
       phase4Done = true;
       if(_onComplete) _onComplete();
+      // Signaler au parent que l'animation est terminée
+      try { window.parent.postMessage('intro-complete', '*'); } catch(e){}
+      // Rendre le hint cliquable pour que le tap remonte bien au parent
+      elHint.style.pointerEvents = 'auto';
+      elHint.style.cursor = 'pointer';
     }
   }
 }
@@ -289,7 +292,27 @@ function loop(ts){
 /* Démarrer immédiatement */
 requestAnimationFrame(loop);
 
-/* Sortie : uniquement la page parente (index) appelle window.IntroStars.exit() — pas d’écouteurs ici. */
+/* Tap / pointeur : accélère la timeline tant que l’anim n’est pas finie ; ensuite chaque tap envoie "intro-tap" au parent */
+let earlyTriggered = false;
+function onUserActivation(){
+  if(phase4Done){
+    try { window.parent.postMessage('intro-tap', '*'); } catch(e){}
+    return;
+  }
+  if(earlyTriggered) return;
+  earlyTriggered = true;
+  if(startTs !== null){
+    const now = performance.now();
+    const elapsed = now - startTs;
+    if(elapsed < 13000){
+      startTs = now - 6000;
+    }
+  }
+  elHint.style.opacity = '0';
+}
+
+window.addEventListener('pointerdown', onUserActivation, { passive: true });
+
 
 /* ── API publique ── */
 window.IntroStars = {

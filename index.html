@@ -36,7 +36,7 @@
   <div id="starfield-bg" aria-hidden="true">
     <canvas id="stars-bg" class="stars-bg" width="300" height="150"></canvas>
   </div>
-  <!-- Plein écran au-dessus de l’app : premier appui sur la page parent → IntroStars.exit() (voir main.js) -->
+  <!-- Intro : l’iframe envoie postMessage "intro-complete" puis "intro-tap" ; écoute dans main.js → exitIntro() -->
   <iframe
     id="intro-stars-frame"
     class="intro-stars-frame"
