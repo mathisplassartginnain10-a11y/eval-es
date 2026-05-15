@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sphère → sphéroïde oblate</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: Inter, system-ui, sans-serif;
+    color: #f5f5f7;
+  }
+  #app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.35rem, 1.5vh, 0.65rem);
+    padding: clamp(0.35rem, 2vh, 0.85rem) clamp(0.5rem, 3vw, 1rem);
+  }
+  #stage {
+    position: relative;
+    width: min(88vw, 440px);
+    height: min(88vw, 440px);
+    max-height: min(64vh, 440px);
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  #c {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #hud {
+    width: min(92vw, 320px);
+    text-align: center;
+    pointer-events: none;
+  }
+  #hud-title {
+    font-size: clamp(0.78rem, 1.9vw, 0.92rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    min-height: 1.35em;
+    margin-bottom: 0.45rem;
+    color: #f5f5f7;
+  }
+  #hud-metrics {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .metric {
+    flex: 1 1 42%;
+    min-width: 7.5rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+  }
+  .metric-label {
+    font-size: clamp(0.58rem, 1.5vw, 0.68rem);
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: rgba(161, 161, 166, 0.95);
+  }
+  .metric-val {
+    font-size: clamp(0.74rem, 1.75vw, 0.88rem);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-val--eq { color: #4a9eff; }
+  .metric-val--pol { color: #4ecdc4; }
+  #hud-legend {
+    margin-top: 0.45rem;
+    font-size: clamp(0.58rem, 1.45vw, 0.68rem);
+    color: rgba(161, 161, 166, 0.85);
+    letter-spacing: 0.03em;
+    line-height: 1.45;
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+    vertical-align: middle;
+  }
+  .legend-dot--eq { background: #4a9eff; }
+  .legend-dot--pol { background: #4ecdc4; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage"><canvas id="c"></canvas></div>
+  <div id="hud">
+    <p id="hud-title">Sphère parfaite</p>
+    <div id="hud-metrics">
+      <div class="metric">
+        <span class="metric-label">Rayon équatorial</span>
+        <span class="metric-val metric-val--eq" id="val-eq">6 371 km</span>
+      </div>
+      <div class="metric metric--pol">
+        <span class="metric-label">Rayon polaire</span>
+        <span class="metric-val metric-val--pol" id="val-pol">6 371 km</span>
+      </div>
+    </div>
+    <p id="hud-legend">
+      <span class="legend-dot legend-dot--eq"></span>Axe équatorial
+      &nbsp;·&nbsp;
+      <span class="legend-dot legend-dot--pol"></span>Axe polaire
+    </p>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const TARGET_FPS = 30;
+const FRAME_MS = 1000 / TARGET_FPS;
+const FLAT_DURATION = 4800;
+
+const EQ_START = 6371;
+const EQ_END = 6378;
+const POL_START = 6371;
+const POL_END = 6357;
+
+const GLOBE_R = 1.05;
+const TILT = 0.18;
+const CAM_R_MIN = 4.2;
+const CAM_MARGIN = 1.28;
+
+const stage = document.getElementById('stage');
+const canvas = document.getElementById('c');
+const elTitle = document.getElementById('hud-title');
+const elValEq = document.getElementById('val-eq');
+const elValPol = document.getElementById('val-pol');
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: false,
+  powerPreference: 'low-power',
+  alpha: false,
+});
+renderer.setPixelRatio(1);
+renderer.setClearColor(0x000000, 1);
+renderer.shadowMap.enabled = false;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 200);
+
+scene.add(new THREE.AmbientLight(0x334455, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 1.05);
+sun.position.set(5, 4, 6);
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0x88bbee, 0.28);
+rim.position.set(-4, -1, -3);
+scene.add(rim);
+
+let globe = null;
+let atmosphere = null;
+let axisGroup = null;
+let ready = false;
+
+let flatT = 0;
+let flatAnimating = false;
+let flatStartTs = 0;
+let camAngle = 0.35;
+let paused = true;
+let loopRunning = false;
+let rafId = 0;
+let lastFrame = 0;
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function fmtKm(v) {
+  return Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f') + ' km';
+}
+
+function getScales(t) {
+  const e = easeInOutCubic(Math.max(0, Math.min(1, t)));
+  return {
+    sx: lerp(1, 1.048, e),
+    sy: lerp(1, 0.938, e),
+    eq: lerp(EQ_START, EQ_END, e),
+    pol: lerp(POL_START, POL_END, e),
+    e,
+  };
+}
+
+function updateHud(t) {
+  const { eq, pol, e } = getScales(t);
+  elValEq.textContent = fmtKm(eq);
+  elValPol.textContent = fmtKm(pol);
+  if (e < 0.03) elTitle.textContent = 'Sphère parfaite';
+  else if (e > 0.97) elTitle.textContent = 'Sphéroïde oblate';
+  else elTitle.textContent = 'Déformation en cours…';
+}
+
+function applyFlattening(t) {
+  if (!globe || !atmosphere) return;
+  const { sx, sy } = getScales(t);
+  globe.scale.set(GLOBE_R * sx, GLOBE_R * sy, GLOBE_R * sx);
+  atmosphere.scale.set(GLOBE_R * sx * 1.03, GLOBE_R * sy * 1.03, GLOBE_R * sx * 1.03);
+  updateHud(t);
+}
+
+function makeDashedLine(a, b, color, opacity) {
+  const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
+  const mat = new THREE.LineDashedMaterial({
+    color,
+    transparent: true,
+    opacity,
+    dashSize: 0.08,
+    gapSize: 0.05,
+    depthWrite: false,
+  });
+  const line = new THREE.Line(geo, mat);
+  line.computeLineDistances();
+  return line;
+}
+
+function makeSolidArrow(from, to, color) {
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  dir.normalize();
+  const group = new THREE.Group();
+  const shaft = new THREE.BufferGeometry().setFromPoints([from, to]);
+  group.add(new THREE.Line(shaft, new THREE.LineBasicMaterial({ color, linewidth: 2 })));
+  const head = new THREE.Mesh(
+    new THREE.ConeGeometry(0.035, 0.1, 8),
+    new THREE.MeshBasicMaterial({ color })
+  );
+  head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  head.position.copy(to).addScaledVector(dir, -0.05);
+  group.add(head);
+  return group;
+}
+
+function buildAxes() {
+  const g = new THREE.Group();
+  const ext = 1.06;
+
+  g.add(makeDashedLine(new THREE.Vector3(0, ext, 0), new THREE.Vector3(0, -ext, 0), 0x4ecdc4, 0.45));
+  g.add(makeDashedLine(new THREE.Vector3(-ext, 0, 0), new THREE.Vector3(ext, 0, 0), 0x4a9eff, 0.45));
+
+  g.add(makeSolidArrow(new THREE.Vector3(0, 0, 0), new THREE.Vector3(ext * 0.88, 0, 0), 0x4a9eff));
+  g.add(makeSolidArrow(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, ext * 0.88, 0), 0x4ecdc4));
+
+  const ringPts = [];
+  const segs = 64;
+  for (let i = 0; i <= segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    ringPts.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
+  }
+  const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPts);
+  g.add(new THREE.Line(
+    ringGeo,
+    new THREE.LineBasicMaterial({ color: 0x4a9eff, transparent: true, opacity: 0.35 })
+  ));
+
+  return g;
+}
+
+function getFramingRadius() {
+  const { sx, sy } = getScales(flatT);
+  const rx = GLOBE_R * sx;
+  const ry = GLOBE_R * sy;
+  const axisReach = GLOBE_R * Math.max(sx, sy) * 1.06;
+  return Math.max(rx, ry, axisReach);
+}
+
+function applyCamera() {
+  const r = getFramingRadius();
+  const vFov = (camera.fov * Math.PI) / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(camera.aspect, 0.75));
+  const limitingFov = Math.min(vFov, hFov);
+  const fitDist = (r * CAM_MARGIN) / Math.sin(limitingFov / 2);
+  const dist = Math.max(CAM_R_MIN, fitDist);
+
+  camera.position.set(
+    dist * Math.sin(camAngle),
+    dist * Math.sin(TILT),
+    dist * Math.cos(camAngle)
+  );
+  camera.lookAt(0, 0, 0);
+}
+
+function resize() {
+  const w = stage.clientWidth || 280;
+  const h = stage.clientHeight || w;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / Math.max(h, 1);
+  camera.updateProjectionMatrix();
+  if (ready) renderer.render(scene, camera);
+}
+
+function tick(ts) {
+  if (!loopRunning) return;
+
+  if (paused || !ready) {
+    rafId = requestAnimationFrame(tick);
+    return;
+  }
+
+  if (ts - lastFrame < FRAME_MS) {
+    rafId = requestAnimationFrame(tick);
+    return;
+  }
+  lastFrame = ts;
+
+  if (flatAnimating) {
+    if (!flatStartTs) flatStartTs = ts;
+    const raw = Math.min((ts - flatStartTs) / FLAT_DURATION, 1);
+    flatT = raw;
+    applyFlattening(flatT);
+    if (raw >= 1) flatAnimating = false;
+  }
+
+  if (flatAnimating || flatT > 0.02) {
+    camAngle += ((2 * Math.PI) / (14 * 60)) * 0.85;
+  }
+  applyCamera();
+  renderer.render(scene, camera);
+  rafId = requestAnimationFrame(tick);
+}
+
+function startLoop() {
+  if (loopRunning) return;
+  loopRunning = true;
+  lastFrame = performance.now();
+  rafId = requestAnimationFrame(tick);
+}
+
+function playAnim() {
+  if (!ready) return;
+  paused = false;
+  flatAnimating = true;
+  flatStartTs = 0;
+  flatT = 0;
+  applyFlattening(0);
+  applyCamera();
+  startLoop();
+}
+
+function resetAnim() {
+  paused = true;
+  flatAnimating = false;
+  flatStartTs = 0;
+  flatT = 0;
+  camAngle = 0.35;
+  applyFlattening(0);
+  applyCamera();
+  if (ready) renderer.render(scene, camera);
+}
+
+function seekAnim(t) {
+  if (!ready) return;
+  paused = true;
+  flatAnimating = false;
+  flatStartTs = 0;
+  flatT = Math.max(0, Math.min(1, Number(t) || 0));
+  applyFlattening(flatT);
+  applyCamera();
+  renderer.render(scene, camera);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) paused = true;
+});
+
+window.addEventListener('message', (e) => {
+  if (e.data === 'play') playAnim();
+  if (e.data === 'reset') resetAnim();
+  if (e.data === 'pause') paused = true;
+  if (e.data === 'resume') paused = false;
+});
+
+new THREE.TextureLoader().load('./textures/earth-texture.jpg', (earthTex) => {
+  earthTex.colorSpace = THREE.SRGBColorSpace;
+
+  globe = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 48, 48),
+    new THREE.MeshPhongMaterial({
+      map: earthTex,
+      specular: new THREE.Color(0x1a3355),
+      shininess: 16,
+    })
+  );
+  scene.add(globe);
+
+  atmosphere = new THREE.Mesh(
+    new THREE.SphereGeometry(1.03, 32, 32),
+    new THREE.MeshPhongMaterial({
+      color: 0x4499ff,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.BackSide,
+      depthWrite: false,
+    })
+  );
+  scene.add(atmosphere);
+
+  axisGroup = buildAxes();
+  globe.add(axisGroup);
+
+  ready = true;
+  resize();
+  resetAnim();
+  startLoop();
+}, undefined, () => {
+  console.warn('Texture Terre introuvable : ./textures/earth-texture.jpg');
+});
+
+window.addEventListener('resize', resize);
+
+window.SphereAplatieAnim = {
+  play() { playAnim(); },
+  reset() { resetAnim(); },
+  pause() { paused = true; },
+  resume() { paused = false; },
+  seek(t) { seekAnim(t); },
+  isPlaying() { return flatAnimating && !paused; },
+};
+</script>
+</body>
+</html>

@@ -3,25 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Page 4</title>
+  <title>Page 4 — Gravité, formation sphérique</title>
   <link rel="stylesheet" href="../styles/ipad-text-scale.css" />
   <style>
-    body {
+    html, body {
       margin: 0;
-      min-height: 100vh;
+      width: 100%;
+      height: 100%;
       background: #04050c;
       color: #f5f5f7;
       font-family: Inter, system-ui, sans-serif;
+    }
+    .page-container {
+      box-sizing: border-box;
+      min-height: 100vh;
+      padding: clamp(0.75rem, 3vw, 1.25rem);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .page-container h1 {
+      font-size: clamp(1.1rem, 3vw, 1.35rem);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .iframe-wrap {
+      flex: 1;
+      min-height: min(70vh, 560px);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #000;
+    }
+    .iframe-wrap iframe {
+      width: 100%;
+      height: 100%;
+      min-height: min(70vh, 560px);
+      border: 0;
+      display: block;
     }
   </style>
 </head>
 <body>
   <div class="page-container">
-    <h1 class="text-3xl">Page 4</h1>
-    <p class="text-base">Légende ou note en <span class="text-xs">0.85rem</span>.</p>
-    <blockquote class="text-lg" style="margin: 1rem 0; border-left: 3px solid rgba(255,255,255,0.25); padding-left: 1rem">
-      Citation en <code>rem</code> pour cohérence iPad.
-    </blockquote>
+    <h1>Page 4 — Gravité, formation sphérique</h1>
+    <p class="text-base" style="opacity: 0.85; max-width: 42rem">
+      Aperçu isolé de l’<strong>étape 4</strong> de l’exposé (<code>index.html</code>) : même fichier que
+      <code>docs/prompts/gravity-sphere-formation.html</code>. Lecture auto après chargement ; dans l’exposé, lancement au premier « suivant » sur cette étape.
+    </p>
+    <div class="iframe-wrap">
+      <iframe
+        id="page4-preview-frame"
+        title="Gravité — formation sphérique"
+        src="../../docs/prompts/gravity-sphere-formation.html"
+        scrolling="no"
+      ></iframe>
+    </div>
   </div>
+  <script>
+    (function () {
+      const f = document.getElementById("page4-preview-frame");
+      if (!(f instanceof HTMLIFrameElement)) return;
+      f.addEventListener(
+        "load",
+        function () {
+          window.setTimeout(function () {
+            try {
+              f.contentWindow?.postMessage("play", "*");
+            } catch (_) {}
+          }, 500);
+        },
+        { once: true }
+      );
+    })();
+  </script>
 </body>
 </html>

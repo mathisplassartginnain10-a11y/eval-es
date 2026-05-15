@@ -10,31 +10,31 @@
   --sa-right: env(safe-area-inset-right, 0px);
 }
 
-/* Base typography: rem-based scaling */
+/* Base typography: rem-based scaling (modéré — évite titres/corps trop grands sur iPad) */
 html {
-  font-size: 16px;
+  font-size: 15px;
   -webkit-text-size-adjust: 100%; /* Désactive le zoom iOS sur input focus */
 }
 
 /* iPad Breakpoints (portrait / landscape) */
 @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
-  html { font-size: 20px; }
+  html { font-size: 16px; }
 }
 @media (min-width: 1025px) and (max-width: 1366px) and (orientation: landscape) {
-  html { font-size: 24px; }
+  html { font-size: 17px; }
 }
 @media (min-width: 1367px) {
-  html { font-size: 26px; }
+  html { font-size: 18px; }
 }
 
 /* Text scale utility classes (if needed for overrides) */
-.text-xs  { font-size: 0.85rem; }
-.text-sm  { font-size: 0.95rem; }
-.text-base { font-size: 1rem; }
-.text-lg  { font-size: 1.15rem; }
-.text-xl  { font-size: 1.35rem; }
-.text-2xl { font-size: 1.6rem; }
-.text-3xl { font-size: 1.9rem; }
+.text-xs  { font-size: 0.8rem; }
+.text-sm  { font-size: 0.875rem; }
+.text-base { font-size: 0.9375rem; }
+.text-lg  { font-size: 1.05rem; }
+.text-xl  { font-size: 1.2rem; }
+.text-2xl { font-size: 1.35rem; }
+.text-3xl { font-size: 1.55rem; }
 
 /* Global safe-area padding */
 body {

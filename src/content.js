@@ -25,9 +25,10 @@ export const CONTENT = {
   step04: step("Troisième partie :", "à compléter", [], "", { partTitle: true }),
   step05: step(
     "Quatrième partie :",
-    "La déformation topographique de la Terre",
+    "La dérive des continents",
     [
-      "La Terre n'est pas une sphère parfaite — elle est aplatie aux pôles de 21 km. Cette déformation, invisible à l'œil nu depuis l'espace, est prouvée par le satellite GOCE (ESA, 2009-2013) et formalisée par le standard WGS 84 depuis 1984.",
+      "La forme de la Terre ne se joue pas seulement dans l’espace : la tectonique des plaques déplace sans cesse les continents, de quelques centimètres à une vingtaine par an.",
+      "Là où les plaques se poussent, naissent chaînes et reliefs ; là où elles s’écartent, s’ouvrent rifts et dorsales. La surface reste ainsi en mouvement — la planète n’est pas une sphère figée, mais un globe vivant, toujours en train de se déformer.",
     ],
     "",
     { partTitle: true }

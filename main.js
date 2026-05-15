@@ -10,7 +10,6 @@ import {
 } from "./src/textAnimations.js"
 import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
-import { createSphereAnim } from "./src/sphereAnim.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 import {
   initStarsBackground,
@@ -53,6 +52,8 @@ const stageTilesRoot = document.getElementById("stage-tiles")
 const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
 const puitsPromptWrap = document.getElementById("puits-prompt-wrap")
 const topoPromptWrap = document.getElementById("topo-prompt-wrap")
+const page4AnimWrap = document.getElementById("page4-anim-wrap")
+const sphereAplatieWrap = document.getElementById("sphere-aplatie-wrap")
 const introClipsWrap = document.getElementById("intro-clips-wrap")
 const stageMediaWrap = document.getElementById("stage-media-wrap")
 const scrollRoot = document.getElementById("scroll-root")
@@ -83,6 +84,14 @@ if (!topoPromptWrap) {
   throw new Error("Conteneur #topo-prompt-wrap requis (index.html).")
 }
 
+if (!page4AnimWrap) {
+  throw new Error("Conteneur #page4-anim-wrap requis (index.html).")
+}
+
+if (!sphereAplatieWrap) {
+  throw new Error("Conteneur #sphere-aplatie-wrap requis (index.html).")
+}
+
 if (!introClipsWrap) {
   throw new Error("Conteneur #intro-clips-wrap requis (index.html).")
 }
@@ -91,14 +100,49 @@ if (!stageMediaWrap) {
   throw new Error("Conteneur #stage-media-wrap requis (index.html).")
 }
 
-/** @type {ReturnType<createSphereAnim> | null} */
-let sphereAnimApi = null
-
-function ensureSphereAnim() {
-  if (!sphereAnimApi) {
-    sphereAnimApi = createSphereAnim(stageSphereHost, { embed: true })
+function postToSphereAplatieFrame(msg) {
+  const fr = document.getElementById("sphere-aplatie-frame")
+  try {
+    fr?.contentWindow?.postMessage(msg, "*")
+  } catch (_) {
+    /* iframe absente ou cross-origin */
   }
-  return sphereAnimApi
+}
+
+function hideSphereAplatieMedia() {
+  sphereAplatieWrap.hidden = true
+  sphereAplatieWrap.setAttribute("aria-hidden", "true")
+  if (stageSphereHost) {
+    stageSphereHost.hidden = true
+    stageSphereHost.setAttribute("aria-hidden", "true")
+  }
+}
+
+function applySphereAplatieStep(sphereSub) {
+  const play = sphereSub === 1
+  stageTilesRoot.hidden = true
+  stageSingle.hidden = true
+  slideStage.clear()
+  eratoPromptWrap.hidden = true
+  eratoPromptWrap.setAttribute("aria-hidden", "true")
+  sphereAplatieWrap.hidden = false
+  sphereAplatieWrap.setAttribute("aria-hidden", "false")
+  queueMicrotask(() => {
+    if (!play) {
+      postToSphereAplatieFrame("reset")
+      return
+    }
+    if (motionRef.reduced) {
+      postToSphereAplatieFrame("reset")
+      try {
+        document.getElementById("sphere-aplatie-frame")?.contentWindow?.SphereAplatieAnim?.seek(1)
+      } catch (_) {
+        /* iframe pas prête */
+      }
+      return
+    }
+    postToSphereAplatieFrame("play")
+  })
 }
 
 const tileHosts = [...stageTilesRoot.querySelectorAll(".stage-tile")]
@@ -382,6 +426,21 @@ function applySlideForIndex(index, meta = {}) {
     })
   }
 
+  if (index !== 2) {
+    queueMicrotask(() => postToSphereAplatieFrame("reset"))
+  }
+
+  if (index !== 3) {
+    const gf = document.getElementById("page4-gravity-frame")
+    queueMicrotask(() => {
+      try {
+        gf?.contentWindow?.postMessage("reset", "*")
+      } catch (_) {
+        /* iframe absente ou cross-origin */
+      }
+    })
+  }
+
   if (index === 0) {
     introClipsWrap.hidden = false
     introClipsWrap.setAttribute("aria-hidden", "false")
@@ -392,12 +451,12 @@ function applySlideForIndex(index, meta = {}) {
     puitsPromptWrap.setAttribute("aria-hidden", "true")
     topoPromptWrap.hidden = true
     topoPromptWrap.setAttribute("aria-hidden", "true")
+    page4AnimWrap.hidden = true
+    page4AnimWrap.setAttribute("aria-hidden", "true")
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
-    sphereAnimApi?.reset()
-    stageSphereHost.hidden = true
-    stageSphereHost.setAttribute("aria-hidden", "true")
+    hideSphereAplatieMedia()
     return
   }
 
@@ -410,12 +469,14 @@ function applySlideForIndex(index, meta = {}) {
   topoPromptWrap.hidden = true
   topoPromptWrap.setAttribute("aria-hidden", "true")
 
+  page4AnimWrap.hidden = true
+  page4AnimWrap.setAttribute("aria-hidden", "true")
+
+  hideSphereAplatieMedia()
+
   if (kf.puitsPrompt) {
     eratoPromptWrap.hidden = true
     eratoPromptWrap.setAttribute("aria-hidden", "true")
-    sphereAnimApi?.reset()
-    stageSphereHost.hidden = true
-    stageSphereHost.setAttribute("aria-hidden", "true")
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
@@ -428,9 +489,6 @@ function applySlideForIndex(index, meta = {}) {
   if (kf.topoPrompt) {
     eratoPromptWrap.hidden = true
     eratoPromptWrap.setAttribute("aria-hidden", "true")
-    sphereAnimApi?.reset()
-    stageSphereHost.hidden = true
-    stageSphereHost.setAttribute("aria-hidden", "true")
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
@@ -449,12 +507,30 @@ function applySlideForIndex(index, meta = {}) {
     return
   }
 
+  if (kf.gravitySpherePrompt) {
+    eratoPromptWrap.hidden = true
+    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    stageTilesRoot.hidden = true
+    stageSingle.hidden = true
+    slideStage.clear()
+    page4AnimWrap.hidden = false
+    page4AnimWrap.setAttribute("aria-hidden", "false")
+    queueMicrotask(() => {
+      const fr = document.getElementById("page4-gravity-frame")
+      if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
+        try {
+          fr.contentWindow.postMessage("reset", "*")
+        } catch (_) {
+          /* cross-origin ou script pas encore chargé */
+        }
+      }
+    })
+    return
+  }
+
   if (kf.eratoTwoStep) {
     const showIframe = sphereSub === 1
     stageTilesRoot.hidden = true
-    sphereAnimApi?.reset()
-    stageSphereHost.hidden = true
-    stageSphereHost.setAttribute("aria-hidden", "true")
     if (!showIframe) {
       eratoPromptWrap.hidden = true
       eratoPromptWrap.setAttribute("aria-hidden", "true")
@@ -473,29 +549,9 @@ function applySlideForIndex(index, meta = {}) {
   eratoPromptWrap.setAttribute("aria-hidden", "true")
 
   if (kf.sphereTwoStep) {
-    const play = sphereSub === 1
-    stageTilesRoot.hidden = true
-    stageSingle.hidden = false
-    slideStage.clear()
-    stageSphereHost.hidden = false
-    stageSphereHost.setAttribute("aria-hidden", "false")
-    const api = ensureSphereAnim()
-    if (!play) {
-      api.reset()
-    } else {
-      api.reset()
-      if (motionRef.reduced) {
-        api.seek(1)
-      } else {
-        void api.play()
-      }
-    }
+    applySphereAplatieStep(sphereSub ?? 0)
     return
   }
-
-  sphereAnimApi?.reset()
-  stageSphereHost.hidden = true
-  stageSphereHost.setAttribute("aria-hidden", "true")
 
   const tiles = kf.tiles
 
@@ -527,10 +583,10 @@ function updateUi(sectionIndex) {
   if (appRoot) {
     appRoot.dataset.layout = layout
     appRoot.dataset.step = String(sectionIndex + 1)
-    appRoot.classList.toggle("page2-layout", !!kf?.puitsPrompt)
+    appRoot.classList.toggle("page2-layout", !!kf?.puitsPrompt || !!kf?.gravitySpherePrompt)
   }
   if (textOverlay instanceof HTMLElement) {
-    textOverlay.classList.toggle("page2-text", !!kf?.puitsPrompt)
+    textOverlay.classList.toggle("page2-text", !!kf?.puitsPrompt || !!kf?.gravitySpherePrompt)
   }
 
   const spherePage = !!kf?.sphereTwoStep
@@ -869,7 +925,7 @@ const STEP_ANIMATIONS = {
     },
   ],
   2: [],
-  3: [],
+  3: [() => triggerIframeAnim("page4-gravity-frame")],
   4: [() => triggerIframeAnim("topo-frame")],
   5: [],
 }

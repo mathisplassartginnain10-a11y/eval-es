@@ -79,6 +79,16 @@
         <img id="stage-image" class="stage-image" alt="" hidden decoding="async" />
         <div id="stage-sphere-host" class="stage-sphere-host" hidden aria-hidden="true"></div>
       </div>
+      <!-- Étape 3 : sphère → sphéroïde (sphère aplatie.html) -->
+      <div id="sphere-aplatie-wrap" class="sphere-aplatie-wrap" hidden aria-hidden="true">
+        <iframe
+          id="sphere-aplatie-frame"
+          class="sphere-aplatie-frame"
+          title="Sphère → sphéroïde oblate"
+          src="docs/prompts/sph%C3%A8re%20aplatie.html"
+          scrolling="no"
+        ></iframe>
+      </div>
       <div class="stage-tiles" id="stage-tiles">
         <div class="stage-tile">
           <video class="stage-tile-video" muted playsinline aria-hidden="true"></video>
@@ -118,6 +128,18 @@
             class="earth-orbit-prompt-frame"
             title="Terre — orbite et fil méridien (500 000 stades)"
             src="docs/prompts/earth-orbit_avec_fil.html"
+            scrolling="no"
+          ></iframe>
+        </div>
+      </div>
+      <!-- Étape 4 : gravité → sphère (gravity-sphere-formation.html) -->
+      <div id="page4-anim-wrap" class="page4-anim-wrap" hidden aria-hidden="true">
+        <div class="page4-iframe-box">
+          <iframe
+            id="page4-gravity-frame"
+            class="page4-gravity-frame"
+            title="Gravité — formation sphérique"
+            src="docs/prompts/gravity-sphere-formation.html"
             scrolling="no"
           ></iframe>
         </div>

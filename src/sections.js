@@ -6,9 +6,10 @@
  * - `loop: true` → la vidéo boucle tant que tu ne swipes pas.
  * - `loopSkipTailSec` (ex. `1/30` à 30 ips) → reboucle un peu avant la fin pour éviter la saccade si la dernière image ne colle pas au début.
  * - `restartOnReenter: true` → en revenant sur l’étape avec le même fichier, la vidéo repart du début.
- * - `sphereTwoStep: true` → 1er swipe = état figé, 2e = animation sphère (`src/sphereAnim.js`), 3e = panneau suivant.
+ * - `sphereTwoStep: true` → 1er swipe = sphère figée, 2e = aplatissement (`docs/prompts/sphère aplatie.html` ; anciennes variantes canvas : `sphereAnim.js`, `sphereAnimPage3Stylish.js`).
  * - `puitsPrompt: true` → iframe `docs/prompts/puits-animation.html` plein cadre (étape « Première partie »), sans `loading="lazy"`.
  * - `topoPrompt: true` → iframe `docs/prompts/topographie-animation.html` plein cadre (étape 5), sans `loading="lazy"`.
+ * - `gravitySpherePrompt: true` → iframe `docs/prompts/gravity-sphere-formation.html` (gravité → sphère), étape 4.
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -32,7 +33,7 @@ function docsUrl(relativePathUnderDocs) {
  */
 
 /**
- * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsPrompt?: boolean, topoPrompt?: boolean }} SectionKeyframe
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsPrompt?: boolean, topoPrompt?: boolean, gravitySpherePrompt?: boolean }} SectionKeyframe
  */
 
 /**
@@ -55,8 +56,8 @@ export const KEYFRAMES = [
   { scrollIndex: 1, textSection: "step02", puitsPrompt: true },
   /* Étape 3 : même panneau — 1er swipe = sphère figée, 2e = animation (voir scroll.js sphereSubStep) */
   { scrollIndex: 2, textSection: "step03", sphereTwoStep: true },
-  /* Étape 4 : média placeholder (topographie déplacée à l’étape 5) */
-  { scrollIndex: 3, textSection: "step04", media: PLACEHOLDER },
+  /* Étape 4 : animation gravité / formation sphérique (gravity-sphere-formation.html) */
+  { scrollIndex: 3, textSection: "step04", gravitySpherePrompt: true },
   /* Étape 5 : iframe topographie */
   { scrollIndex: 4, textSection: "step05", topoPrompt: true },
   { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER }
