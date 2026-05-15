@@ -7,6 +7,7 @@
 <!--
   Une scène WebGL + intro séquencée (sprites → zoom caméra → révélation des globes).
   Layout : sphère bas-gauche, aplatie haut-droite, triangle bas-droite — globes ×1,5 et positions fortement écartées.
+  GLB droite : groupe `*-orient-lock` (rotation fixe une fois au load) ; seuls les pivots tournent en tick.
   API : window.ThreeGlobes.setSpeed / pause / resume ; à la fin de l’intro (~5,5 s),
   window.parent.postMessage("intro-complete", "*") pour synchroniser la nav parente.
 -->
@@ -127,6 +128,13 @@ let earthAssetReady = false
 let revealScheduled = false
 /** Après 5,5 s : rotation continue + caméra en orbite */
 let animating = false
+
+/** @type {THREE.Object3D | null} Groupe `aplatie-orient-lock` (rotation fixe ; debug clavier) */
+let aplatie = null
+/** @type {THREE.Object3D | null} Groupe `cone-orient-lock` */
+let cone = null
+
+let meshyRotKeyDebugInstalled = false
 
 function getLayoutSnapshot() {
   const aspect = window.innerWidth / Math.max(1, window.innerHeight)
@@ -257,6 +265,67 @@ function applyPivotRenderOrders() {
   })
 }
 
+/**
+ * DEBUG Meshy — activer avec **?meshyRotDebug=1** sur l’URL de cette page.
+ * 1/2 = ±X, 3/4 = ±Y, 5/6 = ±Z (pas 15°), T = bascule aplatie/cône, R = reset rotation courante.
+ * Noter les angles dans la console puis coder en dur et supprimer ce bloc.
+ */
+function tryInstallMeshyRotKeyboardDebug() {
+  if (!new URLSearchParams(window.location.search).has("meshyRotDebug")) return
+  if (!aplatie || !cone || meshyRotKeyDebugInstalled) return
+  meshyRotKeyDebugInstalled = true
+
+  let target = "aplatie"
+  const ROT_STEP = Math.PI / 12
+
+  window.__threeGlobesScene = scene
+
+  function onMeshyRotDebugKey(e) {
+    const obj = target === "aplatie" ? aplatie : cone
+    if (!obj) return
+
+    const k = e.key
+    if (k === "1") {
+      obj.rotation.x += ROT_STEP
+      e.preventDefault()
+    } else if (k === "2") {
+      obj.rotation.x -= ROT_STEP
+      e.preventDefault()
+    } else if (k === "3") {
+      obj.rotation.y += ROT_STEP
+      e.preventDefault()
+    } else if (k === "4") {
+      obj.rotation.y -= ROT_STEP
+      e.preventDefault()
+    } else if (k === "5") {
+      obj.rotation.z += ROT_STEP
+      e.preventDefault()
+    } else if (k === "6") {
+      obj.rotation.z -= ROT_STEP
+      e.preventDefault()
+    } else if (k === "t" || k === "T") {
+      target = target === "aplatie" ? "cone" : "aplatie"
+      console.log("Target:", target)
+      e.preventDefault()
+    } else if (k === "r" || k === "R") {
+      obj.rotation.set(0, 0, 0)
+      e.preventDefault()
+    } else {
+      return
+    }
+
+    console.log(
+      target,
+      "rotation:",
+      obj.rotation.x.toFixed(3),
+      obj.rotation.y.toFixed(3),
+      obj.rotation.z.toFixed(3)
+    )
+  }
+
+  window.addEventListener("keydown", onMeshyRotDebugKey)
+}
+
 function attachGlobesOrdered() {
   if (!earthPivot || !aplatiePivot || !conePivot) return
   ;[earthPivot, aplatiePivot, conePivot].forEach((p) => {
@@ -267,6 +336,7 @@ function attachGlobesOrdered() {
   scene.add(earthPivot)
   applyPivotRenderOrders()
   updateLayout()
+  tryInstallMeshyRotKeyboardDebug()
 }
 
 function layoutGlobes() {
@@ -327,6 +397,23 @@ function schedulePostIntro() {
 
 const loader = new GLTFLoader()
 
+/** @type {unknown} */
+let threeGlobesDebugGui = null
+
+/** `?globesDebug=1` — lil-gui pour régler les rotations GLB ; retirer l’URL en prod. */
+function maybeAttachGlobeRotationDebug(label, model) {
+  if (!new URLSearchParams(window.location.search).has("globesDebug")) return
+  void import("https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm").then(({ GUI }) => {
+    if (!model?.rotation) return
+    threeGlobesDebugGui = threeGlobesDebugGui ?? new GUI({ title: "Globes GLB" })
+    const f = threeGlobesDebugGui.addFolder(label)
+    f.add(model.rotation, "x", -Math.PI, Math.PI, 0.01).name("x")
+    f.add(model.rotation, "y", -Math.PI, Math.PI, 0.01).name("y")
+    f.add(model.rotation, "z", -Math.PI, Math.PI, 0.01).name("z")
+    f.open()
+  })
+}
+
 /* ——— Setup intro immédiat ——— */
 addStarfield()
 createSeedSprites()
@@ -367,6 +454,7 @@ function tick(ts) {
 
     const sp = SPIN_BASE * speed
     if (earthPivot?.visible) earthPivot.rotation.y += sp
+    /* Orientation Meshy : uniquement sur les pivots — jamais sur modelAplatie / modelRocher ni *-orient-lock */
     if (aplatiePivot?.visible) aplatiePivot.rotation.y += sp
     if (conePivot?.visible) conePivot.rotation.y += sp
   } else {
@@ -500,13 +588,19 @@ new THREE.TextureLoader().load(
     loader.load(
       "./models/terre-aplatie.glb",
       (gltf) => {
-        const model = gltf.scene
-        applyPhongTextured(model, tex)
-        fitModelInBox(model, 2.34)
-        model.rotation.set(0, 0, -Math.PI / 2)
+        const modelAplatie = gltf.scene
+        applyPhongTextured(modelAplatie, tex)
+        fitModelInBox(modelAplatie, 2.34)
+        const aplatieOrientLock = new THREE.Group()
+        aplatieOrientLock.name = "aplatie-orient-lock"
+        aplatieOrientLock.add(modelAplatie)
+        /* Fix axe « up » export : une seule fois sur ce groupe — animate() ne touche qu’à aplatiePivot */
+        aplatieOrientLock.rotation.set(Math.PI, 0, 0)
+        maybeAttachGlobeRotationDebug("Aplatie rotation", aplatieOrientLock)
+        aplatie = aplatieOrientLock
         aplatiePivot = new THREE.Group()
         aplatiePivot.userData.targetScale = 1
-        aplatiePivot.add(model)
+        aplatiePivot.add(aplatieOrientLock)
         aplatiePivot.visible = false
         attachGlobesOrdered()
         glbLoaded += 1
@@ -531,13 +625,18 @@ new THREE.TextureLoader().load(
     loader.load(
       "./models/terre-cone.glb",
       (gltf) => {
-        const model = gltf.scene
-        applyPhongTextured(model, tex)
-        fitModelInBox(model, 2.34)
-        model.rotation.set(-Math.PI / 2, 0, 0)
+        const modelRocher = gltf.scene
+        applyPhongTextured(modelRocher, tex)
+        fitModelInBox(modelRocher, 2.34)
+        const coneOrientLock = new THREE.Group()
+        coneOrientLock.name = "cone-orient-lock"
+        coneOrientLock.add(modelRocher)
+        coneOrientLock.rotation.set(Math.PI, 0, 0)
+        maybeAttachGlobeRotationDebug("Cone rotation", coneOrientLock)
+        cone = coneOrientLock
         conePivot = new THREE.Group()
         conePivot.userData.targetScale = 1
-        conePivot.add(model)
+        conePivot.add(coneOrientLock)
         conePivot.visible = false
         attachGlobesOrdered()
         glbLoaded += 1

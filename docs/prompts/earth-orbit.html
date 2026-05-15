@@ -60,43 +60,43 @@ window.addEventListener('message', (e) => {
 });
 
 new THREE.TextureLoader().load('./textures/earth-texture.jpg', (earthTex) => {
-  earthTex.colorSpace = THREE.SRGBColorSpace;
+earthTex.colorSpace = THREE.SRGBColorSpace;
 
-  const globe = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 64, 64),
-    new THREE.MeshPhongMaterial({
+const globe = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 64, 64),
+  new THREE.MeshPhongMaterial({
       map: earthTex,
       specular: new THREE.Color(0x1a3355),
-      shininess: 18,
-    })
-  );
-  scene.add(globe);
+    shininess: 18,
+  })
+);
+scene.add(globe);
 
-  scene.add(new THREE.Mesh(
-    new THREE.SphereGeometry(1.03, 48, 48),
-    new THREE.MeshPhongMaterial({
+scene.add(new THREE.Mesh(
+  new THREE.SphereGeometry(1.03, 48, 48),
+  new THREE.MeshPhongMaterial({
       color: 0x4499ff,
       transparent: true,
       opacity: 0.09,
       side: THREE.BackSide,
-    })
-  ));
+  })
+));
 
   function animate(ts) {
-    requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
     if (ts - lastFrame < FRAME_MS) return;
     lastFrame = ts;
     if (!paused) {
-      angle += BASE_SPEED * speed;
-      camera.position.set(
-        RADIUS * Math.sin(angle),
-        RADIUS * Math.sin(TILT),
-        RADIUS * Math.cos(angle)
-      );
+    angle += BASE_SPEED * speed;
+    camera.position.set(
+      RADIUS * Math.sin(angle),
+      RADIUS * Math.sin(TILT),
+      RADIUS * Math.cos(angle)
+    );
       camera.lookAt(0, 0, 0);
-    }
-    renderer.render(scene, camera);
   }
+  renderer.render(scene, camera);
+}
   animate(0);
 });
 
