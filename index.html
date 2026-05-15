@@ -188,14 +188,70 @@
     Mathis PLASSART GINNAIN<br />
     et Maximilien FAVRE
   </div>
-  <button
-    type="button"
-    id="btn-prev"
-    class="nav-btn-prev"
-    aria-label="Étape précédente"
-  >
-    ←
-  </button>
+  <div id="page-transition" class="page-transition" aria-hidden="true">
+    <div class="page-transition__veil"></div>
+    <div class="page-transition__beam"></div>
+    <div class="page-transition__wipe page-transition__wipe--a"></div>
+    <div class="page-transition__wipe page-transition__wipe--b"></div>
+    <div class="page-transition__flare"></div>
+    <div class="page-transition__ring"></div>
+    <div class="page-transition__step" id="page-transition-step" aria-hidden="true"></div>
+  </div>
+
+  <nav id="nav-dock" class="nav-dock" aria-label="Navigation rapide" hidden>
+    <div class="nav-dock__rail" aria-hidden="true"></div>
+    <button
+      type="button"
+      id="btn-home"
+      class="nav-dock__btn nav-dock__btn--home"
+      aria-label="Retour au sommaire"
+    >
+      <span class="nav-dock__ring" aria-hidden="true"></span>
+      <span class="nav-dock__glow" aria-hidden="true"></span>
+      <span class="nav-dock__icon" aria-hidden="true">
+        <svg class="nav-dock__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H5.5A1.5 1.5 0 0 1 4 19v-8.5Z"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"
+          />
+          <circle cx="12" cy="12" r="10.5" stroke="currentColor" stroke-width="0.65" opacity="0.35" />
+        </svg>
+      </span>
+      <span class="nav-dock__label">Sommaire</span>
+    </button>
+    <button
+      type="button"
+      id="btn-prev"
+      class="nav-dock__btn nav-dock__btn--back"
+      aria-label="Étape précédente"
+    >
+      <span class="nav-dock__ring" aria-hidden="true"></span>
+      <span class="nav-dock__glow" aria-hidden="true"></span>
+      <span class="nav-dock__trail nav-dock__trail--1" aria-hidden="true"></span>
+      <span class="nav-dock__trail nav-dock__trail--2" aria-hidden="true"></span>
+      <span class="nav-dock__icon nav-dock__icon--back" aria-hidden="true">
+        <svg class="nav-dock__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M14.5 6.5 9 12l5.5 5.5"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M18 12H9.5"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            opacity="0.55"
+          />
+        </svg>
+      </span>
+      <span class="nav-dock__label">Retour</span>
+    </button>
+  </nav>
   <p id="scroll-hint" class="scroll-hint-intro" aria-hidden="true">Appuyer pour continuer</p>
 
   <script>

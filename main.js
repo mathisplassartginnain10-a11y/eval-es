@@ -9,6 +9,7 @@ import {
   setupFinePointerHoverNudges,
 } from "./src/textAnimations.js"
 import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
+import { runPageTransition } from "./src/pageTransition.js"
 import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 import {
@@ -183,11 +184,130 @@ function buildScrollShell() {
 
 buildScrollShell()
 const dots = [...document.querySelectorAll(".section-dot")]
+const navDock = document.getElementById("nav-dock")
+const btnHome = document.getElementById("btn-home")
 const btnPrev = document.getElementById("btn-prev")
+const pageTransitionRoot = document.getElementById("page-transition")
+const pageTransitionStep = document.getElementById("page-transition-step")
 
-function updatePrevBtn(sectionIndex) {
-  if (!(btnPrev instanceof HTMLButtonElement)) return
-  btnPrev.classList.toggle("is-visible", sectionIndex > 0)
+function updateNavDock(sectionIndex) {
+  const show =
+    sectionIndex > 0 &&
+    !introActive &&
+    !document.body.classList.contains("intro-stars-phase")
+  if (navDock instanceof HTMLElement) {
+    navDock.classList.toggle("is-visible", show)
+    navDock.hidden = !show
+  }
+}
+
+/** Animation « rewind » au retour arrière. */
+function playBackNavAnimation(onComplete) {
+  if (!(btnPrev instanceof HTMLButtonElement) || motionRef.reduced) {
+    onComplete()
+    return
+  }
+
+  const icon = btnPrev.querySelector(".nav-dock__icon--back")
+  const ring = btnPrev.querySelector(".nav-dock__ring")
+  const glow = btnPrev.querySelector(".nav-dock__glow")
+  const trails = btnPrev.querySelectorAll(".nav-dock__trail")
+  const dock = navDock instanceof HTMLElement ? navDock : null
+
+  btnPrev.classList.add("is-animating")
+  gsap.killTweensOf([btnPrev, icon, ring, glow, ...trails, dock].filter(Boolean))
+
+  const tl = gsap.timeline({
+    onComplete: () => {
+      btnPrev.classList.remove("is-animating")
+      gsap.set([icon, ring, glow, ...trails], { clearProps: "all" })
+      if (dock) gsap.set(dock, { clearProps: "boxShadow,filter" })
+      onComplete()
+    },
+  })
+
+  tl.to(
+    icon,
+    { x: -14, scaleX: 1.35, opacity: 0.35, duration: 0.14, ease: "power3.in" },
+    0
+  )
+  tl.to(icon, { x: 0, scaleX: 1, opacity: 1, duration: 0.52, ease: "elastic.out(1.05, 0.42)" }, 0.1)
+  tl.fromTo(
+    ring,
+    { scale: 0.55, opacity: 0.95, rotate: -8 },
+    { scale: 2.35, opacity: 0, rotate: 0, duration: 0.55, ease: "power2.out" },
+    0
+  )
+  tl.fromTo(
+    glow,
+    { scale: 0.4, opacity: 0.85 },
+    { scale: 1.8, opacity: 0, duration: 0.48, ease: "power2.out" },
+    0.02
+  )
+  trails.forEach((trail, i) => {
+    tl.fromTo(
+      trail,
+      { x: 0, opacity: 0.9, scaleX: 0.4 },
+      { x: -22 - i * 10, opacity: 0, scaleX: 1.6, duration: 0.38, ease: "power3.out" },
+      0.04 + i * 0.05
+    )
+  })
+  tl.to(
+    btnPrev,
+    { scale: 0.88, duration: 0.1, ease: "power2.in", yoyo: true, repeat: 1 },
+    0
+  )
+  if (dock) {
+    tl.to(
+      dock,
+      {
+        boxShadow:
+          "0 0 0 1px rgba(0,0,0,0.35) inset, 0 12px 40px rgba(0,0,0,0.45), 0 0 72px rgba(74,158,255,0.42)",
+        duration: 0.22,
+        ease: "power2.out",
+      },
+      0
+    )
+  }
+}
+
+/** Animation d’accueil (sommaire). */
+function playHomeNavAnimation(onComplete) {
+  if (!(btnHome instanceof HTMLButtonElement) || motionRef.reduced) {
+    onComplete()
+    return
+  }
+
+  const icon = btnHome.querySelector(".nav-dock__icon")
+  const ring = btnHome.querySelector(".nav-dock__ring")
+  const glow = btnHome.querySelector(".nav-dock__glow")
+
+  btnHome.classList.add("is-animating")
+  gsap.killTweensOf([btnHome, icon, ring, glow].filter(Boolean))
+
+  const tl = gsap.timeline({
+    onComplete: () => {
+      btnHome.classList.remove("is-animating")
+      gsap.set([icon, ring, glow], { clearProps: "all" })
+      onComplete()
+    },
+  })
+
+  tl.to(icon, { y: -5, scale: 1.18, rotate: -6, duration: 0.16, ease: "power2.out" }, 0)
+  tl.to(icon, { y: 0, scale: 1, rotate: 0, duration: 0.48, ease: "elastic.out(1.1, 0.55)" }, 0.14)
+  tl.fromTo(
+    ring,
+    { scale: 0.5, opacity: 0.9 },
+    { scale: 2.1, opacity: 0, duration: 0.5, ease: "power2.out" },
+    0
+  )
+  tl.fromTo(
+    glow,
+    { scale: 0.35, opacity: 0.75 },
+    { scale: 1.6, opacity: 0, duration: 0.45, ease: "power2.out" },
+    0.03
+  )
+  tl.to(btnHome, { scale: 0.92, duration: 0.09, ease: "power2.in", yoyo: true, repeat: 1 }, 0)
 }
 
 bindViewportResizeDebounced(() => {
@@ -211,6 +331,81 @@ function escapeHtml(s) {
 function fillTextContent(key) {
   const block = CONTENT[key]
   if (!block) return
+
+  const sommaireItems = block.sommaire && Array.isArray(block.sommaireItems) ? block.sommaireItems : null
+  textOverlay.classList.toggle("text-overlay--sommaire", !!sommaireItems)
+
+  if (sommaireItems) {
+    textKicker.textContent = ""
+    textKicker.hidden = true
+
+    const titreLines = String(block.titre ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    let titreHtml
+    if (block.introPoster && titreLines.length) {
+      titreHtml = titreLines
+        .map((line) => {
+          const words = line.split(/\s+/).filter(Boolean)
+          return words
+            .map(
+              (w) =>
+                `<span class="title-word"><span class="title-word__inner">${escapeHtml(w)}</span></span>`
+            )
+            .join(" ")
+        })
+        .join("<br />")
+    } else {
+      titreHtml = titreLines.map((line) => escapeHtml(line)).join("<br />")
+    }
+
+    textTitle.hidden = false
+    textTitle.classList.toggle("partie-title", !!block.partTitle)
+    textTitle.innerHTML = titreLines.length
+      ? `<span class="text-overlay__title-inner">${titreHtml}</span>`
+      : ""
+
+    textOverlay.classList.toggle("text-overlay--stacked-title", titreLines.length > 1)
+    textOverlay.classList.toggle("text-overlay--title-rule", !!block.titleUnderline)
+    textOverlay.classList.toggle("text-overlay--intro-poster", !!block.introPoster)
+
+    const sommaireLabel =
+      typeof block.sommaireLabel === "string" && block.sommaireLabel.trim()
+        ? block.sommaireLabel.trim()
+        : "Sommaire"
+    textSubtitle.textContent = sommaireLabel
+    textSubtitle.hidden = false
+
+    const itemsHtml = sommaireItems
+      .map((item) => {
+        const partRaw = String(item?.part ?? "").trim()
+        const titreRaw = String(item?.titre ?? "").trim()
+        const part = escapeHtml(partRaw)
+        const titre = escapeHtml(titreRaw)
+        const scrollIndex = Number(item?.scrollIndex)
+        const partHtml = part ? `<span class="text-overlay__sommaire-part">${part}</span>` : ""
+        const titreHtml = titre ? `<span class="text-overlay__sommaire-titre">${titre}</span>` : ""
+        const label = [partRaw, titreRaw].filter(Boolean).join(" — ")
+        const idxAttr = Number.isFinite(scrollIndex) ? ` data-section-index="${scrollIndex}"` : ""
+        const aria = label ? ` aria-label="${escapeHtml(label)}"` : ""
+        return `<li class="text-overlay__sommaire-item"><button type="button" class="text-overlay__sommaire-btn"${idxAttr}${aria}>${partHtml}${titreHtml}</button></li>`
+      })
+      .join("")
+    textBody.innerHTML = `<ul class="text-overlay__sommaire-list" role="list">${itemsHtml}</ul>`
+
+    if (block.credit) {
+      textCredit.textContent = block.credit
+      textCredit.hidden = false
+    } else {
+      textCredit.textContent = ""
+      textCredit.hidden = true
+    }
+    return
+  }
+
+  textTitle.hidden = false
 
   const rub = typeof block.rubrique === "string" ? block.rubrique.trim() : ""
   textKicker.textContent = rub
@@ -239,7 +434,10 @@ function fillTextContent(key) {
   }
 
   textTitle.classList.toggle("partie-title", !!block.partTitle)
-  textTitle.innerHTML = `<span class="text-overlay__title-inner">${titreHtml}</span>`
+  textTitle.innerHTML = titreLines.length
+    ? `<span class="text-overlay__title-inner">${titreHtml}</span>`
+    : ""
+
   textOverlay.classList.toggle("text-overlay--stacked-title", titreLines.length > 1)
   textOverlay.classList.toggle("text-overlay--title-rule", !!block.titleUnderline)
   textOverlay.classList.toggle("text-overlay--intro-poster", !!block.introPoster)
@@ -304,7 +502,11 @@ function collectTextOverlayTweenTargets() {
     textBody instanceof HTMLElement && !textBody.hidden
       ? [...textBody.querySelectorAll("p")]
       : []
-  return [...parts, ...ps]
+  const sommaireItems =
+    textBody instanceof HTMLElement && !textBody.hidden
+      ? [...textBody.querySelectorAll(".text-overlay__sommaire-item")]
+      : []
+  return [...parts, ...ps, ...sommaireItems]
 }
 
 /**
@@ -625,7 +827,7 @@ function updateUi(sectionIndex) {
   if (stepIndicatorEl) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
-  updatePrevBtn(sectionIndex)
+  updateNavDock(sectionIndex)
   setStarsBackgroundActive(!document.body.classList.contains("intro-stars-phase"))
 }
 
@@ -642,25 +844,36 @@ requestAnimationFrame(() => {
 
 scrollApi = initScroll({
   reducedMotion: motionRef.reduced,
-  onTransitionStart: (idx, kf, meta = {}) => {
-    applySlideForIndex(idx, meta)
-    if (meta.subStepOnly) applyTextIfChanged(kf.textSection)
-    else applyTextForSection(kf.textSection)
-    updateUi(idx)
-    if (meta.subStepOnly) return
-    if (!motionRef.reduced) primePageEnterHidden(idx)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        triggerPageEnterEffects()
-      })
+  onPageTransition: ({ toIndex, kf, meta = {}, direction, subStepOnly, done }) => {
+    killPageEnterTimeline()
+
+    const applySection = () => {
+      applySlideForIndex(toIndex, meta)
+      if (subStepOnly) applyTextIfChanged(kf.textSection)
+      else applyTextForSection(kf.textSection)
+      updateUi(toIndex)
+    }
+
+    runPageTransition({
+      direction,
+      subStepOnly,
+      reducedMotion: motionRef.reduced,
+      toIndex,
+      applySection,
+      done,
+      getTextTargets: collectTextOverlayTweenTargets,
+      stageMediaWrap,
+      textOverlay,
+      transitionRoot: pageTransitionRoot,
+      stepBadgeEl: pageTransitionStep,
+      isIpadLike,
     })
   },
   onTransitionComplete: (_idx, _kf, meta = {}) => {
     if (meta.subStepOnly) return
     resetSectionAnimClickIndex()
   },
-  /** `updateUi` est déjà appelé dans `onTransitionStart` — évite double recalcul layout / dots. */
-  onProgressUi: () => {}
+  onProgressUi: () => {},
 })
 
 const INTRO_AUTO_EXIT_MS = 5000
@@ -697,7 +910,11 @@ function primeIntroGlobesAndHint() {
 
 function onIntroWindowClick(e) {
   if (!document.body.classList.contains("intro-stars-phase") || introExited) return
-  if (e.target instanceof Element && e.target.closest("#btn-prev, #section-dots, .section-dot")) return
+  if (
+    e.target instanceof Element &&
+    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__btn")
+  )
+    return
   e.preventDefault()
   e.stopPropagation()
   exitIntro()
@@ -734,7 +951,11 @@ function onIntroMessage(e) {
 
 function onIntroTapCatcherPointer(e) {
   if (!document.body.classList.contains("intro-stars-phase") || introExited) return
-  if (e.target instanceof Element && e.target.closest("#btn-prev, #section-dots, .section-dot")) return
+  if (
+    e.target instanceof Element &&
+    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__btn")
+  )
+    return
   e.preventDefault()
   e.stopPropagation()
   exitIntro()
@@ -960,6 +1181,36 @@ function goToPrevStep() {
   scrollApi?.stepBy(-1)
 }
 
+/** Sommaire (étape 0) : saut direct vers une partie. */
+function goToSectionIndex(index) {
+  if (introActive) return
+  const now = Date.now()
+  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
+  navLocked = true
+  lastNavTime = now
+  resetSectionAnimClickIndex()
+  scrollToSection(index, motionRef.reduced, scrollApi)
+  window.setTimeout(() => {
+    navLocked = false
+  }, NAV_DELAY_MS)
+}
+
+function onSommaireItemActivate(e) {
+  if (!(textOverlay instanceof HTMLElement)) return
+  if (!textOverlay.classList.contains("text-overlay--sommaire")) return
+  if ((scrollApi?.getIndex?.() ?? 0) !== 0) return
+
+  const btn = e.target instanceof Element ? e.target.closest(".text-overlay__sommaire-btn") : null
+  if (!(btn instanceof HTMLButtonElement)) return
+
+  const idx = Number.parseInt(btn.dataset.sectionIndex ?? "", 10)
+  if (!Number.isFinite(idx)) return
+
+  e.preventDefault()
+  e.stopPropagation()
+  goToSectionIndex(idx)
+}
+
 /**
  * Avance d’une « unité » : soit l’animation suivante de l’étape, soit passage à l’étape suivante.
  * Intro (index 0) et panneaux `sphereTwoStep` / `eratoTwoStep` restent gérés comme avant (`stepBy`).
@@ -1033,7 +1284,7 @@ function targetExcludesGlobalNav(el) {
   if (!(el instanceof Element)) return true
   if (el.isContentEditable || el.closest("[contenteditable]")) return true
   return !!el.closest(
-    "#section-dots, #btn-prev, .section-dot, .nav-dot, .nav-btn, .nav-btn-prev, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
+    "#nav-dock, #btn-home, #section-dots, #btn-prev, .nav-dock__btn, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
   )
 }
 
@@ -1067,6 +1318,10 @@ window.addEventListener("click", onGlobalClickNav, true)
 window.addEventListener("touchstart", onTouchStartNav, { passive: true })
 window.addEventListener("touchend", onTouchEndNav, { passive: true })
 
+if (textBody instanceof HTMLElement) {
+  textBody.addEventListener("click", onSommaireItemActivate)
+}
+
 window.addEventListener(
   "scroll",
   (e) => {
@@ -1098,7 +1353,17 @@ dots.forEach((btn) => {
 if (btnPrev instanceof HTMLButtonElement) {
   btnPrev.addEventListener("click", (e) => {
     e.stopPropagation()
-    handleNav("backward")
+    if (introActive || navLocked || btnPrev.classList.contains("is-animating")) return
+    playBackNavAnimation(() => handleNav("backward"))
+  })
+}
+
+if (btnHome instanceof HTMLButtonElement) {
+  btnHome.addEventListener("click", (e) => {
+    e.stopPropagation()
+    if (introActive || navLocked || btnHome.classList.contains("is-animating")) return
+    if ((scrollApi?.getIndex?.() ?? 0) === 0) return
+    playHomeNavAnimation(() => goToSectionIndex(0))
   })
 }
 

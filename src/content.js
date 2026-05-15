@@ -8,7 +8,24 @@ function step(rubrique, titre, paragraphes, credit = "", extras = {}) {
 }
 
 export const CONTENT = {
-  step01: step("", "LA TERRE N'EST PAS RONDE", [], "", { titleUnderline: true, introPoster: true }),
+  step01: step(
+    "",
+    "LA TERRE N'EST PAS RONDE",
+    [],
+    "",
+    {
+      titleUnderline: true,
+      introPoster: true,
+      sommaire: true,
+      sommaireItems: [
+        { part: "Première partie", titre: "L'expérience d'Eratosthène", scrollIndex: 1 },
+        { part: "Seconde partie", titre: "Les irrégularités de Surface", scrollIndex: 2 },
+        { part: "Troisième partie", titre: "La gravité et la forme de la Terre", scrollIndex: 3 },
+        { part: "Quatrième partie", titre: "La dérive des continents", scrollIndex: 4 },
+        { part: "Cinquième partie", titre: "Conclusion", scrollIndex: 5 },
+      ],
+    }
+  ),
   step02: step(
     "Première partie :",
     "L'expérience d'Eratosthène",
@@ -22,7 +39,7 @@ export const CONTENT = {
   step03: step("Seconde Partie :", "Les irrégularités de Surface", ["À compléter ou détailler selon votre script."], "", {
     partTitle: true,
   }),
-  step04: step("Troisième partie :", "à compléter", [], "", { partTitle: true }),
+  step04: step("Troisième partie :", "La gravité et la forme de la Terre", [], "", { partTitle: true }),
   step05: step(
     "Quatrième partie :",
     "La dérive des continents",
@@ -38,7 +55,7 @@ export const CONTENT = {
 
 /** Libellés des points de navigation */
 export const SECTION_LABELS = [
-  "Introduction",
+  "Sommaire",
   "Première partie :",
   "Seconde Partie :",
   "Troisième partie :",
