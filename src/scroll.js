@@ -4,7 +4,7 @@ import { KEYFRAMES, SECTION_COUNT } from "./sections.js"
 /** Durée minimale après la transition avant déverrouillage (complété par l’anim GSAP). */
 const PAUSE_AFTER_MS = 180
 /** Entre deux navigations déclenchées par clic / tap / clavier. */
-const STEP_NAV_DELAY_MS = 1050
+const STEP_NAV_DELAY_MS = 1500
 
 export function lerp(a, b, t) {
   return a + (b - a) * t

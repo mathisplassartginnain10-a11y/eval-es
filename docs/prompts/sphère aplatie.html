@@ -135,7 +135,7 @@ import * as THREE from 'three';
 
 const TARGET_FPS = 30;
 const FRAME_MS = 1000 / TARGET_FPS;
-const FLAT_DURATION = 4800;
+const FLAT_DURATION = 2800;
 
 const EQ_START = 6371;
 const EQ_END = 6378;
@@ -341,7 +341,7 @@ function tick(ts) {
   }
 
   if (flatAnimating || flatT > 0.02) {
-    camAngle += ((2 * Math.PI) / (14 * 60)) * 0.85;
+    camAngle += ((2 * Math.PI) / (10 * 60)) * 0.85;
   }
   applyCamera();
   renderer.render(scene, camera);

@@ -1450,6 +1450,31 @@ body {
   background: #000;
 }
 
+#starfield-bg.is-hyperspace {
+  z-index: 10000;
+  transition: filter 0.35s ease;
+  filter: brightness(1.08) saturate(1.15);
+}
+
+#starfield-bg.is-hyperspace canvas {
+  filter: contrast(1.12);
+}
+
+.hyperspace-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(220, 235, 255, 0.75) 22%,
+    rgba(74, 158, 255, 0.2) 48%,
+    transparent 72%
+  );
+}
+
 /* Calque sous l’iframe intro (z-index plus bas) : pointer-events actifs seulement en phase intro,
    pour capter tap/clic alors que l’iframe intro a pointer-events:none (sinon hits sur #three-globes). */
 .intro-tap-catcher {

@@ -796,8 +796,8 @@ function updateUi(sectionIndex) {
     progressTrack.hidden = spherePage
   }
   if (textOverlay) {
-    textOverlay.hidden = spherePage
-    textOverlay.setAttribute("aria-hidden", spherePage ? "true" : "false")
+    textOverlay.hidden = false
+    textOverlay.setAttribute("aria-hidden", "false")
   }
 
   const pct = ((sectionIndex + 1) / SECTION_COUNT) * 100
