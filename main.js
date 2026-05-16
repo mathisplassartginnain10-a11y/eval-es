@@ -16,6 +16,7 @@ import {
   initStarsBackground,
   setStarsBackgroundActive,
   setStarsBackgroundReducedMotion,
+  setStarsDriftLtr,
 } from "./src/starsBg.js"
 
 const motionRef = {
@@ -53,6 +54,7 @@ const stageTilesRoot = document.getElementById("stage-tiles")
 const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
 const puitsPromptWrap = document.getElementById("puits-prompt-wrap")
 const topoPromptWrap = document.getElementById("topo-prompt-wrap")
+const conclusionPromptWrap = document.getElementById("conclusion-prompt-wrap")
 const page4AnimWrap = document.getElementById("page4-anim-wrap")
 const sphereAplatieWrap = document.getElementById("sphere-aplatie-wrap")
 const introClipsWrap = document.getElementById("intro-clips-wrap")
@@ -83,6 +85,10 @@ if (!puitsPromptWrap) {
 
 if (!topoPromptWrap) {
   throw new Error("Conteneur #topo-prompt-wrap requis (index.html).")
+}
+
+if (!conclusionPromptWrap) {
+  throw new Error("Conteneur #conclusion-prompt-wrap requis (index.html).")
 }
 
 if (!page4AnimWrap) {
@@ -211,7 +217,7 @@ function updateNavDock(sectionIndex) {
   postToNavDockEarth(show ? "resume" : "pause")
 }
 
-/** Animation légère au retour arrière (orbite inversée). */
+/** Animation du bouton Retour — synchronisée avec le warp arrière. */
 function playBackNavAnimation(onComplete) {
   if (!(btnPrev instanceof HTMLButtonElement) || motionRef.reduced) {
     onComplete()
@@ -219,20 +225,48 @@ function playBackNavAnimation(onComplete) {
   }
 
   const glyph = btnPrev.querySelector(".nav-dock__glyph")
+  const badge = btnPrev.querySelector(".nav-dock__glyph--badge")
+  const targets = [btnPrev, glyph, badge].filter(Boolean)
   btnPrev.classList.add("is-animating")
-  gsap.killTweensOf([btnPrev, glyph].filter(Boolean))
+  gsap.killTweensOf(targets)
 
   const tl = gsap.timeline({
     onComplete: () => {
       btnPrev.classList.remove("is-animating")
-      if (glyph) gsap.set(glyph, { clearProps: "transform,opacity" })
+      if (glyph) gsap.set(glyph, { clearProps: "transform,opacity,filter" })
+      if (badge instanceof HTMLElement) gsap.set(badge, { clearProps: "box-shadow,transform" })
       onComplete()
     },
   })
 
-  tl.to(glyph, { rotate: -72, opacity: 0.45, duration: 0.16, ease: "power2.in" }, 0)
-  tl.to(glyph, { rotate: 0, opacity: 1, duration: 0.42, ease: "power2.out" }, 0.12)
-  tl.to(btnPrev, { scale: 0.96, duration: 0.08, ease: "power2.in", yoyo: true, repeat: 1 }, 0)
+  tl.to(glyph, { x: -5, rotate: 88, opacity: 0.35, duration: 0.2, ease: "power3.in" }, 0)
+  if (badge instanceof HTMLElement) {
+    tl.to(
+      badge,
+      {
+        boxShadow: "0 0 22px rgba(74, 158, 255, 0.55), 0 0 40px rgba(122, 184, 255, 0.25)",
+        scale: 1.08,
+        duration: 0.18,
+        ease: "sine.out",
+      },
+      0.04
+    )
+  }
+  tl.to(glyph, { x: 0, rotate: 0, opacity: 1, duration: 0.48, ease: "back.out(2)" }, 0.14)
+  if (badge instanceof HTMLElement) {
+    tl.to(
+      badge,
+      {
+        boxShadow: "0 0 0 rgba(74, 158, 255, 0)",
+        scale: 1,
+        duration: 0.42,
+        ease: "sine.inOut",
+      },
+      0.16
+    )
+  }
+  tl.to(btnPrev, { scale: 0.94, duration: 0.1, ease: "power2.in", yoyo: true, repeat: 1 }, 0.06)
+  postToNavDockEarth("rewind")
 }
 
 /** Animation légère vers le sommaire (globe). */
@@ -592,6 +626,17 @@ function applySlideForIndex(index, meta = {}) {
     })
   }
 
+  if (index !== 5) {
+    const cf = document.getElementById("conclusion-frame")
+    queueMicrotask(() => {
+      try {
+        cf?.contentWindow?.postMessage("reset", "*")
+      } catch (_) {
+        /* iframe absente ou cross-origin */
+      }
+    })
+  }
+
   if (index === 0) {
     introClipsWrap.hidden = false
     introClipsWrap.setAttribute("aria-hidden", "false")
@@ -602,6 +647,8 @@ function applySlideForIndex(index, meta = {}) {
     puitsPromptWrap.setAttribute("aria-hidden", "true")
     topoPromptWrap.hidden = true
     topoPromptWrap.setAttribute("aria-hidden", "true")
+    conclusionPromptWrap.hidden = true
+    conclusionPromptWrap.setAttribute("aria-hidden", "true")
     page4AnimWrap.hidden = true
     page4AnimWrap.setAttribute("aria-hidden", "true")
     stageTilesRoot.hidden = true
@@ -619,6 +666,9 @@ function applySlideForIndex(index, meta = {}) {
 
   topoPromptWrap.hidden = true
   topoPromptWrap.setAttribute("aria-hidden", "true")
+
+  conclusionPromptWrap.hidden = true
+  conclusionPromptWrap.setAttribute("aria-hidden", "true")
 
   page4AnimWrap.hidden = true
   page4AnimWrap.setAttribute("aria-hidden", "true")
@@ -643,6 +693,8 @@ function applySlideForIndex(index, meta = {}) {
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
+    conclusionPromptWrap.hidden = true
+    conclusionPromptWrap.setAttribute("aria-hidden", "true")
     topoPromptWrap.hidden = false
     topoPromptWrap.setAttribute("aria-hidden", "false")
     queueMicrotask(() => {
@@ -650,6 +702,30 @@ function applySlideForIndex(index, meta = {}) {
       if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
         try {
           fr.contentWindow.TopoAnim?.reset?.()
+        } catch (_) {
+          /* cross-origin ou script pas encore chargé */
+        }
+      }
+    })
+    return
+  }
+
+  if (kf.conclusionPrompt) {
+    eratoPromptWrap.hidden = true
+    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    stageTilesRoot.hidden = true
+    stageSingle.hidden = true
+    slideStage.clear()
+    topoPromptWrap.hidden = true
+    topoPromptWrap.setAttribute("aria-hidden", "true")
+    conclusionPromptWrap.hidden = false
+    conclusionPromptWrap.setAttribute("aria-hidden", "false")
+    queueMicrotask(() => {
+      const fr = document.getElementById("conclusion-frame")
+      if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
+        try {
+          fr.contentWindow.ConclusionAnim?.reset?.()
+          fr.contentWindow.postMessage("reset", "*")
         } catch (_) {
           /* cross-origin ou script pas encore chargé */
         }
@@ -777,6 +853,7 @@ function updateUi(sectionIndex) {
     stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
   }
   updateNavDock(sectionIndex)
+  setStarsDriftLtr(sectionIndex === 3)
   setStarsBackgroundActive(!document.body.classList.contains("intro-stars-phase"))
 }
 
@@ -793,7 +870,7 @@ requestAnimationFrame(() => {
 
 scrollApi = initScroll({
   reducedMotion: motionRef.reduced,
-  onPageTransition: ({ toIndex, kf, meta = {}, direction, subStepOnly, done }) => {
+  onPageTransition: ({ fromIndex, toIndex, kf, meta = {}, direction, subStepOnly, done }) => {
     killPageEnterTimeline()
 
     const applySection = () => {
@@ -805,9 +882,10 @@ scrollApi = initScroll({
 
     runPageTransition({
       direction,
+      fromIndex,
+      toIndex,
       subStepOnly,
       reducedMotion: motionRef.reduced,
-      toIndex,
       applySection,
       done,
       getTextTargets: collectTextOverlayTweenTargets,
@@ -1097,7 +1175,7 @@ const STEP_ANIMATIONS = {
   2: [],
   3: [() => triggerIframeAnim("page4-gravity-frame")],
   4: [() => triggerIframeAnim("topo-frame")],
-  5: [],
+  5: [() => triggerIframeAnim("conclusion-frame")],
 }
 
 function triggerIframeAnim(iframeId) {
@@ -1212,18 +1290,27 @@ function tryAdvanceForwardFromUserGesture(now) {
   }, NAV_DELAY_MS)
 }
 
+function triggerBackwardNav() {
+  if (introActive) return
+  const now = Date.now()
+  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
+  navLocked = true
+  lastNavTime = now
+  resetSectionAnimClickIndex()
+  playBackNavAnimation(() => {
+    goToPrevStep()
+    window.setTimeout(() => {
+      navLocked = false
+    }, NAV_DELAY_MS)
+  })
+}
+
 function handleNav(direction = "forward") {
   if (introActive) return
   const now = Date.now()
   if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
   if (direction === "backward") {
-    navLocked = true
-    lastNavTime = now
-    resetSectionAnimClickIndex()
-    goToPrevStep()
-    window.setTimeout(() => {
-      navLocked = false
-    }, NAV_DELAY_MS)
+    triggerBackwardNav()
     return
   }
   tryAdvanceForwardFromUserGesture(now)
@@ -1303,7 +1390,7 @@ if (btnPrev instanceof HTMLButtonElement) {
   btnPrev.addEventListener("click", (e) => {
     e.stopPropagation()
     if (introActive || navLocked || btnPrev.classList.contains("is-animating")) return
-    playBackNavAnimation(() => handleNav("backward"))
+    triggerBackwardNav()
   })
 }
 

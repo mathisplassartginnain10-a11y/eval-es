@@ -10,6 +10,7 @@
  * - `puitsPrompt: true` → iframe `docs/prompts/puits-animation.html` plein cadre (étape « Première partie »), sans `loading="lazy"`.
  * - `topoPrompt: true` → iframe `docs/prompts/topographie-animation.html` plein cadre (étape 5), sans `loading="lazy"`.
  * - `gravitySpherePrompt: true` → iframe `docs/prompts/gravity-sphere-formation.html` (gravité → sphère), étape 4.
+ * - `conclusionPrompt: true` → iframe `docs/prompts/conclusion-animation.html` (étape 6).
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -33,7 +34,7 @@ function docsUrl(relativePathUnderDocs) {
  */
 
 /**
- * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsPrompt?: boolean, topoPrompt?: boolean, gravitySpherePrompt?: boolean }} SectionKeyframe
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsPrompt?: boolean, topoPrompt?: boolean, gravitySpherePrompt?: boolean, conclusionPrompt?: boolean }} SectionKeyframe
  */
 
 /**
@@ -60,7 +61,7 @@ export const KEYFRAMES = [
   { scrollIndex: 3, textSection: "step04", gravitySpherePrompt: true },
   /* Étape 5 : iframe topographie */
   { scrollIndex: 4, textSection: "step05", topoPrompt: true },
-  { scrollIndex: 5, textSection: "step06", media: PLACEHOLDER }
+  { scrollIndex: 5, textSection: "step06", conclusionPrompt: true },
 ]
 
 export function mediaSpecToSlideMedia(m) {
