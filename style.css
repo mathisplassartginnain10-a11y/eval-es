@@ -980,6 +980,103 @@ body {
   }
 }
 
+/* ——— Étape 7 (remerciements, après conclusion) ——— */
+#app[data-layout="epilogue"] > #stage-media-wrap,
+#app.app--epilogue > #stage-media-wrap {
+  display: none !important;
+}
+
+#app[data-layout="epilogue"] > #text-overlay.text-overlay--apple,
+#app.app--epilogue > #text-overlay.text-overlay--apple {
+  position: fixed;
+  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  transform: none;
+  max-width: none;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: max(env(safe-area-inset-top, 0px), 2rem) max(env(safe-area-inset-right, 0px), 1.5rem)
+    max(env(safe-area-inset-bottom, 0px), 6.5rem) max(env(safe-area-inset-left, 0px), 1.5rem);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+#app[data-layout="epilogue"] .intro-title-wrap,
+#app.app--epilogue .intro-title-wrap {
+  width: 100%;
+  max-width: min(36rem, 92vw);
+}
+
+#app[data-layout="epilogue"] .text-overlay__title .epilogue-title,
+#app.app--epilogue .text-overlay__title .epilogue-title {
+  font-size: clamp(1.65rem, 4.2vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+
+#app[data-layout="epilogue"] .app-status-bar,
+#app.app--epilogue .app-status-bar,
+#app[data-layout="epilogue"] > .progress-track,
+#app.app--epilogue > .progress-track,
+#app[data-layout="epilogue"] > .section-dots,
+#app.app--epilogue > .section-dots {
+  display: none !important;
+}
+
+.epilogue-actions {
+  position: fixed;
+  left: 50%;
+  bottom: max(env(safe-area-inset-bottom, 0px), clamp(1.5rem, 4vh, 2.75rem));
+  transform: translateX(-50%);
+  z-index: 48;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.epilogue-actions[hidden] {
+  display: none !important;
+  pointer-events: none;
+}
+
+.epilogue-actions__btn {
+  font-family: inherit;
+  font-size: clamp(0.88rem, 1.05vw, 1rem);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: rgba(248, 250, 252, 0.94);
+  background: rgba(12, 18, 32, 0.72);
+  border: 1px solid rgba(180, 200, 255, 0.35);
+  border-radius: 999px;
+  padding: 0.72rem 1.55rem;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.2s ease;
+}
+
+.epilogue-actions__btn:hover,
+.epilogue-actions__btn:focus-visible {
+  background: rgba(24, 36, 58, 0.88);
+  border-color: rgba(200, 220, 255, 0.55);
+  outline: none;
+}
+
+.epilogue-actions__btn:active {
+  transform: scale(0.98);
+}
+
 /* Bandes au-dessus de l’iframe : le swipe remonte au document parent (l’iframe ne le transmet pas). */
 #app .stage-media-wrap .erato-swipe-rail {
   position: absolute;
@@ -1678,6 +1775,58 @@ body.intro-stars-phase #scroll-hint {
   display: none !important;
 }
 
+body.app--epilogue #scroll-hint,
+#app.app--epilogue ~ #scroll-hint,
+body.presentation-ending #scroll-hint,
+body.presentation-ended #scroll-hint {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.presentation-blackout {
+  position: fixed;
+  inset: 0;
+  z-index: 25000;
+  background: #000;
+  opacity: 0;
+  pointer-events: auto;
+}
+
+.presentation-blackout[hidden] {
+  display: none !important;
+}
+
+body.presentation-ended #app,
+body.presentation-ended #scroll-hint,
+body.presentation-ended #persistent-names,
+body.presentation-ended #page-transition {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Fin de présentation : écran noir + bouton Sommaire centré */
+body.presentation-ended #nav-dock.nav-dock--end-only {
+  visibility: visible;
+  pointer-events: auto;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  z-index: 26001;
+  transform: translate(-50%, -50%);
+  opacity: 1;
+}
+
+body.presentation-ended #nav-dock.nav-dock--end-only #btn-prev,
+body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__sep {
+  display: none !important;
+}
+
+body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__item--home {
+  min-width: 10.5rem;
+  padding: 0.65rem 1.35rem;
+}
+
 /* ——— Transition de page (rideau cosmique) ——— */
 .page-transition {
   position: fixed;
@@ -1724,12 +1873,24 @@ body.intro-stars-phase #scroll-hint {
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    ellipse 120% 80% at 50% 50%,
-    rgba(8, 12, 28, 0.92) 0%,
-    rgba(0, 0, 0, 0.97) 55%,
-    #000 100%
+    ellipse 110% 75% at 50% 50%,
+    rgba(6, 10, 24, 0.55) 0%,
+    rgba(0, 0, 0, 0.72) 50%,
+    rgba(0, 0, 0, 0.88) 100%
   );
   opacity: 0;
+  will-change: opacity;
+}
+
+/* Transition épurée : voile seul */
+.page-transition__beam,
+.page-transition__wipe,
+.page-transition__wipe--a,
+.page-transition__wipe--b,
+.page-transition__flare,
+.page-transition__ring,
+.page-transition__step {
+  display: none !important;
 }
 
 .page-transition__beam {
@@ -1817,22 +1978,7 @@ body.intro-stars-phase #scroll-hint {
 }
 
 .page-transition__step {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: clamp(3.5rem, 12vw, 7rem);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: rgba(255, 245, 224, 0.92);
-  text-shadow:
-    0 0 40px rgba(122, 184, 255, 0.55),
-    0 0 80px rgba(74, 158, 255, 0.25);
-  opacity: 0;
-  pointer-events: none;
-  font-variant-numeric: tabular-nums;
+  display: none !important;
 }
 
 body.scroll-locked #app {
@@ -2723,6 +2869,54 @@ body.intro-stars-phase .nav-dock {
   max-width: 38rem;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+.text-overlay__body p strong {
+  font-weight: 600;
+  color: #d8d8de;
+}
+
+.text-overlay__p--formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem 0.65rem;
+  max-width: 42rem;
+  color: #c8c8d0;
+}
+
+.text-overlay__p--formula-inline {
+  font-family: "Times New Roman", Times, serif;
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  letter-spacing: 0.02em;
+}
+
+.text-overlay__frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.25;
+  max-width: min(16rem, 42vw);
+}
+
+.text-overlay__frac-num,
+.text-overlay__frac-den {
+  display: block;
+  padding: 0 0.15rem;
+}
+
+.text-overlay__frac-num {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.text-overlay__formula-eq {
+  font-size: 1.05em;
+  color: #e8e8ed;
+  padding: 0 0.1rem;
 }
 
 .text-overlay__credit {

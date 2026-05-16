@@ -10,13 +10,22 @@ import {
 } from "./src/textAnimations.js"
 import { initScroll, scrollToSection, SECTION_COUNT } from "./src/scroll.js"
 import { runPageTransition } from "./src/pageTransition.js"
-import { KEYFRAMES, keyframeToSlideMedia, mediaSpecToSlideMedia } from "./src/sections.js"
+import { MOTION } from "./src/motionDesign.js"
+import {
+  KEYFRAMES,
+  keyframeToSlideMedia,
+  mediaSpecToSlideMedia,
+  isEpilogueKeyframe,
+  keyframeToNavIndex,
+  NAV_SECTION_COUNT,
+} from "./src/sections.js"
 import { CONTENT, SECTION_LABELS } from "./src/content.js"
 import {
   initStarsBackground,
+  restartStarsAfterFinale,
+  runPresentationFinale,
   setStarsBackgroundActive,
   setStarsBackgroundReducedMotion,
-  setStarsDriftLtr,
 } from "./src/starsBg.js"
 
 const motionRef = {
@@ -26,7 +35,7 @@ const motionRef = {
 const isIpadLike = detectIpadLike()
 configureGsapPerformance({ reducedMotion: motionRef.reduced, isIpad: isIpadLike })
 if (isIpadLike && !motionRef.reduced) {
-  gsap.globalTimeline.timeScale(1.28)
+  gsap.globalTimeline.timeScale(1.06)
 }
 
 window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => {
@@ -55,6 +64,13 @@ const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
 const puitsPromptWrap = document.getElementById("puits-prompt-wrap")
 const topoPromptWrap = document.getElementById("topo-prompt-wrap")
 const conclusionPromptWrap = document.getElementById("conclusion-prompt-wrap")
+const epilogueActions = document.getElementById("epilogue-actions")
+const btnEndPresentation = document.getElementById("btn-end-presentation")
+const presentationBlackout = document.getElementById("presentation-blackout")
+const scrollHintEl = document.getElementById("scroll-hint")
+
+let presentationEnded = false
+let presentationEnding = false
 const page4AnimWrap = document.getElementById("page4-anim-wrap")
 const sphereAplatieWrap = document.getElementById("sphere-aplatie-wrap")
 const introClipsWrap = document.getElementById("intro-clips-wrap")
@@ -169,16 +185,19 @@ function buildScrollShell() {
   scrollRoot.replaceChildren()
 
   for (let i = 0; i < SECTION_COUNT; i++) {
+    const kf = KEYFRAMES[i]
     const label = SECTION_LABELS[i] ?? `Étape ${i + 1}`
 
-    const dot = document.createElement("button")
-    dot.type = "button"
-    dot.className = "section-dot" + (i === 0 ? " is-active" : "")
-    dot.dataset.section = String(i)
-    dot.title = label
-    dot.setAttribute("aria-label", label)
-    if (i === 0) dot.setAttribute("aria-current", "true")
-    dotsNav.appendChild(dot)
+    if (!isEpilogueKeyframe(kf)) {
+      const dot = document.createElement("button")
+      dot.type = "button"
+      dot.className = "section-dot" + (i === 0 ? " is-active" : "")
+      dot.dataset.section = String(i)
+      dot.title = label
+      dot.setAttribute("aria-label", label)
+      if (i === 0) dot.setAttribute("aria-current", "true")
+      dotsNav.appendChild(dot)
+    }
 
     const panel = document.createElement("section")
     panel.className = "scroll-panel"
@@ -190,12 +209,11 @@ function buildScrollShell() {
 
 buildScrollShell()
 const dots = [...document.querySelectorAll(".section-dot")]
+const pageTransitionRoot = document.getElementById("page-transition")
 const navDock = document.getElementById("nav-dock")
+const navDockSep = navDock?.querySelector(".nav-dock__sep") ?? null
 const btnHome = document.getElementById("btn-home")
 const btnPrev = document.getElementById("btn-prev")
-const pageTransitionRoot = document.getElementById("page-transition")
-const pageTransitionStep = document.getElementById("page-transition-step")
-
 function postToNavDockEarth(msg) {
   const fr = document.getElementById("nav-dock-earth-frame")
   try {
@@ -205,9 +223,25 @@ function postToNavDockEarth(msg) {
   }
 }
 
+function updateScrollHint(sectionIndex) {
+  if (!(scrollHintEl instanceof HTMLElement)) return
+  if (document.body.classList.contains("intro-stars-phase") || presentationEnded || presentationEnding) {
+    scrollHintEl.hidden = true
+    scrollHintEl.style.opacity = "0"
+    scrollHintEl.setAttribute("aria-hidden", "true")
+    return
+  }
+  const isEpilogue = isEpilogueKeyframe(KEYFRAMES[sectionIndex])
+  const show = !isEpilogue
+  scrollHintEl.hidden = !show
+  scrollHintEl.style.opacity = show ? "1" : "0"
+  scrollHintEl.setAttribute("aria-hidden", show ? "false" : "true")
+}
+
 function updateNavDock(sectionIndex) {
   const show =
     sectionIndex > 0 &&
+    !isEpilogueKeyframe(KEYFRAMES[sectionIndex]) &&
     !introActive &&
     !document.body.classList.contains("intro-stars-phase")
   if (navDock instanceof HTMLElement) {
@@ -239,7 +273,7 @@ function playBackNavAnimation(onComplete) {
     },
   })
 
-  tl.to(glyph, { x: -5, rotate: 88, opacity: 0.35, duration: 0.2, ease: "power3.in" }, 0)
+  tl.to(glyph, { x: -4, rotate: 52, opacity: 0.5, duration: 0.18, ease: MOTION.ease.in }, 0)
   if (badge instanceof HTMLElement) {
     tl.to(
       badge,
@@ -252,7 +286,7 @@ function playBackNavAnimation(onComplete) {
       0.04
     )
   }
-  tl.to(glyph, { x: 0, rotate: 0, opacity: 1, duration: 0.48, ease: "back.out(2)" }, 0.14)
+  tl.to(glyph, { x: 0, rotate: 0, opacity: 1, duration: MOTION.dur.navPulse, ease: MOTION.ease.settle }, 0.12)
   if (badge instanceof HTMLElement) {
     tl.to(
       badge,
@@ -314,6 +348,33 @@ function escapeHtml(s) {
 function fillTextContent(key) {
   const block = CONTENT[key]
   if (!block) return
+
+  const isEpilogue = !!block.epilogue
+  textOverlay.classList.toggle("text-overlay--epilogue", isEpilogue)
+
+  if (isEpilogue) {
+    textOverlay.classList.remove("text-overlay--sommaire")
+    textKicker.textContent = ""
+    textKicker.hidden = true
+    textSubtitle.textContent = ""
+    textSubtitle.hidden = true
+    textBody.innerHTML = ""
+    textCredit.textContent = ""
+    textCredit.hidden = true
+    textTitle.hidden = false
+    textTitle.classList.remove("partie-title")
+    textTitle.innerHTML = `<span class="text-overlay__title-inner epilogue-title">${escapeHtml(
+      String(block.titre ?? "Merci de votre écoute").trim()
+    )}</span>`
+    textOverlay.classList.remove(
+      "text-overlay--stacked-title",
+      "text-overlay--title-rule",
+      "text-overlay--intro-poster"
+    )
+    return
+  }
+
+  textOverlay.classList.remove("text-overlay--epilogue")
 
   const sommaireItems = block.sommaire && Array.isArray(block.sommaireItems) ? block.sommaireItems : null
   textOverlay.classList.toggle("text-overlay--sommaire", !!sommaireItems)
@@ -429,9 +490,14 @@ function fillTextContent(key) {
   textSubtitle.textContent = st
   textSubtitle.hidden = !st
 
-  textBody.innerHTML = block.paragraphes
-    .map((p) => `<p class="text-overlay__p">${escapeHtml(p)}</p>`)
-    .join("")
+  const bodyHtml = typeof block.bodyHtml === "string" ? block.bodyHtml.trim() : ""
+  if (bodyHtml) {
+    textBody.innerHTML = bodyHtml
+  } else {
+    textBody.innerHTML = block.paragraphes
+      .map((p) => `<p class="text-overlay__p">${escapeHtml(p)}</p>`)
+      .join("")
+  }
 
   if (block.credit) {
     textCredit.textContent = block.credit
@@ -530,8 +596,8 @@ function triggerPageEnterEffects() {
     textOverlay.classList.add("is-visible")
   }
 
-  const ease = "power2.out"
-  const dur = isIpadLike ? 0.72 : 0.88
+  const ease = MOTION.ease.settle
+  const dur = MOTION.dur.mediaEnter(isIpadLike)
 
   pageEnterTimeline = gsap.timeline({
     onComplete: () => {
@@ -547,8 +613,8 @@ function triggerPageEnterEffects() {
 
   pageEnterTimeline.fromTo(
     stageMediaWrap,
-    { autoAlpha: 0, y: 24, force3D: true },
-    { autoAlpha: 1, y: 0, duration: dur, ease },
+    { autoAlpha: MOTION.alpha.reveal, y: 18, scale: MOTION.offset.mediaScaleIn, force3D: true },
+    { autoAlpha: 1, y: 0, scale: 1, duration: dur, ease, force3D: true },
     0
   )
 }
@@ -570,14 +636,16 @@ function resetPuitsDualIframes() {
   const puits = document.getElementById("puits-frame")
   const earth = document.getElementById("earth-orbit-frame")
   if (puits instanceof HTMLIFrameElement) {
-    puits.style.transition = "none"
-    puits.style.opacity = "1"
+    gsap.killTweensOf(puits)
+    gsap.set(puits, { clearProps: "opacity" })
     puits.style.pointerEvents = "auto"
+    puits.style.opacity = "1"
   }
   if (earth instanceof HTMLIFrameElement) {
-    earth.style.transition = "none"
-    earth.style.opacity = "0"
+    gsap.killTweensOf(earth)
+    gsap.set(earth, { clearProps: "opacity" })
     earth.style.pointerEvents = "none"
+    earth.style.opacity = "0"
   }
   queueMicrotask(() => {
     try {
@@ -624,6 +692,11 @@ function applySlideForIndex(index, meta = {}) {
         /* iframe absente ou cross-origin */
       }
     })
+  }
+
+  if (epilogueActions instanceof HTMLElement) {
+    epilogueActions.hidden = true
+    epilogueActions.setAttribute("aria-hidden", "true")
   }
 
   if (index !== 5) {
@@ -709,6 +782,36 @@ function applySlideForIndex(index, meta = {}) {
     })
     return
   }
+
+  if (kf.epilogue) {
+    introClipsWrap.hidden = true
+    introClipsWrap.setAttribute("aria-hidden", "true")
+    eratoPromptWrap.hidden = true
+    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    puitsPromptWrap.hidden = true
+    puitsPromptWrap.setAttribute("aria-hidden", "true")
+    topoPromptWrap.hidden = true
+    topoPromptWrap.setAttribute("aria-hidden", "true")
+    conclusionPromptWrap.hidden = true
+    conclusionPromptWrap.setAttribute("aria-hidden", "true")
+    page4AnimWrap.hidden = true
+    page4AnimWrap.setAttribute("aria-hidden", "true")
+    stageTilesRoot.hidden = true
+    stageSingle.hidden = true
+    slideStage.clear()
+    hideSphereAplatieMedia()
+    stageMediaWrap.setAttribute("aria-hidden", "true")
+    if (epilogueActions instanceof HTMLElement) {
+      epilogueActions.hidden = false
+      epilogueActions.setAttribute("aria-hidden", "false")
+    }
+    if (btnEndPresentation instanceof HTMLButtonElement && !presentationEnded) {
+      btnEndPresentation.disabled = false
+    }
+    return
+  }
+
+  stageMediaWrap.setAttribute("aria-hidden", "false")
 
   if (kf.conclusionPrompt) {
     eratoPromptWrap.hidden = true
@@ -804,28 +907,37 @@ function applySlideForIndex(index, meta = {}) {
 
 function updateUi(sectionIndex) {
   const kf = KEYFRAMES[sectionIndex]
+  const isEpilogue = isEpilogueKeyframe(kf)
   let layout = "split"
   if (sectionIndex === 0) layout = "intro"
+  else if (isEpilogue) layout = "epilogue"
   else if (kf?.sphereTwoStep || kf?.eratoTwoStep) layout = "sphere"
   if (appRoot) {
     appRoot.dataset.layout = layout
     appRoot.dataset.step = String(sectionIndex + 1)
     appRoot.classList.toggle("page2-layout", !!kf?.puitsPrompt || !!kf?.gravitySpherePrompt)
+    appRoot.classList.toggle("app--epilogue", isEpilogue)
   }
+  document.body.classList.toggle("app--epilogue", isEpilogue)
   if (textOverlay instanceof HTMLElement) {
     textOverlay.classList.toggle("page2-text", !!kf?.puitsPrompt || !!kf?.gravitySpherePrompt)
   }
 
   const spherePage = !!kf?.sphereTwoStep
   if (progressTrack instanceof HTMLElement) {
-    progressTrack.hidden = spherePage
+    progressTrack.hidden = spherePage || isEpilogue
+  }
+  if (dotsNav instanceof HTMLElement) {
+    dotsNav.hidden = isEpilogue
+    dotsNav.setAttribute("aria-hidden", isEpilogue ? "true" : "false")
   }
   if (textOverlay) {
     textOverlay.hidden = false
     textOverlay.setAttribute("aria-hidden", "false")
   }
 
-  const pct = ((sectionIndex + 1) / SECTION_COUNT) * 100
+  const navIndex = keyframeToNavIndex(sectionIndex)
+  const pct = ((navIndex + 1) / NAV_SECTION_COUNT) * 100
   if (progressBar instanceof HTMLElement) {
     if (motionRef.reduced) {
       gsap.killTweensOf(progressBar)
@@ -834,15 +946,17 @@ function updateUi(sectionIndex) {
       gsap.to(progressBar, {
         width: `${pct}%`,
         duration: isIpadLike ? 0.34 : 0.48,
-        ease: "power2.out",
+        ease: MOTION.ease.out,
         overwrite: "auto",
       })
     }
   }
 
-  dots.forEach((d, i) => {
-    d.classList.toggle("is-active", i === sectionIndex)
-    d.setAttribute("aria-current", i === sectionIndex ? "true" : "false")
+  dots.forEach((d) => {
+    const dotIdx = Number.parseInt(d.dataset.section ?? "", 10)
+    const active = dotIdx === sectionIndex
+    d.classList.toggle("is-active", active)
+    d.setAttribute("aria-current", active ? "true" : "false")
   })
   updateDotsVisualState(sectionIndex, dots, { reducedMotion: motionRef.reduced })
 
@@ -850,10 +964,12 @@ function updateUi(sectionIndex) {
     sectionLabelEl.textContent = ""
   }
   if (stepIndicatorEl) {
-    stepIndicatorEl.textContent = `Étape ${sectionIndex + 1} / ${SECTION_COUNT}`
+    stepIndicatorEl.textContent = isEpilogue
+      ? ""
+      : `Étape ${navIndex + 1} / ${NAV_SECTION_COUNT}`
   }
   updateNavDock(sectionIndex)
-  setStarsDriftLtr(sectionIndex === 3)
+  updateScrollHint(sectionIndex)
   setStarsBackgroundActive(!document.body.classList.contains("intro-stars-phase"))
 }
 
@@ -882,8 +998,6 @@ scrollApi = initScroll({
 
     runPageTransition({
       direction,
-      fromIndex,
-      toIndex,
       subStepOnly,
       reducedMotion: motionRef.reduced,
       applySection,
@@ -892,7 +1006,6 @@ scrollApi = initScroll({
       stageMediaWrap,
       textOverlay,
       transitionRoot: pageTransitionRoot,
-      stepBadgeEl: pageTransitionStep,
       isIpadLike,
     })
   },
@@ -939,7 +1052,9 @@ function onIntroWindowClick(e) {
   if (!document.body.classList.contains("intro-stars-phase") || introExited) return
   if (
     e.target instanceof Element &&
-    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item")
+    e.target.closest(
+      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #btn-end-presentation, .section-dot, .nav-dock__item"
+    )
   )
     return
   e.preventDefault()
@@ -980,7 +1095,9 @@ function onIntroTapCatcherPointer(e) {
   if (!document.body.classList.contains("intro-stars-phase") || introExited) return
   if (
     e.target instanceof Element &&
-    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item")
+    e.target.closest(
+      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #btn-end-presentation, .section-dot, .nav-dock__item"
+    )
   )
     return
   e.preventDefault()
@@ -1159,23 +1276,41 @@ const STEP_ANIMATIONS = {
       const puits = document.getElementById("puits-frame")
       const earth = document.getElementById("earth-orbit-frame")
       if (!(puits instanceof HTMLElement) || !(earth instanceof HTMLIFrameElement)) return
-      puits.style.transition = "opacity 0.8s ease"
-      puits.style.opacity = "0"
-      window.setTimeout(() => {
-        puits.style.pointerEvents = "none"
-      }, 800)
-      earth.style.transition = "opacity 0.8s ease"
-      earth.style.opacity = "1"
-      earth.style.pointerEvents = "auto"
-      window.setTimeout(() => {
+
+      gsap.killTweensOf([puits, earth])
+      gsap.set(earth, { autoAlpha: 0, pointerEvents: "none" })
+
+      const tl = gsap.timeline()
+      tl.to(puits, {
+        autoAlpha: 0,
+        duration: MOTION.dur.iframeCrossfade,
+        ease: MOTION.ease.inOut,
+        onComplete: () => {
+          puits.style.pointerEvents = "none"
+        },
+      })
+      tl.to(
+        earth,
+        {
+          autoAlpha: 1,
+          duration: MOTION.dur.iframeCrossfade,
+          ease: MOTION.ease.settle,
+          onStart: () => {
+            earth.style.pointerEvents = "auto"
+          },
+        },
+        MOTION.dur.iframeCrossfade * 0.35
+      )
+      tl.add(() => {
         earth.contentWindow?.postMessage("play", "*")
-      }, 400)
+      }, MOTION.dur.iframeCrossfade * 0.5)
     },
   ],
   2: [],
   3: [() => triggerIframeAnim("page4-gravity-frame")],
   4: [() => triggerIframeAnim("topo-frame")],
   5: [() => triggerIframeAnim("conclusion-frame")],
+  6: [],
 }
 
 function triggerIframeAnim(iframeId) {
@@ -1210,7 +1345,7 @@ function goToPrevStep() {
 
 /** Sommaire (étape 0) : saut direct vers une partie. */
 function goToSectionIndex(index) {
-  if (introActive) return
+  if (introActive || presentationEnded || presentationEnding) return
   const now = Date.now()
   if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
   navLocked = true
@@ -1244,8 +1379,11 @@ function onSommaireItemActivate(e) {
  */
 function tryAdvanceForwardFromUserGesture(now) {
   if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
+  if (presentationEnded || presentationEnding) return
 
   const idx = scrollApi?.getIndex?.() ?? 0
+
+  if (isEpilogueKeyframe(KEYFRAMES[idx])) return
 
   if (idx === 0) {
     navLocked = true
@@ -1291,7 +1429,7 @@ function tryAdvanceForwardFromUserGesture(now) {
 }
 
 function triggerBackwardNav() {
-  if (introActive) return
+  if (introActive || presentationEnded || presentationEnding) return
   const now = Date.now()
   if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
   navLocked = true
@@ -1320,7 +1458,7 @@ function targetExcludesGlobalNav(el) {
   if (!(el instanceof Element)) return true
   if (el.isContentEditable || el.closest("[contenteditable]")) return true
   return !!el.closest(
-    "#nav-dock, #btn-home, #section-dots, #btn-prev, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
+    "#nav-dock, #btn-home, #section-dots, #btn-prev, #epilogue-actions, #btn-end-presentation, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
   )
 }
 
@@ -1394,10 +1532,98 @@ if (btnPrev instanceof HTMLButtonElement) {
   })
 }
 
+function showPresentationEndSommaire() {
+  if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = true
+  if (navDockSep instanceof HTMLElement) navDockSep.hidden = true
+
+  if (navDock instanceof HTMLElement) {
+    navDock.hidden = false
+    navDock.classList.add("is-visible", "nav-dock--end-only")
+    navDock.setAttribute("aria-hidden", "false")
+  }
+  postToNavDockEarth("resume")
+}
+
+function returnToSommaireFromEnd() {
+  if (!presentationEnded) return
+
+  presentationEnded = false
+  document.body.classList.remove("presentation-ended")
+
+  if (presentationBlackout instanceof HTMLElement) {
+    presentationBlackout.hidden = true
+    presentationBlackout.setAttribute("aria-hidden", "true")
+    gsap.set(presentationBlackout, { clearProps: "opacity" })
+  }
+
+  if (navDock instanceof HTMLElement) {
+    navDock.classList.remove("nav-dock--end-only")
+  }
+  if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = false
+  if (navDockSep instanceof HTMLElement) navDockSep.hidden = false
+
+  restartStarsAfterFinale()
+
+  const kf = KEYFRAMES[0]
+  scrollApi?.jumpToIndex?.(0)
+  applySlideForIndex(0, {})
+  applyTextForSection(kf.textSection)
+  updateUi(0)
+  resetSectionAnimClickIndex()
+  if (!motionRef.reduced) primePageEnterHidden(0)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => triggerPageEnterEffects())
+  })
+}
+
+async function playPresentationEnd() {
+  if (presentationEnded || presentationEnding) return
+  const idx = scrollApi?.getIndex?.() ?? -1
+  if (!isEpilogueKeyframe(KEYFRAMES[idx])) return
+
+  presentationEnding = true
+  if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = true
+  document.body.classList.add("presentation-ending", "scroll-locked")
+
+  gsap.killTweensOf([textOverlay, epilogueActions].filter(Boolean))
+  gsap.to([textOverlay, epilogueActions].filter(Boolean), {
+    autoAlpha: 0,
+    duration: motionRef.reduced ? 0.12 : 0.3,
+    ease: MOTION.ease.in,
+  })
+
+  await runPresentationFinale({ durationSec: motionRef.reduced ? 0 : 1.65 })
+
+  if (presentationBlackout instanceof HTMLElement) {
+    presentationBlackout.hidden = false
+    presentationBlackout.setAttribute("aria-hidden", "false")
+    gsap.set(presentationBlackout, { opacity: 1 })
+  }
+
+  presentationEnding = false
+  presentationEnded = true
+  document.body.classList.remove("presentation-ending", "scroll-locked")
+  document.body.classList.add("presentation-ended")
+  showPresentationEndSommaire()
+  updateScrollHint(idx)
+}
+
+if (btnEndPresentation instanceof HTMLButtonElement) {
+  btnEndPresentation.addEventListener("click", (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    playPresentationEnd()
+  })
+}
+
 if (btnHome instanceof HTMLButtonElement) {
   btnHome.addEventListener("click", (e) => {
     e.stopPropagation()
     if (introActive || navLocked || btnHome.classList.contains("is-animating")) return
+    if (presentationEnded) {
+      playHomeNavAnimation(() => returnToSommaireFromEnd())
+      return
+    }
     if ((scrollApi?.getIndex?.() ?? 0) === 0) return
     playHomeNavAnimation(() => goToSectionIndex(0))
   })

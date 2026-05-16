@@ -67,9 +67,10 @@ export function initLayoutEntranceAnimations(opts) {
  */
 export function updateDotsVisualState(activeIndex, dotEls, opts = {}) {
   const instant = !!opts.reducedMotion
-  dotEls.forEach((dot, i) => {
+  dotEls.forEach((dot) => {
     if (!(dot instanceof HTMLElement)) return
-    const active = i === activeIndex
+    const dotIdx = Number.parseInt(dot.dataset.section ?? "", 10)
+    const active = dotIdx === activeIndex
     if (instant) {
       gsap.set(dot, { scale: active ? 1.18 : 1, opacity: active ? 1 : 0.38 })
     } else {

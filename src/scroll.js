@@ -164,6 +164,15 @@ export function initScroll({ reducedMotion, onPageTransition, onTransitionComple
     },
     getIndex: () => currentIndex,
     isLocked: () => locked,
+    /** Saut instantané (ex. retour sommaire après écran de fin). */
+    jumpToIndex(i) {
+      const t = Math.max(0, Math.min(i, SECTION_COUNT - 1))
+      locked = false
+      setBodyLock(false)
+      currentIndex = t
+      sphereSubStep = 0
+      onProgressUi?.(t)
+    },
   }
 }
 

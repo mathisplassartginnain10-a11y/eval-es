@@ -11,6 +11,7 @@
  * - `topoPrompt: true` → iframe `docs/prompts/topographie-animation.html` plein cadre (étape 5), sans `loading="lazy"`.
  * - `gravitySpherePrompt: true` → iframe `docs/prompts/gravity-sphere-formation.html` (gravité → sphère), étape 4.
  * - `conclusionPrompt: true` → iframe `docs/prompts/conclusion-animation.html` (étape 6).
+ * - `epilogue: true` → remerciements après la conclusion (hors sommaire / pastilles).
  *
  * Fichiers :
  * - `file` → `docs/media/<file>` (ex. `01.mp4`)
@@ -34,7 +35,7 @@ function docsUrl(relativePathUnderDocs) {
  */
 
 /**
- * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsPrompt?: boolean, topoPrompt?: boolean, gravitySpherePrompt?: boolean, conclusionPrompt?: boolean }} SectionKeyframe
+ * @typedef {{ scrollIndex: number, textSection: string, media?: MediaSpec, tiles?: MediaSpec[], sphereTwoStep?: boolean, eratoTwoStep?: boolean, puitsPrompt?: boolean, topoPrompt?: boolean, gravitySpherePrompt?: boolean, conclusionPrompt?: boolean, epilogue?: boolean }} SectionKeyframe
  */
 
 /**
@@ -62,7 +63,27 @@ export const KEYFRAMES = [
   /* Étape 5 : iframe topographie */
   { scrollIndex: 4, textSection: "step05", topoPrompt: true },
   { scrollIndex: 5, textSection: "step06", conclusionPrompt: true },
+  { scrollIndex: 6, textSection: "step07", epilogue: true },
 ]
+
+/** @param {SectionKeyframe | undefined} kf */
+export function isEpilogueKeyframe(kf) {
+  return !!kf?.epilogue
+}
+
+export const NAV_SECTION_COUNT = KEYFRAMES.filter((k) => !isEpilogueKeyframe(k)).length
+
+/** Index dans la barre de progression / pastilles (l’épilogue reste à 100 %). */
+export function keyframeToNavIndex(keyframeIndex) {
+  const kf = KEYFRAMES[keyframeIndex]
+  if (!kf) return 0
+  if (isEpilogueKeyframe(kf)) return Math.max(0, NAV_SECTION_COUNT - 1)
+  let n = 0
+  for (let i = 0; i < keyframeIndex; i++) {
+    if (!isEpilogueKeyframe(KEYFRAMES[i])) n++
+  }
+  return n
+}
 
 export function mediaSpecToSlideMedia(m) {
   const rel = m.path ?? (m.file ? `media/${m.file}` : "")
