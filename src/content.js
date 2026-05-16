@@ -21,7 +21,7 @@ export const CONTENT = {
         { part: "Première partie", titre: "L'expérience d'Eratosthène", scrollIndex: 1 },
         { part: "Seconde partie", titre: "Les irrégularités de Surface", scrollIndex: 2 },
         { part: "Troisième partie", titre: "La gravité et la forme de la Terre", scrollIndex: 3 },
-        { part: "Quatrième partie", titre: "La dérive des continents", scrollIndex: 4 },
+        { part: "Quatrième partie", titre: "Les modifications typographiques", scrollIndex: 4 },
         { part: "Cinquième partie", titre: "Conclusion", scrollIndex: 5 },
       ],
     }
@@ -42,7 +42,7 @@ export const CONTENT = {
   step04: step("Troisième partie :", "La gravité et la forme de la Terre", [], "", { partTitle: true }),
   step05: step(
     "Quatrième partie :",
-    "La dérive des continents",
+    "Les modifications typographiques",
     [
       "La forme de la Terre ne se joue pas seulement dans l’espace : la tectonique des plaques déplace sans cesse les continents, de quelques centimètres à une vingtaine par an.",
       "Là où les plaques se poussent, naissent chaînes et reliefs ; là où elles s’écartent, s’ouvrent rifts et dorsales. La surface reste ainsi en mouvement — la planète n’est pas une sphère figée, mais un globe vivant, toujours en train de se déformer.",
@@ -50,7 +50,18 @@ export const CONTENT = {
     "",
     { partTitle: true }
   ),
-  step06: step("", "Etape :\nà compléter", [])
+  step06: step(
+    "Conclusion :",
+    "",
+    [
+      "Calcul d'Ératosthène : 250 000 stades",
+      "Déformation au pôle : 0,3 %",
+      "Formule de la gravité : F = G × (m₁ × m₂) / r²",
+      "Modification typographique : jusqu'à 20 km d'écart",
+    ],
+    "",
+    { partTitle: true }
+  ),
 }
 
 /** Libellés des points de navigation */
@@ -59,6 +70,6 @@ export const SECTION_LABELS = [
   "Première partie :",
   "Seconde Partie :",
   "Troisième partie :",
-  "Quatrième partie :",
-  "à compléter"
+  "Les modifications typographiques",
+  "Conclusion"
 ]

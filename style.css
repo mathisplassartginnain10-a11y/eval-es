@@ -1723,25 +1723,6 @@ body.scroll-locked #app {
   transform: translateY(0);
 }
 
-.nav-dock__rail {
-  position: absolute;
-  top: 50%;
-  left: clamp(2.55rem, 6vw, 2.85rem);
-  right: clamp(2.55rem, 6vw, 2.85rem);
-  height: 1px;
-  translate: 0 -50%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 245, 224, 0.22) 18%,
-    rgba(74, 158, 255, 0.35) 50%,
-    rgba(255, 245, 224, 0.22) 82%,
-    transparent 100%
-  );
-  pointer-events: none;
-  opacity: 0.85;
-}
-
 .nav-dock__btn {
   position: relative;
   display: flex;
@@ -1811,6 +1792,7 @@ body.scroll-locked #app {
   border: 1px solid rgba(122, 184, 255, 0.55);
   opacity: 0;
   pointer-events: none;
+  z-index: 0;
 }
 
 .nav-dock__glow {
@@ -1821,6 +1803,14 @@ body.scroll-locked #app {
   opacity: 0;
   filter: blur(6px);
   pointer-events: none;
+  z-index: 0;
+}
+
+.nav-dock__btn:not(.is-animating) .nav-dock__ring,
+.nav-dock__btn:not(.is-animating) .nav-dock__glow,
+.nav-dock__btn:not(.is-animating) .nav-dock__trail {
+  opacity: 0 !important;
+  transform: none;
 }
 
 .nav-dock__trail {
@@ -1889,41 +1879,6 @@ body.scroll-locked #app {
   pointer-events: none;
 }
 
-@keyframes nav-dock-back-idle {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1px rgba(74, 158, 255, 0.08) inset,
-      0 0 20px rgba(74, 158, 255, 0.1);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(74, 158, 255, 0.18) inset,
-      0 0 34px rgba(74, 158, 255, 0.28);
-  }
-}
-
-.nav-dock.is-visible .nav-dock__btn--back:not(.is-animating) {
-  animation: nav-dock-back-idle 3.2s ease-in-out infinite;
-}
-
-.nav-dock.is-visible .nav-dock__btn--back .nav-dock__glow {
-  opacity: 0.22;
-  animation: nav-dock-glow-pulse 2.6s ease-in-out infinite;
-}
-
-@keyframes nav-dock-glow-pulse {
-  0%,
-  100% {
-    opacity: 0.12;
-    transform: scale(0.85);
-  }
-  50% {
-    opacity: 0.32;
-    transform: scale(1.05);
-  }
-}
-
 body.intro-stars-phase .nav-dock {
   opacity: 0 !important;
   visibility: hidden !important;
@@ -1936,11 +1891,6 @@ body.intro-stars-phase .nav-dock {
     bottom: max(env(safe-area-inset-bottom, 0px), 0.95rem);
     gap: 0.4rem;
     padding: 0.38rem 0.48rem;
-  }
-
-  .nav-dock__rail {
-    left: 2.45rem;
-    right: 2.45rem;
   }
 
   .nav-dock__btn {
@@ -1968,14 +1918,6 @@ body.intro-stars-phase .nav-dock {
     transform: translateY(0);
   }
 
-  .nav-dock.is-visible .nav-dock__btn--back:not(.is-animating) {
-    animation: none;
-  }
-
-  .nav-dock.is-visible .nav-dock__btn--back .nav-dock__glow {
-    animation: none;
-    opacity: 0;
-  }
 }
 
 /* Page 1 — trois pastilles (sphère, aplatie, cône) : iframes docs/prompts

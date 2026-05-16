@@ -220,7 +220,8 @@ function playBackNavAnimation(onComplete) {
   const tl = gsap.timeline({
     onComplete: () => {
       btnPrev.classList.remove("is-animating")
-      gsap.set([icon, ring, glow, ...trails], { clearProps: "all" })
+      gsap.set([ring, glow, ...trails], { opacity: 0, clearProps: "transform,x,y,scale,scaleX,rotate" })
+      if (icon) gsap.set(icon, { clearProps: "transform,x,y,scale,scaleX,rotate,opacity" })
       if (dock) gsap.set(dock, { clearProps: "boxShadow,filter" })
       onComplete()
     },
@@ -288,7 +289,8 @@ function playHomeNavAnimation(onComplete) {
   const tl = gsap.timeline({
     onComplete: () => {
       btnHome.classList.remove("is-animating")
-      gsap.set([icon, ring, glow], { clearProps: "all" })
+      gsap.set([ring, glow], { opacity: 0, clearProps: "transform,x,y,scale,scaleX,rotate" })
+      if (icon) gsap.set(icon, { clearProps: "transform,x,y,scale,scaleX,rotate,opacity" })
       onComplete()
     },
   })
