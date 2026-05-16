@@ -190,6 +190,15 @@ const btnPrev = document.getElementById("btn-prev")
 const pageTransitionRoot = document.getElementById("page-transition")
 const pageTransitionStep = document.getElementById("page-transition-step")
 
+function postToNavDockEarth(msg) {
+  const fr = document.getElementById("nav-dock-earth-frame")
+  try {
+    fr?.contentWindow?.postMessage(msg, "*")
+  } catch (_) {
+    /* iframe absente */
+  }
+}
+
 function updateNavDock(sectionIndex) {
   const show =
     sectionIndex > 0 &&
@@ -199,117 +208,55 @@ function updateNavDock(sectionIndex) {
     navDock.classList.toggle("is-visible", show)
     navDock.hidden = !show
   }
+  postToNavDockEarth(show ? "resume" : "pause")
 }
 
-/** Animation « rewind » au retour arrière. */
+/** Animation légère au retour arrière (orbite inversée). */
 function playBackNavAnimation(onComplete) {
   if (!(btnPrev instanceof HTMLButtonElement) || motionRef.reduced) {
     onComplete()
     return
   }
 
-  const icon = btnPrev.querySelector(".nav-dock__icon--back")
-  const ring = btnPrev.querySelector(".nav-dock__ring")
-  const glow = btnPrev.querySelector(".nav-dock__glow")
-  const trails = btnPrev.querySelectorAll(".nav-dock__trail")
-  const dock = navDock instanceof HTMLElement ? navDock : null
-
+  const glyph = btnPrev.querySelector(".nav-dock__glyph")
   btnPrev.classList.add("is-animating")
-  gsap.killTweensOf([btnPrev, icon, ring, glow, ...trails, dock].filter(Boolean))
+  gsap.killTweensOf([btnPrev, glyph].filter(Boolean))
 
   const tl = gsap.timeline({
     onComplete: () => {
       btnPrev.classList.remove("is-animating")
-      gsap.set([ring, glow, ...trails], { opacity: 0, clearProps: "transform,x,y,scale,scaleX,rotate" })
-      if (icon) gsap.set(icon, { clearProps: "transform,x,y,scale,scaleX,rotate,opacity" })
-      if (dock) gsap.set(dock, { clearProps: "boxShadow,filter" })
+      if (glyph) gsap.set(glyph, { clearProps: "transform,opacity" })
       onComplete()
     },
   })
 
-  tl.to(
-    icon,
-    { x: -14, scaleX: 1.35, opacity: 0.35, duration: 0.14, ease: "power3.in" },
-    0
-  )
-  tl.to(icon, { x: 0, scaleX: 1, opacity: 1, duration: 0.52, ease: "elastic.out(1.05, 0.42)" }, 0.1)
-  tl.fromTo(
-    ring,
-    { scale: 0.55, opacity: 0.95, rotate: -8 },
-    { scale: 2.35, opacity: 0, rotate: 0, duration: 0.55, ease: "power2.out" },
-    0
-  )
-  tl.fromTo(
-    glow,
-    { scale: 0.4, opacity: 0.85 },
-    { scale: 1.8, opacity: 0, duration: 0.48, ease: "power2.out" },
-    0.02
-  )
-  trails.forEach((trail, i) => {
-    tl.fromTo(
-      trail,
-      { x: 0, opacity: 0.9, scaleX: 0.4 },
-      { x: -22 - i * 10, opacity: 0, scaleX: 1.6, duration: 0.38, ease: "power3.out" },
-      0.04 + i * 0.05
-    )
-  })
-  tl.to(
-    btnPrev,
-    { scale: 0.88, duration: 0.1, ease: "power2.in", yoyo: true, repeat: 1 },
-    0
-  )
-  if (dock) {
-    tl.to(
-      dock,
-      {
-        boxShadow:
-          "0 0 0 1px rgba(0,0,0,0.35) inset, 0 12px 40px rgba(0,0,0,0.45), 0 0 72px rgba(74,158,255,0.42)",
-        duration: 0.22,
-        ease: "power2.out",
-      },
-      0
-    )
-  }
+  tl.to(glyph, { rotate: -72, opacity: 0.45, duration: 0.16, ease: "power2.in" }, 0)
+  tl.to(glyph, { rotate: 0, opacity: 1, duration: 0.42, ease: "power2.out" }, 0.12)
+  tl.to(btnPrev, { scale: 0.96, duration: 0.08, ease: "power2.in", yoyo: true, repeat: 1 }, 0)
 }
 
-/** Animation d’accueil (sommaire). */
+/** Animation légère vers le sommaire (globe). */
 function playHomeNavAnimation(onComplete) {
   if (!(btnHome instanceof HTMLButtonElement) || motionRef.reduced) {
     onComplete()
     return
   }
 
-  const icon = btnHome.querySelector(".nav-dock__icon")
-  const ring = btnHome.querySelector(".nav-dock__ring")
-  const glow = btnHome.querySelector(".nav-dock__glow")
-
+  const glyph = btnHome.querySelector(".nav-dock__glyph")
   btnHome.classList.add("is-animating")
-  gsap.killTweensOf([btnHome, icon, ring, glow].filter(Boolean))
+  gsap.killTweensOf([btnHome, glyph].filter(Boolean))
 
   const tl = gsap.timeline({
     onComplete: () => {
       btnHome.classList.remove("is-animating")
-      gsap.set([ring, glow], { opacity: 0, clearProps: "transform,x,y,scale,scaleX,rotate" })
-      if (icon) gsap.set(icon, { clearProps: "transform,x,y,scale,scaleX,rotate,opacity" })
+      if (glyph) gsap.set(glyph, { clearProps: "transform,opacity" })
       onComplete()
     },
   })
 
-  tl.to(icon, { y: -5, scale: 1.18, rotate: -6, duration: 0.16, ease: "power2.out" }, 0)
-  tl.to(icon, { y: 0, scale: 1, rotate: 0, duration: 0.48, ease: "elastic.out(1.1, 0.55)" }, 0.14)
-  tl.fromTo(
-    ring,
-    { scale: 0.5, opacity: 0.9 },
-    { scale: 2.1, opacity: 0, duration: 0.5, ease: "power2.out" },
-    0
-  )
-  tl.fromTo(
-    glow,
-    { scale: 0.35, opacity: 0.75 },
-    { scale: 1.6, opacity: 0, duration: 0.45, ease: "power2.out" },
-    0.03
-  )
-  tl.to(btnHome, { scale: 0.92, duration: 0.09, ease: "power2.in", yoyo: true, repeat: 1 }, 0)
+  tl.to(glyph, { scale: 1.14, rotate: 18, duration: 0.14, ease: "power2.out" }, 0)
+  tl.to(glyph, { scale: 1, rotate: 0, duration: 0.38, ease: "power2.out" }, 0.12)
+  tl.to(btnHome, { scale: 0.96, duration: 0.08, ease: "power2.in", yoyo: true, repeat: 1 }, 0)
 }
 
 bindViewportResizeDebounced(() => {
@@ -914,7 +861,7 @@ function onIntroWindowClick(e) {
   if (!document.body.classList.contains("intro-stars-phase") || introExited) return
   if (
     e.target instanceof Element &&
-    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__btn")
+    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item")
   )
     return
   e.preventDefault()
@@ -955,7 +902,7 @@ function onIntroTapCatcherPointer(e) {
   if (!document.body.classList.contains("intro-stars-phase") || introExited) return
   if (
     e.target instanceof Element &&
-    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__btn")
+    e.target.closest("#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item")
   )
     return
   e.preventDefault()
@@ -1286,7 +1233,7 @@ function targetExcludesGlobalNav(el) {
   if (!(el instanceof Element)) return true
   if (el.isContentEditable || el.closest("[contenteditable]")) return true
   return !!el.closest(
-    "#nav-dock, #btn-home, #section-dots, #btn-prev, .nav-dock__btn, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
+    "#nav-dock, #btn-home, #section-dots, #btn-prev, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
   )
 }
 

@@ -202,48 +202,44 @@
     <button
       type="button"
       id="btn-home"
-      class="nav-dock__btn nav-dock__btn--home"
+      class="nav-dock__item nav-dock__item--home"
       aria-label="Retour au sommaire"
     >
-      <span class="nav-dock__ring" aria-hidden="true"></span>
-      <span class="nav-dock__glow" aria-hidden="true"></span>
-      <span class="nav-dock__icon" aria-hidden="true">
-        <svg class="nav-dock__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H5.5A1.5 1.5 0 0 1 4 19v-8.5Z"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linejoin="round"
-          />
-        </svg>
+      <span class="nav-dock__glyph nav-dock__glyph--earth" aria-hidden="true">
+        <iframe
+          id="nav-dock-earth-frame"
+          class="nav-dock__earth-frame"
+          title=""
+          tabindex="-1"
+          loading="lazy"
+          src="docs/prompts/earth-orbit2.html?dock=1"
+        ></iframe>
       </span>
       <span class="nav-dock__label">Sommaire</span>
     </button>
+    <span class="nav-dock__sep" aria-hidden="true"></span>
     <button
       type="button"
       id="btn-prev"
-      class="nav-dock__btn nav-dock__btn--back"
+      class="nav-dock__item nav-dock__item--back"
       aria-label="Étape précédente"
     >
-      <span class="nav-dock__ring" aria-hidden="true"></span>
-      <span class="nav-dock__glow" aria-hidden="true"></span>
-      <span class="nav-dock__trail nav-dock__trail--1" aria-hidden="true"></span>
-      <span class="nav-dock__trail nav-dock__trail--2" aria-hidden="true"></span>
-      <span class="nav-dock__icon nav-dock__icon--back" aria-hidden="true">
+      <span class="nav-dock__glyph nav-dock__glyph--badge nav-dock__glyph--back" aria-hidden="true">
         <svg class="nav-dock__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
-            d="M14.5 6.5 9 12l5.5 5.5"
+            d="M14.25 7.75 9.75 12l4.5 4.25"
             stroke="currentColor"
-            stroke-width="2"
+            stroke-width="2.25"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
           <path
-            d="M18 12H9.5"
+            d="M17.25 7.75 12.75 12l4.5 4.25"
             stroke="currentColor"
-            stroke-width="2"
+            stroke-width="2.25"
             stroke-linecap="round"
-            opacity="0.55"
+            stroke-linejoin="round"
+            opacity="0.58"
           />
         </svg>
       </span>

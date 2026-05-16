@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terre — Caméra orbitale</title>
+<!--
+  Texture externe : ./textures/earth-texture.jpg (extraction depuis l’ancienne base64).
+  API : window.EarthOrbit.setSpeed / pause / resume
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden}
+  html,body{background:#000}
+  html.dock,html.dock body{background:transparent}
+  canvas{display:block;width:100%!important;height:100%!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const isDock = new URLSearchParams(location.search).get('dock') === '1';
+if (isDock) document.documentElement.classList.add('dock');
+
+const canvas   = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: !isDock,
+  alpha: isDock,
+  powerPreference: isDock ? 'low-power' : 'default',
+});
+renderer.setPixelRatio(isDock ? 1 : Math.min(devicePixelRatio, 1.5));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000, isDock ? 0 : 1);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(isDock ? 38 : 45, window.innerWidth / Math.max(window.innerHeight, 1), 0.1, 200);
+
+scene.add(new THREE.AmbientLight(0xffffff, isDock ? 0.55 : 0.45));
+const sun = new THREE.DirectionalLight(0xffffff, isDock ? 1.15 : 1.3);
+sun.position.set(6, 3, 5);
+scene.add(sun);
+
+let angle = 0;
+let paused = false;
+let speed  = 1.0;
+const TILT       = isDock ? 0.28 : 0.22;
+const RADIUS     = isDock ? 2.35 : 3.2;
+/* dock : ~32 s par tour (30 fps) — lent et lisible dans le bouton Sommaire */
+const BASE_SPEED = (2 * Math.PI) / (isDock ? 32 * 30 : 4 * 60);
+const GLOBE_SEGS = isDock ? 36 : 64;
+
+const TARGET_FPS = 30;
+const FRAME_MS   = 1000 / TARGET_FPS;
+let lastFrame    = 0;
+
+document.addEventListener('visibilitychange', () => {
+  paused = document.hidden;
+});
+window.addEventListener('message', (e) => {
+  if (e.data === 'pause') paused = true;
+  if (e.data === 'resume') paused = false;
+});
+
+new THREE.TextureLoader().load('./textures/earth-texture.jpg', (earthTex) => {
+earthTex.colorSpace = THREE.SRGBColorSpace;
+
+const globe = new THREE.Mesh(
+  new THREE.SphereGeometry(1, GLOBE_SEGS, GLOBE_SEGS),
+  new THREE.MeshPhongMaterial({
+      map: earthTex,
+      specular: new THREE.Color(0x1a3355),
+    shininess: isDock ? 12 : 18,
+  })
+);
+scene.add(globe);
+
+if (!isDock) {
+  scene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(1.03, 48, 48),
+    new THREE.MeshPhongMaterial({
+        color: 0x4499ff,
+        transparent: true,
+        opacity: 0.09,
+        side: THREE.BackSide,
+    })
+  ));
+}
+
+  function animate(ts) {
+  requestAnimationFrame(animate);
+    if (ts - lastFrame < FRAME_MS) return;
+    lastFrame = ts;
+    if (!paused) {
+    angle += BASE_SPEED * speed;
+    camera.position.set(
+      RADIUS * Math.sin(angle),
+      RADIUS * Math.sin(TILT),
+      RADIUS * Math.cos(angle)
+    );
+      camera.lookAt(0, 0, 0);
+  }
+  renderer.render(scene, camera);
+}
+  animate(0);
+});
+
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+window.EarthOrbit = {
+  setSpeed: (s) => { speed = s; },
+  pause:    () => { paused = true; },
+  resume:   () => { paused = false; },
+};
+</script>
+</body>
+</html>

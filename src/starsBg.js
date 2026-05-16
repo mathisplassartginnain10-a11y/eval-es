@@ -1,11 +1,11 @@
 /**
  * Canvas plein écran : étoiles avec dérive + scintillement.
- * Mode « hyperspace » : les mêmes étoiles accélèrent vers la caméra (~1 s).
+ * Mode hyperspace : mouvement radial réaliste (vitesse → longueur des traînées).
  */
 
 import gsap from "gsap"
 
-const STAR_COUNT = 250
+const STAR_COUNT = 280
 const FRAME_MS = 1000 / 30
 
 /** @type {HTMLCanvasElement | null} */
@@ -14,8 +14,6 @@ let canvas = null
 let ctx = null
 /** @type {HTMLElement | null} */
 let starfieldRoot = null
-/** @type {HTMLElement | null} */
-let flashEl = null
 /** @type {number | null} */
 let rafId = null
 let active = false
@@ -23,7 +21,6 @@ let reduced = false
 let frame = 0
 let lastFrame = 0
 
-/** Vitesse horizontale (px / frame ~30 fps) */
 const DRIFT_X = -0.32
 const DRIFT_Y = 0
 
@@ -38,6 +35,8 @@ const DRIFT_Y = 0
  *   warpY?: number,
  *   z?: number,
  *   passed?: boolean,
+ *   prevSx?: number,
+ *   prevSy?: number,
  * }} Star */
 /** @type {Star[]} */
 let stars = []
@@ -69,18 +68,61 @@ function initStars() {
   }))
 }
 
-/** Convertit les étoiles visibles en coordonnées 3D sans en créer de nouvelles. */
 function beginHyperspaceFromCurrentStars(w, h) {
   const cx = w * 0.5
   const cy = h * 0.5
-  const focal = Math.min(w, h) * 0.72
+  const focal = Math.min(w, h) * 0.68
 
   for (const s of stars) {
     s.passed = false
-    s.z = 0.55 + (1.3 - s.r) * 0.85 + (1 - s.baseAlpha) * 0.25
+    s.prevSx = undefined
+    s.prevSy = undefined
+    s.z = 0.85 + Math.random() * 1.35 + (1.3 - s.r) * 0.4
     s.warpX = ((s.x - cx) / focal) * s.z
     s.warpY = ((s.y - cy) / focal) * s.z
   }
+}
+
+function projectStar(s, cx, cy, focal) {
+  if (s.z == null || s.warpX == null || s.warpY == null) return null
+  const z = Math.max(0.02, s.z)
+  return {
+    sx: cx + (s.warpX / z) * focal,
+    sy: cy + (s.warpY / z) * focal,
+    depth: 1 - Math.min(1, z / 2.2),
+  }
+}
+
+function drawMotionStreak(ctx, x0, y0, x1, y1, alpha, depth, warp) {
+  const dx = x1 - x0
+  const dy = y1 - y0
+  const dist = Math.hypot(dx, dy)
+  if (dist < 0.35) return
+
+  const ux = dx / dist
+  const uy = dy / dist
+  const w = 0.35 + depth * 1.4 + warp * 2.2
+  const hue = 205 + depth * 35
+  const lit = 78 + depth * 18
+
+  const segments = Math.min(6, Math.max(3, Math.ceil(dist / 18)))
+  for (let i = 0; i < segments; i++) {
+    const t0 = i / segments
+    const t1 = (i + 1) / segments
+    const segA = alpha * (0.25 + t1 * 0.75) * warp
+    ctx.strokeStyle = `hsla(${hue}, 72%, ${lit}%, ${segA})`
+    ctx.lineWidth = w * (0.5 + t1 * 0.5)
+    ctx.lineCap = "round"
+    ctx.beginPath()
+    ctx.moveTo(x0 + dx * t0, y0 + dy * t0)
+    ctx.lineTo(x0 + dx * t1, y0 + dy * t1)
+    ctx.stroke()
+  }
+
+  ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, alpha * (0.85 + warp * 0.15))})`
+  ctx.beginPath()
+  ctx.arc(x1, y1, 0.35 + depth * 0.9 + warp * 0.5, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 function stopLoop() {
@@ -118,70 +160,53 @@ function drawHyperspace(w, h) {
 
   const cx = w * 0.5
   const cy = h * 0.5
-  const focal = Math.min(w, h) * 0.72
-  const trail = 0.02 + warpSpeed * 0.78
+  const focal = Math.min(w, h) * 0.68
 
-  ctx.fillStyle = `rgba(0, 0, 0, ${trail})`
+  const vel = warpSpeed * warpSpeed
+  const trailFade = 0.06 + vel * 0.82
+  ctx.fillStyle = `rgba(0, 0, 0, ${trailFade})`
   ctx.fillRect(0, 0, w, h)
 
-  const baseStep = 0.008 + warpSpeed * warpSpeed * 0.42
-  const streakScale = 16 + warpSpeed * 145
-  const warpBlend = Math.min(1, warpSpeed / 0.18)
+  const zStep = (0.004 + vel * 0.055) * (warpSpeed > 0.08 ? 1 : 0.35)
 
   for (const s of stars) {
     if (s.passed || s.z == null || s.warpX == null || s.warpY == null) continue
 
-    s.z -= baseStep * (0.35 + s.z * 0.65)
-    if (s.z <= 0.04) {
+    s.z -= zStep * (0.25 + s.z * 0.75)
+    if (s.z <= 0.025) {
       s.passed = true
       continue
     }
 
-    const sx = cx + (s.warpX / s.z) * focal
-    const sy = cy + (s.warpY / s.z) * focal
-    if (sx < -120 || sx > w + 120 || sy < -120 || sy > h + 120) continue
+    const proj = projectStar(s, cx, cy, focal)
+    if (!proj) continue
+    const { sx, sy, depth } = proj
+    if (sx < -160 || sx > w + 160 || sy < -160 || sy > h + 160) continue
 
-    const depth = 1 - Math.min(1, s.z / 1.6)
-    const twinkle = 0.75 + 0.25 * Math.sin(frame * s.twinkleSpeed + s.twinkleOffset)
-    const alpha = Math.min(1, s.baseAlpha * twinkle * (0.55 + depth * 0.35 + warpSpeed * 0.4))
-    const dx = sx - cx
-    const dy = sy - cy
-    const len = Math.hypot(dx, dy) || 1
-    const ux = dx / len
-    const uy = dy / len
-    const streak = streakScale * (0.2 + depth) * Math.max(0.06, warpBlend)
+    const twinkle = 0.8 + 0.2 * Math.sin(frame * s.twinkleSpeed + s.twinkleOffset)
+    const alpha = Math.min(1, s.baseAlpha * twinkle * (0.45 + depth * 0.4 + vel * 0.35))
 
-    const hue = 198 + depth * 40
-    const headR = s.r * (0.85 + depth * 0.9 + warpSpeed * 0.8)
+    const hasPrev = s.prevSx != null && s.prevSy != null
+    const motion = hasPrev ? Math.hypot(sx - s.prevSx, sy - s.prevSy) : 0
 
-    if (warpBlend < 0.55) {
+    if (hasPrev && motion > 1.2 && warpSpeed > 0.06) {
+      drawMotionStreak(ctx, s.prevSx, s.prevSy, sx, sy, alpha, depth, warpSpeed)
+    } else {
+      const headR = s.r * (0.7 + depth * 0.5 + vel * 0.4)
       ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
       ctx.beginPath()
       ctx.arc(sx, sy, headR, 0, Math.PI * 2)
       ctx.fill()
     }
 
-    if (warpBlend > 0.08) {
-      ctx.strokeStyle = `hsla(${hue}, 85%, ${72 + depth * 22}%, ${alpha * warpBlend})`
-      ctx.lineWidth = 0.4 + depth * 1.6 + warpSpeed * 1.6
-      ctx.beginPath()
-      ctx.moveTo(sx - ux * streak, sy - uy * streak)
-      ctx.lineTo(sx, sy)
-      ctx.stroke()
-    }
-
-    if (warpBlend >= 0.55) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, alpha + 0.12)})`
-      ctx.beginPath()
-      ctx.arc(sx, sy, headR, 0, Math.PI * 2)
-      ctx.fill()
-    }
+    s.prevSx = sx
+    s.prevSy = sy
   }
 
-  if (warpSpeed > 0.35) {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, focal * (0.35 + warpSpeed * 0.5))
-    g.addColorStop(0, `rgba(255, 255, 255, ${warpSpeed * 0.07})`)
-    g.addColorStop(0.35, `rgba(122, 184, 255, ${warpSpeed * 0.04})`)
+  if (vel > 0.12) {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, focal * (0.2 + vel * 0.45))
+    g.addColorStop(0, `rgba(255, 255, 255, ${vel * 0.04})`)
+    g.addColorStop(0.4, `rgba(140, 190, 255, ${vel * 0.025})`)
     g.addColorStop(1, "rgba(0, 0, 0, 0)")
     ctx.fillStyle = g
     ctx.fillRect(0, 0, w, h)
@@ -209,25 +234,6 @@ function startLoop() {
   rafId = requestAnimationFrame(draw)
 }
 
-function ensureFlashEl() {
-  if (flashEl instanceof HTMLElement) return flashEl
-  if (!(starfieldRoot instanceof HTMLElement)) return null
-  flashEl = document.createElement("div")
-  flashEl.className = "hyperspace-flash"
-  flashEl.setAttribute("aria-hidden", "true")
-  starfieldRoot.appendChild(flashEl)
-  return flashEl
-}
-
-function flashHyperspaceCut() {
-  const el = ensureFlashEl()
-  if (!(el instanceof HTMLElement)) return
-  gsap.killTweensOf(el)
-  gsap.set(el, { opacity: 0 })
-  gsap.to(el, { opacity: 1, duration: 0.045, ease: "power2.in" })
-  gsap.to(el, { opacity: 0, duration: 0.22, ease: "power2.out", delay: 0.05 })
-}
-
 function stopHyperspaceWarp() {
   if (warpTimeline) {
     warpTimeline.kill()
@@ -239,12 +245,12 @@ function stopHyperspaceWarp() {
 }
 
 /**
- * Warp speed ~1 s puis cut (callback `onCut`).
+ * Accélération → traînées réalistes → ralentissement → callback `onCut`.
  * @param {{ durationSec?: number, onCut?: () => void, onComplete?: () => void }} opts
  * @returns {Promise<void>}
  */
 export function runHyperspaceWarp(opts = {}) {
-  const { durationSec = 1, onCut, onComplete } = opts
+  const { durationSec = 1.2, onCut, onComplete } = opts
 
   return new Promise((resolve) => {
     stopHyperspaceWarp()
@@ -272,24 +278,34 @@ export function runHyperspaceWarp(opts = {}) {
     starfieldRoot?.classList.add("is-hyperspace")
     startLoop()
 
+    const accelDur = durationSec * 0.5
+    const decelDur = durationSec * 0.5
     const state = { t: 0 }
-    warpTimeline = gsap.timeline({
-      onComplete: finish,
-    })
+
+    warpTimeline = gsap.timeline({ onComplete: finish })
 
     warpTimeline.to(state, {
       t: 1,
-      duration: durationSec * 0.92,
-      ease: "power4.in",
+      duration: accelDur,
+      ease: "power2.in",
+      onUpdate: () => {
+        warpSpeed = state.t
+      },
+    })
+
+    warpTimeline.to(state, {
+      t: 0,
+      duration: decelDur,
+      ease: "power2.out",
       onUpdate: () => {
         warpSpeed = state.t
       },
     })
 
     warpTimeline.add(() => {
-      flashHyperspaceCut()
+      warpSpeed = 0
       onCut?.()
-    }, durationSec * 0.88)
+    })
   })
 }
 
@@ -303,8 +319,6 @@ export function initStarsBackground(opts = {}) {
   ctx = canvas.getContext("2d")
   if (!ctx) return
 
-  ensureFlashEl()
-
   const onResize = () => {
     resize()
     if (active && !warpActive) initStars()
@@ -317,7 +331,6 @@ export function setStarsBackgroundReducedMotion(isReduced) {
   reduced = !!isReduced
 }
 
-/** Actif hors phase `intro-stars-phase` (piloté par main.js / updateUi). */
 export function setStarsBackgroundActive(on) {
   active = !!on
   if (!canvas || !ctx) return
