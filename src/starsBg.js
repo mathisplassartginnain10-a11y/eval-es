@@ -6,6 +6,12 @@ import gsap from "gsap"
 import { smoothstep } from "./motionDesign.js"
 
 const STAR_COUNT = 280
+const CONCLUSION_STAR_COUNT = 460
+/** Dérive lente permanente (alignée sur conclusion-animation.html : z += 0.003). */
+const CONCLUSION_BASE_DRIFT = 0.004
+const CONCLUSION_WARP_ACCEL_SEC = 0.7
+const CONCLUSION_WARP_DECEL_SEC = 0.7
+const CONCLUSION_WARP_PEAK = 0.15
 const STAR_FPS = 30
 const STAR_MS = 1000 / STAR_FPS
 
@@ -27,6 +33,11 @@ let warpActive = false
 let warpSpeed = 0
 /** @type {gsap.core.Timeline | null} */
 let warpTimeline = null
+
+let conclusionMode = false
+let conclusionWarpSpd = 0
+/** @type {gsap.core.Timeline | null} */
+let conclusionWarpTimeline = null
 
 /** @typedef {{
  *   x: number,
@@ -57,7 +68,8 @@ function resizeStars() {
   canvas.height = h
   if (w < 1 || h < 1) return
   if (!stars.length || prevW !== w || prevH !== h) {
-    initStars()
+    if (conclusionMode) initConclusionStars()
+    else initStars()
   }
 }
 
@@ -78,6 +90,91 @@ function initStars() {
     baseAlpha: Math.random() * 0.5 + 0.2,
     depth: Math.random(),
   }))
+}
+
+/** Étoiles conclusion : coords normalisées + profondeur z (même logique que l’iframe). */
+function initConclusionStars() {
+  if (!canvas) return
+  const W = canvas.width
+  const H = canvas.height
+  if (W < 1 || H < 1) return
+
+  stars = Array.from({ length: CONCLUSION_STAR_COUNT }, () => ({
+    nx: (Math.random() - 0.5) * 2,
+    ny: (Math.random() - 0.5) * 2,
+    cz: Math.random(),
+    r: Math.random() * 0.9 + 0.2,
+    a: Math.random() * 0.5 + 0.3,
+    tw: Math.random() * Math.PI * 2,
+    sp: Math.random() * 0.008 + 0.002,
+  }))
+}
+
+function drawConclusionStars(w, h, spd) {
+  if (!ctx) return
+
+  ctx.fillStyle = "#000"
+  ctx.fillRect(0, 0, w, h)
+
+  const cx = w * 0.5
+  const cy = h * 0.5
+  const drift = CONCLUSION_BASE_DRIFT + spd
+
+  for (const s of stars) {
+    s.cz = (s.cz ?? 0) + drift
+    if (s.cz > 1) s.cz -= 1
+
+    const p = 1 / (1.2 - s.cz * 0.8)
+    const sx = cx + (s.nx ?? 0) * w * 0.55 * p
+    const sy = cy + (s.ny ?? 0) * h * 0.55 * p
+    const sr = (s.r ?? 0.5) * p * 0.75
+
+    if (spd > 0.03) {
+      const pPrev = 1 / (1.2 - (s.cz - 0.025) * 0.8)
+      const px = cx + (s.nx ?? 0) * w * 0.55 * pPrev
+      const py = cy + (s.ny ?? 0) * h * 0.55 * pPrev
+      const dx = sx - px
+      const dy = sy - py
+      const len = Math.hypot(dx, dy) || 1
+      const tl = spd * 200 * p
+      const ux = dx / len
+      const uy = dy / len
+      const grad = ctx.createLinearGradient(sx - ux * tl, sy - uy * tl, sx, sy)
+      grad.addColorStop(0, "rgba(255,255,255,0)")
+      grad.addColorStop(1, `rgba(255,255,255,${Math.min(0.95, spd * 8)})`)
+      ctx.strokeStyle = grad
+      ctx.lineWidth = sr * 1.5
+      ctx.beginPath()
+      ctx.moveTo(sx - ux * tl, sy - uy * tl)
+      ctx.lineTo(sx, sy)
+      ctx.stroke()
+    }
+
+    const tw = spd > 0.05 ? 1 : 0.7 + 0.3 * Math.sin(s.tw + frame * s.sp)
+    ctx.beginPath()
+    ctx.arc(sx, sy, Math.max(0.2, sr), 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, (s.a ?? 0.5) * tw)})`
+    ctx.fill()
+  }
+
+  if (spd > 0.04) {
+    const focal = Math.min(w, h) * 0.55
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, focal * (0.2 + spd * 2))
+    glow.addColorStop(0, `rgba(255, 255, 255, ${spd * 0.06})`)
+    glow.addColorStop(0.45, `rgba(140, 190, 255, ${spd * 0.035})`)
+    glow.addColorStop(1, "rgba(0, 0, 0, 0)")
+    ctx.fillStyle = glow
+    ctx.fillRect(0, 0, w, h)
+  }
+}
+
+function stopConclusionWarpPulse() {
+  if (conclusionWarpTimeline) {
+    conclusionWarpTimeline.kill()
+    conclusionWarpTimeline = null
+  }
+  conclusionWarpSpd = 0
+  if (conclusionMode) starfieldRoot?.classList.remove("is-hyperspace")
 }
 
 function paintBlackout() {
@@ -328,7 +425,8 @@ function draw(ts) {
   const w = canvas.width
   const h = canvas.height
 
-  if (warpActive) drawHyperspace(w, h)
+  if (conclusionMode) drawConclusionStars(w, h, conclusionWarpSpd)
+  else if (warpActive) drawHyperspace(w, h)
   else drawNormal(w, h)
 }
 
@@ -353,7 +451,9 @@ function stopHyperspaceWarp() {
   }
   warpActive = false
   warpSpeed = 0
-  starfieldRoot?.classList.remove("is-hyperspace")
+  if (!conclusionMode || !conclusionWarpTimeline) {
+    starfieldRoot?.classList.remove("is-hyperspace")
+  }
 }
 
 /**
@@ -364,6 +464,7 @@ export function runHyperspaceWarp(opts = {}) {
 
   return new Promise((resolve) => {
     stopHyperspaceWarp()
+    if (conclusionMode) setConclusionStarfieldEnabled(false)
 
     const finish = () => {
       const ww = canvas?.width ?? 0
@@ -448,6 +549,7 @@ export function runPresentationFinale(opts = {}) {
 
   return new Promise((resolve) => {
     stopHyperspaceWarp()
+    if (conclusionMode) setConclusionStarfieldEnabled(false)
     blackoutAlpha = 0
 
     const finish = () => {
@@ -508,6 +610,68 @@ export function runPresentationFinale(opts = {}) {
   })
 }
 
+/** Mode conclusion : plus d’étoiles, dérive continue, rendu aligné sur l’iframe. */
+export function setConclusionStarfieldEnabled(on) {
+  const was = conclusionMode
+  conclusionMode = !!on
+
+  if (conclusionMode) {
+    stopHyperspaceWarp()
+    starfieldRoot?.classList.add("is-conclusion-stars")
+    document.body.classList.add("conclusion-stars-active")
+    if (canvas && ctx) {
+      initConclusionStars()
+      lastFrame = 0
+      if (active) startLoop()
+    }
+    return
+  }
+
+  stopConclusionWarpPulse()
+  starfieldRoot?.classList.remove("is-conclusion-stars")
+  document.body.classList.remove("conclusion-stars-active")
+  if (was && canvas && ctx) {
+    initStars()
+    lastFrame = 0
+    if (active) startLoop()
+  }
+}
+
+/** Pulse warp conclusion (700 ms accel + 700 ms decel, comme conclusion-animation.html). */
+export function pulseConclusionWarp() {
+  stopConclusionWarpPulse()
+  if (reduced || !active || !conclusionMode || !ctx) return
+
+  starfieldRoot?.classList.add("is-hyperspace")
+  const state = { spd: 0 }
+
+  conclusionWarpTimeline = gsap.timeline({
+    onComplete: () => {
+      conclusionWarpSpd = 0
+      starfieldRoot?.classList.remove("is-hyperspace")
+      conclusionWarpTimeline = null
+    },
+  })
+
+  conclusionWarpTimeline.to(state, {
+    spd: CONCLUSION_WARP_PEAK,
+    duration: CONCLUSION_WARP_ACCEL_SEC,
+    ease: "power3.in",
+    onUpdate: () => {
+      conclusionWarpSpd = state.spd
+    },
+  })
+
+  conclusionWarpTimeline.to(state, {
+    spd: 0,
+    duration: CONCLUSION_WARP_DECEL_SEC,
+    ease: "power3.out",
+    onUpdate: () => {
+      conclusionWarpSpd = state.spd
+    },
+  })
+}
+
 /** @deprecated Conservé pour compatibilité — le warp radial gère l’intensité. */
 export function setWarpIntensity(_intensity) {}
 
@@ -539,6 +703,8 @@ export function setStarsBackgroundActive(on) {
     startLoop()
   } else {
     stopHyperspaceWarp()
+    stopConclusionWarpPulse()
+    setConclusionStarfieldEnabled(false)
     stopLoop()
   }
 }
@@ -546,6 +712,7 @@ export function setStarsBackgroundActive(on) {
 export function restartStarsAfterFinale() {
   blackoutAlpha = 0
   stopHyperspaceWarp()
+  setConclusionStarfieldEnabled(false)
   if (!canvas || !ctx) return
   active = true
   canvas.hidden = false

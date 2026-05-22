@@ -1038,7 +1038,11 @@ body {
   transform: translateX(-50%);
   z-index: 48;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(96vw, 36rem);
   pointer-events: auto;
 }
 
@@ -1075,6 +1079,43 @@ body {
 
 .epilogue-actions__btn:active {
   transform: scale(0.98);
+}
+
+.epilogue-actions__btn--primary {
+  border-color: rgba(200, 220, 255, 0.45);
+}
+
+.epilogue-actions__btn--secondary {
+  color: rgba(220, 228, 245, 0.82);
+  background: rgba(8, 12, 22, 0.55);
+  border-color: rgba(140, 160, 200, 0.28);
+}
+
+.epilogue-actions__btn--secondary:hover,
+.epilogue-actions__btn--secondary:focus-visible {
+  color: rgba(248, 250, 252, 0.96);
+  background: rgba(18, 26, 42, 0.78);
+  border-color: rgba(170, 190, 230, 0.42);
+}
+
+.presentation-end-actions {
+  position: fixed;
+  left: 50%;
+  top: calc(50% + 4.25rem);
+  transform: translateX(-50%);
+  z-index: 26002;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.presentation-end-actions[hidden] {
+  display: none !important;
+  pointer-events: none;
+}
+
+body.presentation-ended .presentation-end-actions {
+  visibility: visible;
 }
 
 /* Bandes au-dessus de l’iframe : le swipe remonte au document parent (l’iframe ne le transmet pas). */
@@ -1679,10 +1720,22 @@ body {
   background: #000;
 }
 
+#starfield-bg.is-conclusion-stars canvas {
+  filter: brightness(1.14) contrast(1.06);
+}
+
+body.conclusion-stars-active #starfield-bg {
+  z-index: 0;
+}
+
 #starfield-bg.is-hyperspace {
   z-index: 10000;
   transition: filter 0.35s ease;
   filter: brightness(1.08) saturate(1.15);
+}
+
+#starfield-bg.is-conclusion-stars.is-hyperspace {
+  filter: brightness(1.16) saturate(1.22);
 }
 
 #starfield-bg.is-hyperspace canvas {

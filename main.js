@@ -26,6 +26,8 @@ import {
   runPresentationFinale,
   setStarsBackgroundActive,
   setStarsBackgroundReducedMotion,
+  setConclusionStarfieldEnabled,
+  pulseConclusionWarp,
 } from "./src/starsBg.js"
 
 const motionRef = {
@@ -66,6 +68,9 @@ const topoPromptWrap = document.getElementById("topo-prompt-wrap")
 const conclusionPromptWrap = document.getElementById("conclusion-prompt-wrap")
 const epilogueActions = document.getElementById("epilogue-actions")
 const btnEndPresentation = document.getElementById("btn-end-presentation")
+const btnQuitPage = document.getElementById("btn-quit-page")
+const presentationEndActions = document.getElementById("presentation-end-actions")
+const btnQuitAfterEnd = document.getElementById("btn-quit-after-end")
 const presentationBlackout = document.getElementById("presentation-blackout")
 const scrollHintEl = document.getElementById("scroll-hint")
 
@@ -700,6 +705,7 @@ function applySlideForIndex(index, meta = {}) {
   }
 
   if (index !== 5) {
+    setConclusionStarfieldEnabled(false)
     const cf = document.getElementById("conclusion-frame")
     queueMicrotask(() => {
       try {
@@ -814,6 +820,7 @@ function applySlideForIndex(index, meta = {}) {
   stageMediaWrap.setAttribute("aria-hidden", "false")
 
   if (kf.conclusionPrompt) {
+    setConclusionStarfieldEnabled(true)
     eratoPromptWrap.hidden = true
     eratoPromptWrap.setAttribute("aria-hidden", "true")
     stageTilesRoot.hidden = true
@@ -1053,7 +1060,7 @@ function onIntroWindowClick(e) {
   if (
     e.target instanceof Element &&
     e.target.closest(
-      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #btn-end-presentation, .section-dot, .nav-dock__item"
+      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #presentation-end-actions, #btn-end-presentation, #btn-quit-page, #btn-quit-after-end, .section-dot, .nav-dock__item"
     )
   )
     return
@@ -1096,7 +1103,7 @@ function onIntroTapCatcherPointer(e) {
   if (
     e.target instanceof Element &&
     e.target.closest(
-      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #btn-end-presentation, .section-dot, .nav-dock__item"
+      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #presentation-end-actions, #btn-end-presentation, #btn-quit-page, #btn-quit-after-end, .section-dot, .nav-dock__item"
     )
   )
     return
@@ -1458,7 +1465,7 @@ function targetExcludesGlobalNav(el) {
   if (!(el instanceof Element)) return true
   if (el.isContentEditable || el.closest("[contenteditable]")) return true
   return !!el.closest(
-    "#nav-dock, #btn-home, #section-dots, #btn-prev, #epilogue-actions, #btn-end-presentation, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
+    "#nav-dock, #btn-home, #section-dots, #btn-prev, #epilogue-actions, #presentation-end-actions, #btn-end-presentation, #btn-quit-page, #btn-quit-after-end, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
   )
 }
 
@@ -1532,9 +1539,72 @@ if (btnPrev instanceof HTMLButtonElement) {
   })
 }
 
+/** Quitter l’exposé : page précédente, referrer, ou fermeture d’onglet. */
+function quitPresentationPage() {
+  try {
+    const ref = document.referrer
+    if (ref) {
+      const refUrl = new URL(ref)
+      const here = new URL(location.href)
+      const sameDoc =
+        refUrl.origin === here.origin &&
+        refUrl.pathname === here.pathname &&
+        refUrl.search === here.search
+      if (!sameDoc) {
+        window.location.assign(ref)
+        return
+      }
+    }
+  } catch (_) {
+    /* referrer invalide */
+  }
+
+  if (window.history.length > 1) {
+    window.history.back()
+    return
+  }
+
+  window.open("", "_self")
+  window.close()
+
+  window.setTimeout(() => {
+    try {
+      const parentDir = location.pathname.replace(/\/[^/]*$/, "/")
+      if (parentDir && parentDir !== location.pathname) {
+        window.location.assign(parentDir)
+      } else {
+        window.location.assign("about:blank")
+      }
+    } catch (_) {
+      window.location.assign("about:blank")
+    }
+  }, 280)
+}
+
 function showPresentationEndSommaire() {
   if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = true
   if (navDockSep instanceof HTMLElement) navDockSep.hidden = true
+
+  if (presentationEndActions instanceof HTMLElement) {
+    presentationEndActions.hidden = false
+    presentationEndActions.setAttribute("aria-hidden", "false")
+    if (motionRef.reduced) {
+      gsap.set(presentationEndActions, { autoAlpha: 1, y: 0, clearProps: "transform" })
+    } else {
+      gsap.fromTo(
+        presentationEndActions,
+        { autoAlpha: 0, y: 10 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.5,
+          delay: 0.12,
+          ease: MOTION.ease.settle,
+          clearProps: "transform",
+        }
+      )
+    }
+  }
 
   if (navDock instanceof HTMLElement) {
     navDock.hidden = false
@@ -1579,6 +1649,12 @@ function returnToSommaireFromEnd() {
     navDock.classList.remove("nav-dock--end-only", "is-visible")
     navDock.hidden = true
     gsap.set(navDock, { clearProps: "all" })
+  }
+  if (presentationEndActions instanceof HTMLElement) {
+    gsap.killTweensOf(presentationEndActions)
+    presentationEndActions.hidden = true
+    presentationEndActions.setAttribute("aria-hidden", "true")
+    gsap.set(presentationEndActions, { clearProps: "all" })
   }
   if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = false
   if (navDockSep instanceof HTMLElement) navDockSep.hidden = false
@@ -1659,6 +1735,21 @@ if (btnEndPresentation instanceof HTMLButtonElement) {
   })
 }
 
+function onQuitPageClick(e) {
+  e.stopPropagation()
+  e.preventDefault()
+  if (presentationEnding) return
+  quitPresentationPage()
+}
+
+if (btnQuitPage instanceof HTMLButtonElement) {
+  btnQuitPage.addEventListener("click", onQuitPageClick)
+}
+
+if (btnQuitAfterEnd instanceof HTMLButtonElement) {
+  btnQuitAfterEnd.addEventListener("click", onQuitPageClick)
+}
+
 if (btnHome instanceof HTMLButtonElement) {
   btnHome.addEventListener("click", (e) => {
     e.stopPropagation()
@@ -1671,6 +1762,15 @@ if (btnHome instanceof HTMLButtonElement) {
     playHomeNavAnimation(() => goToSectionIndex(0))
   })
 }
+
+window.addEventListener("message", (e) => {
+  const data = e.data
+  if (!data || typeof data !== "object" || data.type !== "conclusion-warp" || data.action !== "start") {
+    return
+  }
+  if ((scrollApi?.getIndex?.() ?? -1) !== 5) return
+  pulseConclusionWarp()
+})
 
 window.addEventListener("load", () => {
   scrollApi?.refresh()
