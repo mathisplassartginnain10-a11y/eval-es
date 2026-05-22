@@ -1796,11 +1796,22 @@ body.presentation-ended #scroll-hint {
   display: none !important;
 }
 
+body.presentation-ended,
+body.presentation-ending {
+  overflow: hidden;
+}
+
 body.presentation-ended #app,
 body.presentation-ended #scroll-hint,
 body.presentation-ended #persistent-names,
-body.presentation-ended #page-transition {
+body.presentation-ended #page-transition,
+body.presentation-ended #starfield-bg {
   visibility: hidden;
+  pointer-events: none;
+}
+
+body.presentation-ending #starfield-bg.is-hyperspace {
+  visibility: visible;
   pointer-events: none;
 }
 

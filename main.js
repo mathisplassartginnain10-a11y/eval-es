@@ -1540,6 +1540,23 @@ function showPresentationEndSommaire() {
     navDock.hidden = false
     navDock.classList.add("is-visible", "nav-dock--end-only")
     navDock.setAttribute("aria-hidden", "false")
+
+    if (motionRef.reduced) {
+      gsap.set(navDock, { autoAlpha: 1, scale: 1, clearProps: "transform" })
+    } else {
+      gsap.fromTo(
+        navDock,
+        { autoAlpha: 0, scale: 0.9, y: 12 },
+        {
+          autoAlpha: 1,
+          scale: 1,
+          y: 0,
+          duration: 0.55,
+          ease: MOTION.ease.settle,
+          clearProps: "transform",
+        }
+      )
+    }
   }
   postToNavDockEarth("resume")
 }
@@ -1551,16 +1568,21 @@ function returnToSommaireFromEnd() {
   document.body.classList.remove("presentation-ended")
 
   if (presentationBlackout instanceof HTMLElement) {
+    gsap.killTweensOf(presentationBlackout)
     presentationBlackout.hidden = true
     presentationBlackout.setAttribute("aria-hidden", "true")
     gsap.set(presentationBlackout, { clearProps: "opacity" })
   }
 
   if (navDock instanceof HTMLElement) {
-    navDock.classList.remove("nav-dock--end-only")
+    gsap.killTweensOf(navDock)
+    navDock.classList.remove("nav-dock--end-only", "is-visible")
+    navDock.hidden = true
+    gsap.set(navDock, { clearProps: "all" })
   }
   if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = false
   if (navDockSep instanceof HTMLElement) navDockSep.hidden = false
+  if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = false
 
   restartStarsAfterFinale()
 
@@ -1585,19 +1607,40 @@ async function playPresentationEnd() {
   if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = true
   document.body.classList.add("presentation-ending", "scroll-locked")
 
-  gsap.killTweensOf([textOverlay, epilogueActions].filter(Boolean))
-  gsap.to([textOverlay, epilogueActions].filter(Boolean), {
-    autoAlpha: 0,
-    duration: motionRef.reduced ? 0.12 : 0.3,
-    ease: MOTION.ease.in,
-  })
-
-  await runPresentationFinale({ durationSec: motionRef.reduced ? 0 : 1.65 })
+  const fadeTargets = [textOverlay, epilogueActions].filter(Boolean)
+  gsap.killTweensOf(fadeTargets)
+  if (fadeTargets.length) {
+    await new Promise((resolve) => {
+      gsap.to(fadeTargets, {
+        autoAlpha: 0,
+        duration: motionRef.reduced ? 0.1 : 0.35,
+        ease: MOTION.ease.in,
+        onComplete: resolve,
+      })
+    })
+  }
 
   if (presentationBlackout instanceof HTMLElement) {
     presentationBlackout.hidden = false
     presentationBlackout.setAttribute("aria-hidden", "false")
-    gsap.set(presentationBlackout, { opacity: 1 })
+    gsap.set(presentationBlackout, { opacity: 0 })
+  }
+
+  await runPresentationFinale({ durationSec: motionRef.reduced ? 0.01 : 1.85 })
+
+  if (presentationBlackout instanceof HTMLElement) {
+    if (motionRef.reduced) {
+      gsap.set(presentationBlackout, { opacity: 1 })
+    } else {
+      await new Promise((resolve) => {
+        gsap.to(presentationBlackout, {
+          opacity: 1,
+          duration: 0.4,
+          ease: MOTION.ease.in,
+          onComplete: resolve,
+        })
+      })
+    }
   }
 
   presentationEnding = false
