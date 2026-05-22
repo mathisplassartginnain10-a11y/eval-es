@@ -1539,7 +1539,15 @@ if (btnPrev instanceof HTMLButtonElement) {
   })
 }
 
-/** Quitter l’exposé : page précédente, referrer, ou fermeture d’onglet. */
+function getQuitExitUrl() {
+  try {
+    return new URL("exit.html", document.baseURI).href
+  } catch (_) {
+    return "exit.html"
+  }
+}
+
+/** Quitter l’exposé : site d’origine (referrer), fermeture popup, ou page exit.html. */
 function quitPresentationPage() {
   try {
     const ref = document.referrer
@@ -1551,7 +1559,7 @@ function quitPresentationPage() {
         refUrl.pathname === here.pathname &&
         refUrl.search === here.search
       if (!sameDoc) {
-        window.location.assign(ref)
+        window.location.replace(ref)
         return
       }
     }
@@ -1559,26 +1567,15 @@ function quitPresentationPage() {
     /* referrer invalide */
   }
 
-  if (window.history.length > 1) {
-    window.history.back()
+  if (window.opener && !window.opener.closed) {
+    window.close()
+    window.setTimeout(() => {
+      if (!window.closed) window.location.replace(getQuitExitUrl())
+    }, 120)
     return
   }
 
-  window.open("", "_self")
-  window.close()
-
-  window.setTimeout(() => {
-    try {
-      const parentDir = location.pathname.replace(/\/[^/]*$/, "/")
-      if (parentDir && parentDir !== location.pathname) {
-        window.location.assign(parentDir)
-      } else {
-        window.location.assign("about:blank")
-      }
-    } catch (_) {
-      window.location.assign("about:blank")
-    }
-  }, 280)
+  window.location.replace(getQuitExitUrl())
 }
 
 function showPresentationEndSommaire() {
