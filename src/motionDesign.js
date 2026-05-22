@@ -15,15 +15,15 @@ export const MOTION = {
   warpSec: 1.2,
   alpha: {
     /** Pendant le pic du warp : le contenu reste visible en silhouette. */
-    dim: 0.38,
+    dim: 0.32,
     /** Début de l’apparition de la nouvelle étape. */
-    reveal: 0.78,
+    reveal: 0.72,
     /** Jamais en dessous pendant un fondu. */
     floor: 0.28,
   },
   dur: {
-    pageExit: (ipad) => (ipad ? 0.28 : 0.32),
-    pageReveal: (ipad) => (ipad ? 0.65 : 0.75),
+    pageExit: (ipad) => (ipad ? 0.32 : 0.38),
+    pageReveal: (ipad) => (ipad ? 0.72 : 0.82),
     pageOverlap: (ipad) => (ipad ? 0.12 : 0.14),
     miniTotal: (ipad) => (ipad ? 0.44 : 0.52),
     mediaEnter: (ipad) => (ipad ? 0.82 : 0.96),

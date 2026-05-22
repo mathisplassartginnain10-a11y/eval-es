@@ -2939,6 +2939,17 @@ body.intro-stars-phase .nav-dock {
   transition-delay: 0s;
 }
 
+/* Pendant une transition de page, GSAP contrôle opacité / transform */
+body.is-page-transitioning .text-overlay .text-overlay__kicker,
+body.is-page-transitioning .text-overlay .text-overlay__title,
+body.is-page-transitioning .text-overlay .text-overlay__subtitle,
+body.is-page-transitioning .text-overlay .text-overlay__body,
+body.is-page-transitioning .text-overlay .text-overlay__body p,
+body.is-page-transitioning .text-overlay .text-overlay__credit,
+body.is-page-transitioning #stage-media-wrap {
+  transition: none !important;
+}
+
 .text-overlay.is-visible .text-overlay__title,
 .text-overlay.is-visible .text-overlay__subtitle,
 .text-overlay.is-visible .text-overlay__body,
