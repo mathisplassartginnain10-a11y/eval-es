@@ -1,0 +1,400 @@
+/* ============================================
+   responsive-layout.css
+   Positions fluides — mobile, tablette, iPad, desktop
+   Chargé après style.css
+   ============================================ */
+
+:root {
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+  --page-pad-x: clamp(0.75rem, 3vw, 1.75rem);
+  --page-pad-y: clamp(0.65rem, 2vh, 1.25rem);
+  --text-col-split: min(45vw, 38rem);
+  --text-col-wide: min(42vw, 38rem);
+  --media-stack-h: clamp(12rem, min(48vh, 72vw), 28rem);
+  --nav-clearance: calc(var(--sa-bottom) + clamp(4.25rem, 11vh, 5.25rem));
+  --epilogue-clearance: calc(var(--sa-bottom) + clamp(5.75rem, 15vh, 7.5rem));
+  --header-clearance: calc(var(--sa-top) + clamp(3.75rem, 9vh, 4.75rem));
+}
+
+/* #app fixed couvre le viewport — pas de padding body (évite double marge) */
+body {
+  padding: 0 !important;
+}
+
+#app[data-layout="intro"],
+#app[data-step="1"] {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.persistent-names {
+  top: max(var(--sa-top), 0.65rem);
+  left: max(var(--sa-left), 1rem);
+  right: auto;
+  max-width: min(14rem, 46vw);
+  line-height: 1.45;
+}
+
+.scroll-hint-intro {
+  bottom: max(var(--sa-bottom), clamp(1rem, 4vmin, 2.25rem));
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+  max-width: min(92vw, 22rem);
+  text-align: center;
+}
+
+/* ——— Tablette / fenêtre étroite : empiler texte puis média ——— */
+@media (max-width: 900px) {
+  #app[data-layout="split"],
+  #app[data-layout="sphere"] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    overflow: hidden;
+    padding-top: var(--sa-top);
+    padding-bottom: var(--sa-bottom);
+    box-sizing: border-box;
+  }
+
+  #app[data-layout="split"] > #text-overlay.text-overlay--apple,
+  #app[data-layout="sphere"] > #text-overlay.text-overlay--apple {
+    order: 1;
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: max(var(--sa-left), var(--page-pad-x)) !important;
+    right: max(var(--sa-right), var(--page-pad-x)) !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto;
+    margin-top: max(0px, calc(var(--header-clearance) - var(--sa-top) - 1.5rem));
+    padding-bottom: 0.35rem;
+    z-index: 14;
+  }
+
+  #app.page2-layout > #text-overlay.text-overlay--apple {
+    order: 1;
+    position: relative !important;
+    top: auto !important;
+    transform: none !important;
+    margin-top: max(0px, calc(var(--header-clearance) - var(--sa-top) - 1.25rem));
+  }
+
+  #app.page2-layout > #stage-media-wrap {
+    order: 2;
+    position: relative !important;
+    inset: auto !important;
+    left: max(var(--sa-left), var(--page-pad-x)) !important;
+    right: max(var(--sa-right), var(--page-pad-x)) !important;
+    top: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    max-width: min(92vw, 100%) !important;
+    height: var(--media-stack-h) !important;
+    max-height: min(52vh, 78vw) !important;
+    margin: var(--page-pad-y) auto var(--nav-clearance) !important;
+  }
+
+  #app[data-step="5"] > #text-overlay.text-overlay--apple,
+  #app[data-step="6"] > #text-overlay.text-overlay--apple {
+    order: 1;
+    position: relative !important;
+    top: auto !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    left: max(var(--sa-left), var(--page-pad-x)) !important;
+    right: max(var(--sa-right), var(--page-pad-x)) !important;
+  }
+
+  #app[data-step="5"] > #stage-media-wrap,
+  #app[data-step="6"] > #stage-media-wrap {
+    order: 2;
+    position: relative !important;
+    top: auto !important;
+    left: max(var(--sa-left), var(--page-pad-x)) !important;
+    right: max(var(--sa-right), var(--page-pad-x)) !important;
+    width: auto !important;
+    height: var(--media-stack-h) !important;
+    max-height: min(52vh, 78vw) !important;
+    margin: var(--page-pad-y) auto var(--nav-clearance) !important;
+  }
+
+  #app[data-layout="split"] > #stage-media-wrap,
+  #app[data-layout="sphere"] > #stage-media-wrap {
+    order: 2;
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: max(var(--sa-left), var(--page-pad-x)) !important;
+    right: max(var(--sa-right), var(--page-pad-x)) !important;
+    width: auto !important;
+    height: var(--media-stack-h) !important;
+    max-height: min(52vh, 78vw) !important;
+    min-height: clamp(11rem, 28vw, 18rem);
+    margin: var(--page-pad-y) auto var(--nav-clearance) !important;
+    flex: 1 1 auto;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  #app[data-layout="split"] > .section-dots,
+  #app[data-layout="sphere"] > .section-dots {
+    top: auto;
+    bottom: max(var(--sa-bottom), 0.85rem);
+    right: max(var(--sa-right), var(--page-pad-x));
+    left: auto;
+    transform: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-content: flex-end;
+    gap: 0.35rem;
+    max-height: none;
+    width: auto;
+    max-width: min(72vw, 16rem);
+    z-index: 16;
+  }
+
+  #app[data-layout="sphere"] .text-overlay--apple {
+    padding-top: 0;
+    padding-bottom: 0.25rem;
+  }
+
+  /* Intro : conserver la grille 2 colonnes un peu plus longtemps */
+  #app[data-layout="intro"],
+  #app[data-step="1"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  #app[data-layout="intro"] > #text-overlay.text-overlay--apple,
+  #app[data-step="1"] > #text-overlay.text-overlay--apple {
+    order: unset;
+    margin-top: 0;
+  }
+
+  #app[data-layout="intro"] > #stage-media-wrap,
+  #app[data-step="1"] > #stage-media-wrap {
+    order: unset;
+    height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+}
+
+/* ——— Téléphone : texte au-dessus du dock, média pleine largeur ——— */
+@media (max-width: 600px) {
+  :root {
+    --media-stack-h: clamp(10.5rem, min(42vh, 68vw), 22rem);
+    --nav-clearance: calc(var(--sa-bottom) + clamp(4.5rem, 13vh, 5.75rem));
+  }
+
+  .text-overlay--apple {
+    top: auto !important;
+    bottom: var(--nav-clearance) !important;
+    transform: none !important;
+    left: max(var(--sa-left), var(--page-pad-x)) !important;
+    right: max(var(--sa-right), var(--page-pad-x)) !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+
+  #app[data-layout="split"],
+  #app[data-layout="sphere"] {
+    display: block;
+    padding-top: var(--sa-top);
+    padding-bottom: 0;
+  }
+
+  #app[data-layout="split"] > #text-overlay.text-overlay--apple,
+  #app[data-layout="sphere"] > #text-overlay.text-overlay--apple {
+    position: absolute !important;
+    top: max(var(--sa-top), 3.5rem) !important;
+    bottom: var(--nav-clearance) !important;
+    margin-top: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  #app[data-layout="split"] > #stage-media-wrap,
+  #app[data-layout="sphere"] > #stage-media-wrap {
+    position: absolute !important;
+    top: var(--header-clearance) !important;
+    bottom: calc(var(--nav-clearance) + min(38vh, 52vw)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    margin: 0 !important;
+    flex: none;
+  }
+
+  #app[data-layout="split"] > .section-dots,
+  #app[data-layout="sphere"] > .section-dots {
+    bottom: calc(var(--sa-bottom) + 0.35rem);
+    right: max(var(--sa-right), 0.65rem);
+    max-width: min(55vw, 10rem);
+  }
+
+  #app[data-layout="intro"],
+  #app[data-step="1"] {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  #app[data-layout="intro"] > .intro-page-meta,
+  #app[data-step="1"] > .intro-page-meta {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  #app[data-layout="intro"] > #text-overlay.text-overlay--apple,
+  #app[data-step="1"] > #text-overlay.text-overlay--apple {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+  }
+
+  #app[data-layout="intro"] > #stage-media-wrap,
+  #app[data-step="1"] > #stage-media-wrap {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    min-height: min(48vh, 26rem);
+  }
+
+  .epilogue-actions {
+    bottom: max(var(--sa-bottom), 0.85rem);
+    width: min(96vw, 24rem);
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .epilogue-actions__btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  #app[data-layout="epilogue"] > #text-overlay.text-overlay--apple,
+  #app.app--epilogue > #text-overlay.text-overlay--apple {
+    padding-bottom: var(--epilogue-clearance);
+  }
+}
+
+/* ——— Épilogue : titre centré, boutons au-dessus du dock ——— */
+#app[data-layout="epilogue"] > #text-overlay.text-overlay--apple,
+#app.app--epilogue > #text-overlay.text-overlay--apple {
+  padding-top: max(var(--sa-top), 1.5rem);
+  padding-right: max(var(--sa-right), var(--page-pad-x));
+  padding-bottom: var(--epilogue-clearance);
+  padding-left: max(var(--sa-left), var(--page-pad-x));
+}
+
+.epilogue-actions {
+  bottom: max(var(--sa-bottom), clamp(1rem, 3vh, 1.75rem));
+  width: min(96vw, 28rem);
+  max-width: calc(100vw - var(--sa-left) - var(--sa-right) - 1.5rem);
+}
+
+/* ——— Fin de présentation : Sommaire + Quitter empilés ——— */
+@media (max-width: 600px) {
+  body.presentation-ended #nav-dock.nav-dock--end-only {
+    top: auto;
+    bottom: calc(var(--sa-bottom) + clamp(3.5rem, 10vh, 4.5rem));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  body.presentation-ended .presentation-end-actions {
+    top: auto;
+    bottom: max(var(--sa-bottom), 0.85rem);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 18rem);
+  }
+
+  body.presentation-ended .presentation-end-actions .epilogue-actions__btn {
+    width: 100%;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+  body.presentation-ended #nav-dock.nav-dock--end-only {
+    top: 42%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+  }
+
+  body.presentation-ended .presentation-end-actions {
+    top: calc(42% + 3.75rem);
+    bottom: auto;
+  }
+}
+
+/* ——— iPad paysage : colonnes un peu plus serrées ——— */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .text-overlay--apple {
+    right: auto;
+    max-width: var(--text-col-wide);
+    width: min(38vw, 36rem);
+    left: max(var(--sa-left), clamp(1rem, 3.5vw, 2rem));
+  }
+
+  #app .stage-media-wrap {
+    left: calc(max(var(--sa-left), clamp(1rem, 3.5vw, 2rem)) + min(38vw, 36rem) + clamp(0.75rem, 2vw, 1.25rem));
+  }
+}
+
+/* ——— Très grands écrans : limiter la largeur du texte ——— */
+@media (min-width: 1400px) {
+  .text-overlay--apple {
+    max-width: 40rem;
+    left: max(var(--sa-left), clamp(2rem, 4vw, 5rem));
+  }
+
+  #app .stage-media-wrap {
+    left: calc(max(var(--sa-left), clamp(2rem, 4vw, 5rem)) + 40rem + 2.5rem);
+  }
+}
+
+/* ——— Hauteur courte (paysage phone) ——— */
+@media (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --media-stack-h: clamp(8rem, 52vh, 14rem);
+    --nav-clearance: calc(var(--sa-bottom) + 3.75rem);
+    --header-clearance: calc(var(--sa-top) + 2.75rem);
+  }
+
+  #app[data-layout="split"] > #text-overlay.text-overlay--apple,
+  #app[data-layout="sphere"] > #text-overlay.text-overlay--apple {
+    margin-top: var(--header-clearance);
+    font-size: 0.9em;
+  }
+
+  #app[data-layout="split"] > #stage-media-wrap,
+  #app[data-layout="sphere"] > #stage-media-wrap {
+    height: var(--media-stack-h) !important;
+    max-height: 58vh !important;
+    margin-bottom: var(--nav-clearance) !important;
+  }
+
+  .epilogue-actions {
+    flex-direction: row;
+    width: auto;
+    max-width: min(96vw, 36rem);
+  }
+}

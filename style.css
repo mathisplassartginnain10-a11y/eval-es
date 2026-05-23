@@ -584,7 +584,7 @@ body {
   z-index: 20;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   #app.page2-layout > #text-overlay.text-overlay--apple {
     top: max(env(safe-area-inset-top, 0px), 5rem) !important;
     left: max(env(safe-area-inset-left, 0px), clamp(0.75rem, 3vw, 1rem)) !important;
@@ -932,7 +932,7 @@ body {
   box-sizing: border-box;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   #app[data-step="5"] > #text-overlay.text-overlay--apple {
     top: max(env(safe-area-inset-top, 0px), 5rem);
     left: max(env(safe-area-inset-left, 0px), clamp(0.75rem, 3vw, 1rem));
@@ -1003,7 +1003,7 @@ body {
   justify-content: center;
   text-align: center;
   padding: max(env(safe-area-inset-top, 0px), 2rem) max(env(safe-area-inset-right, 0px), 1.5rem)
-    max(env(safe-area-inset-bottom, 0px), 6.5rem) max(env(safe-area-inset-left, 0px), 1.5rem);
+    max(env(safe-area-inset-bottom, 0px), clamp(5.5rem, 14vh, 7.5rem)) max(env(safe-area-inset-left, 0px), 1.5rem);
   box-sizing: border-box;
   pointer-events: none;
 }
@@ -2813,7 +2813,7 @@ body.intro-stars-phase .nav-dock {
 @media (max-width: 540px) {
   .text-overlay--apple {
     top: auto;
-    bottom: clamp(5rem, 20vh, 8rem);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(4.25rem, 12vh, 5.5rem));
     transform: none;
     left: clamp(1.25rem, 4vw, 1.75rem);
     right: clamp(1.25rem, 4vw, 1.75rem);
