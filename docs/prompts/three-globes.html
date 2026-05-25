@@ -89,8 +89,10 @@ const sun = new THREE.DirectionalLight(0xffffff, isIpad ? 1.05 : 1.2)
 sun.position.set(6, 3, 5)
 scene.add(sun)
 
-const TARGET_FPS = 30
-const FRAME_MS = 1000 / TARGET_FPS
+/** Cap doux du dt pour éviter les sauts au retour de visibilité ou onglet en arrière-plan. */
+const MAX_DT = 1 / 20
+/** Vitesse cible normalisée (rad/s) — calibrée comme si l'on tournait à 30 fps avant. */
+const REF_FPS = 30
 let lastFrame = 0
 let orbitAngle = 0
 let paused = false
@@ -100,10 +102,12 @@ let rafId = null
 /** @type {ReturnType<typeof setTimeout> | null} */
 let resizeTimer = null
 
-/** Vitesse orbite caméra (rad par image ~30 fps) — valeur de base × facteur pour page 1 plus dynamique. */
-const ORBIT_STEP = ((2 * Math.PI) / (12 * 60)) * 12
-/** Rotation propre des globes (rad par image) — alignée sur le facteur d’accélération. */
-const SPIN_BASE = 0.0048 * 12
+/** Vitesse orbite caméra (rad / seconde) — valeur de base × facteur pour page 1 plus dynamique. */
+const ORBIT_STEP_PER_SEC = ((2 * Math.PI) / (12 * 60)) * 12 * REF_FPS
+/** Rotation propre des globes (rad / seconde) — alignée sur le facteur d'accélération. */
+const SPIN_BASE_PER_SEC = 0.0048 * 12 * REF_FPS
+/** Rotation lente du starfield (rad / seconde). */
+const STARS_SPIN_PER_SEC = 0.00105 * REF_FPS
 
 const sphereSeg = isIpad ? 24 : 32
 
@@ -424,12 +428,16 @@ schedulePostIntro()
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick)
-  if (paused || document.hidden) return
-  if (ts - lastFrame < FRAME_MS) return
+  if (paused || document.hidden) {
+    lastFrame = ts
+    return
+  }
+  if (lastFrame === 0) lastFrame = ts
+  const dt = Math.min(MAX_DT, Math.max(0, (ts - lastFrame) / 1000))
   lastFrame = ts
 
   if (starsPoints) {
-    starsPoints.rotation.y += 0.00105 * speed
+    starsPoints.rotation.y += STARS_SPIN_PER_SEC * speed * dt
   }
 
   const pulseT = Date.now() * 0.003
@@ -446,13 +454,13 @@ function tick(ts) {
 
   const L = getLayoutSnapshot()
   if (animating) {
-    orbitAngle += ORBIT_STEP * speed
+    orbitAngle += ORBIT_STEP_PER_SEC * speed * dt
     const dist = L.cam.z
     const wobble = Math.sin(orbitAngle * 0.12) * 0.35
     camera.position.set(L.cam.x + wobble, L.cam.y + Math.sin(orbitAngle * 0.08) * 0.06, dist)
     camera.lookAt(L.look)
 
-    const sp = SPIN_BASE * speed
+    const sp = SPIN_BASE_PER_SEC * speed * dt
     if (earthPivot?.visible) earthPivot.rotation.y += sp
     /* Orientation Meshy : uniquement sur les pivots — jamais sur modelAplatie / modelRocher ni *-orient-lock */
     if (aplatiePivot?.visible) aplatiePivot.rotation.y += sp
