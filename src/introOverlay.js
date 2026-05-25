@@ -105,9 +105,9 @@ export function createIntroOverlay({
 
   function detachIntroInteractionListeners() {
     window.removeEventListener("click", onIntroWindowClick, true)
-    window.removeEventListener("touchend", onIntroTouchEnd, { passive: true })
+    window.removeEventListener("touchend", onIntroTouchEnd)
     window.removeEventListener("keydown", onIntroKeydown, true)
-    window.removeEventListener("message", onIntroMessage, false)
+    window.removeEventListener("message", onIntroMessage)
     if (introTapCatcherEl instanceof HTMLElement) {
       introTapCatcherEl.removeEventListener("pointerdown", onIntroTapCatcherPointer)
       introTapCatcherEl.removeEventListener("click", onIntroTapCatcherPointer, true)
