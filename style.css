@@ -1794,14 +1794,14 @@ body.presentation-ended #nav-dock.nav-dock--end-only {
   z-index: 26001;
   transform: translate(-50%, -50%);
   opacity: 1;
-  padding: clamp(0.65rem, 1.6vmin, 0.95rem);
-  border-radius: 22px;
-  background: rgba(6, 10, 18, 0.86);
-  border-color: rgba(122, 184, 255, 0.32);
+  padding: clamp(0.95rem, 2.2vmin, 1.4rem);
+  border-radius: 28px;
+  background: rgba(6, 10, 18, 0.88);
+  border-color: rgba(122, 184, 255, 0.34);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.55) inset,
-    0 24px 64px rgba(0, 0, 0, 0.72),
-    0 0 36px rgba(74, 158, 255, 0.12);
+    0 28px 80px rgba(0, 0, 0, 0.74),
+    0 0 48px rgba(74, 158, 255, 0.16);
 }
 
 body.presentation-ended #nav-dock.nav-dock--end-only #btn-prev,
@@ -1813,27 +1813,97 @@ body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__item--home {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.7rem, 1.6vmin, 1.05rem);
+  gap: clamp(1rem, 2.4vmin, 1.6rem);
   min-width: 0;
-  padding: clamp(1.1rem, 2.6vmin, 1.7rem) clamp(1.4rem, 3.4vmin, 2.2rem);
-  border-radius: 18px;
+  padding: clamp(1.6rem, 3.6vmin, 2.6rem) clamp(2rem, 4.6vmin, 3.4rem);
+  border-radius: 24px;
 }
 
 body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__glyph--earth {
-  width: clamp(5.5rem, 16vmin, 9.5rem);
-  height: clamp(5.5rem, 16vmin, 9.5rem);
-  border-width: 1.5px;
+  width: clamp(8.5rem, 24vmin, 14.5rem);
+  height: clamp(8.5rem, 24vmin, 14.5rem);
+  border-width: 2px;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.55) inset,
-    0 0 28px rgba(74, 158, 255, 0.18);
+    0 0 42px rgba(74, 158, 255, 0.22);
 }
 
 body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__label {
-  font-size: clamp(0.95rem, 2.4vmin, 1.25rem);
+  font-size: clamp(1.2rem, 3vmin, 1.7rem);
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255, 245, 224, 0.94);
+  color: rgba(255, 245, 224, 0.96);
+}
+
+/* Bouton « Terminer la présentation » sur la page de remerciements */
+.epilogue-actions {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(8rem, 16vmin, 11rem));
+  transform: translateX(-50%);
+  z-index: 10005;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.epilogue-actions[hidden] {
+  display: none;
+}
+
+.epilogue-actions__btn {
+  appearance: none;
+  border: 1px solid rgba(122, 184, 255, 0.42);
+  background: rgba(8, 14, 26, 0.78);
+  color: rgba(255, 245, 224, 0.96);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: clamp(0.95rem, 2.2vmin, 1.15rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: clamp(0.85rem, 2vmin, 1.15rem) clamp(1.5rem, 3.4vmin, 2.4rem);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 18px 44px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(74, 158, 255, 0.18);
+  transition:
+    transform 220ms ease,
+    background 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.epilogue-actions__btn:hover,
+.epilogue-actions__btn:focus-visible {
+  background: rgba(14, 24, 44, 0.9);
+  border-color: rgba(180, 214, 255, 0.7);
+  transform: translateY(-1px);
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 22px 56px rgba(0, 0, 0, 0.6),
+    0 0 36px rgba(110, 178, 255, 0.28);
+}
+
+.epilogue-actions__btn:active {
+  transform: translateY(0);
+}
+
+.epilogue-actions__btn[disabled] {
+  opacity: 0.55;
+  cursor: default;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .epilogue-actions {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 6.5rem);
+  }
 }
 
 /* ——— Transition de page (rideau cosmique) ——— */
