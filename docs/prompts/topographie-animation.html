@@ -272,18 +272,24 @@ function drawArrow(ctx, x1, y1, x2, y2, color, dir){
 let startTs  = null;
 let playing  = false;
 let rafId    = null;
+/** Aperçu : titre visible + ligne de mer + amorce de montagne, sans fosse ni badge écart. */
+const POSTER_T = 0.18;
+/** Reprise de l'animation depuis le poster pour éviter le saut visuel. */
+let animFrom = POSTER_T;
 
 function animLoop(ts){
   if(!startTs) startTs = ts;
-  const raw = Math.min((ts - startTs) / TOTAL_DUR, 1);
-  _t = ease(raw);
+  const remain = Math.max(1e-6, 1 - animFrom);
+  const raw = Math.min((ts - startTs) / (TOTAL_DUR * remain), 1);
+  _t = animFrom + remain * ease(raw);
   draw(_t);
   if(raw < 1) rafId = requestAnimationFrame(animLoop);
   else playing = false;
 }
 
-/* ── Dessin initial — état de base ── */
-draw(0);
+/* ── Dessin initial : aperçu plutôt qu'écran noir avec une seule ligne ── */
+_t = POSTER_T;
+draw(POSTER_T);
 
 /* ── Hint tap ── */
 const hint = document.createElement('div');
@@ -319,9 +325,9 @@ window.TopoAnim = {
   play(){ startAnim(); },
   reset(){
     if(rafId){ cancelAnimationFrame(rafId); playing = false; }
-    _t = 0; started = false;
+    _t = POSTER_T; started = false;
     hint.style.opacity = '1';
-    draw(0);
+    draw(POSTER_T);
   },
   seek(t){
     if(rafId){ cancelAnimationFrame(rafId); playing = false; }
