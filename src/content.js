@@ -22,7 +22,7 @@ export const CONTENT = {
         { part: "Première partie", titre: "L'expérience d'Eratosthène", scrollIndex: 1 },
         { part: "Seconde partie", titre: "Les irrégularités de Surface", scrollIndex: 2 },
         { part: "Troisième partie", titre: "La gravité et la forme de la Terre", scrollIndex: 3 },
-        { part: "Quatrième partie", titre: "Les modifications typographiques", scrollIndex: 4 },
+        { part: "Quatrième partie", titre: "Les modifications topographiques", scrollIndex: 4 },
         { part: "Cinquième partie", titre: "Conclusion", scrollIndex: 5 },
       ],
     }
@@ -85,7 +85,7 @@ export const CONTENT = {
   ),
   step05: step(
     "Quatrième partie :",
-    "Les modifications typographiques",
+    "Les modifications topographiques",
     [],
     "",
     {
