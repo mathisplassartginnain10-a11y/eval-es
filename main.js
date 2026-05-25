@@ -550,19 +550,21 @@ function applyTextForSection(textKey) {
   applyTextIfChanged(textKey)
 }
 
-/** Remet l’étape 2 (puits + globe orbite) pour un nouvel affichage ou un retour arrière. */
+/** Remet l'étape 2 (puits + globe orbite) pour un nouvel affichage ou un retour arrière. */
 function resetPuitsDualIframes() {
   const puits = document.getElementById("puits-frame")
   const earth = document.getElementById("earth-orbit-frame")
+  /* Le crossfade utilise `autoAlpha` (opacity + visibility). Il faut donc reset les deux,
+     sinon au retour sur l'étape 2 puits reste `visibility:hidden` et earth `visibility:visible`. */
   if (puits instanceof HTMLIFrameElement) {
     gsap.killTweensOf(puits)
-    gsap.set(puits, { clearProps: "opacity" })
-    gsap.set(puits, { pointerEvents: "auto", opacity: 1 })
+    gsap.set(puits, { clearProps: "opacity,visibility" })
+    gsap.set(puits, { pointerEvents: "auto", autoAlpha: 1 })
   }
   if (earth instanceof HTMLIFrameElement) {
     gsap.killTweensOf(earth)
-    gsap.set(earth, { clearProps: "opacity" })
-    gsap.set(earth, { pointerEvents: "none", opacity: 0 })
+    gsap.set(earth, { clearProps: "opacity,visibility" })
+    gsap.set(earth, { pointerEvents: "none", autoAlpha: 0 })
   }
   queueMicrotask(() => {
     postToFrame(puits, "reset")
