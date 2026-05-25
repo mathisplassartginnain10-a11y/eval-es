@@ -24,7 +24,7 @@ function playTransitionVeil(root, warpSec) {
   const fadeOut = warpSec * 0.48
   const tl = gsap.timeline()
 
-  tl.to(veil, { opacity: 0.42, duration: fadeIn, ease: MOTION.ease.in }, 0)
+  tl.to(veil, { opacity: 0.18, duration: fadeIn, ease: MOTION.ease.in }, 0)
   tl.to(veil, { opacity: 0, duration: fadeOut, ease: MOTION.ease.drift }, fadeIn + warpSec * 0.2)
 
   return () => {

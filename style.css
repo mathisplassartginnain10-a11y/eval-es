@@ -1642,7 +1642,9 @@ body.conclusion-stars-active #starfield-bg {
 }
 
 #starfield-bg.is-hyperspace {
-  z-index: 10000;
+  /* Au-dessus de #page-transition (10001), nav-dock (10002) et persistent-names (10001)
+     pour que le warp soit visible sur toute la page pendant la transition. */
+  z-index: 10010;
   transition: filter 0.35s ease;
   filter: brightness(1.08) saturate(1.15);
 }
@@ -1879,12 +1881,7 @@ body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__label {
 .page-transition__veil {
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    ellipse 110% 75% at 50% 50%,
-    rgba(6, 10, 24, 0.55) 0%,
-    rgba(0, 0, 0, 0.72) 50%,
-    rgba(0, 0, 0, 0.88) 100%
-  );
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.32));
   opacity: 0;
   will-change: opacity;
 }
