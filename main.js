@@ -32,6 +32,10 @@ import { show, hide, escapeHtml } from "./src/domHelpers.js"
 import { postToFrame, postToFrameById } from "./src/iframeHelpers.js"
 import { NAV_DELAY_MS, INTRO_AUTO_EXIT_MS } from "./src/constants.js"
 import { createNavState, canNavigate, withNavLock } from "./src/navHelpers.js"
+import { createNavDockController } from "./src/navDock.js"
+import { createPresentationEnd } from "./src/presentationEnd.js"
+import { createNavController } from "./src/navController.js"
+import { createIntroOverlay } from "./src/introOverlay.js"
 
 const navState = createNavState()
 
@@ -76,8 +80,8 @@ const btnEndPresentation = document.getElementById("btn-end-presentation")
 const presentationBlackout = document.getElementById("presentation-blackout")
 const scrollHintEl = document.getElementById("scroll-hint")
 
-let presentationEnded = false
-let presentationEnding = false
+const presentationEndState = { ended: false, ending: false }
+
 const page4AnimWrap = document.getElementById("page4-anim-wrap")
 const sphereAplatieWrap = document.getElementById("sphere-aplatie-wrap")
 const introClipsWrap = document.getElementById("intro-clips-wrap")
@@ -212,13 +216,33 @@ const navDock = document.getElementById("nav-dock")
 const navDockSep = navDock?.querySelector(".nav-dock__sep") ?? null
 const btnHome = document.getElementById("btn-home")
 const btnPrev = document.getElementById("btn-prev")
-function postToNavDockEarth(msg) {
-  postToFrameById("nav-dock-earth-frame", msg)
+const introStarsFrameEl = document.getElementById("intro-stars-frame")
+const introTapCatcherEl = document.getElementById("intro-tap-catcher")
+
+const introState = {
+  active: introStarsFrameEl instanceof HTMLIFrameElement,
+  exited: false,
+  ready: false,
+  wireDone: false,
+  globesPrimed: false,
+  autoExitTimer: 0,
 }
+
+const navDockController = createNavDockController({
+  gsap,
+  motionRef,
+  MOTION,
+  navDock,
+  btnPrev,
+  btnHome,
+  KEYFRAMES,
+  getIntroActive: () => introState.active,
+})
+const { updateNavDock, playBackNavAnimation, playHomeNavAnimation, postToNavDockEarth } = navDockController
 
 function updateScrollHint(sectionIndex) {
   if (!(scrollHintEl instanceof HTMLElement)) return
-  if (document.body.classList.contains("intro-stars-phase") || presentationEnded || presentationEnding) {
+  if (document.body.classList.contains("intro-stars-phase") || presentationEndState.ended || presentationEndState.ending) {
     hide(scrollHintEl)
     gsap.set(scrollHintEl, { opacity: 0 })
     return
@@ -228,95 +252,6 @@ function updateScrollHint(sectionIndex) {
   if (visible) show(scrollHintEl)
   else hide(scrollHintEl)
   gsap.set(scrollHintEl, { opacity: visible ? 1 : 0 })
-}
-
-function updateNavDock(sectionIndex) {
-  const show =
-    sectionIndex > 0 &&
-    !isEpilogueKeyframe(KEYFRAMES[sectionIndex]) &&
-    !introActive &&
-    !document.body.classList.contains("intro-stars-phase")
-  if (navDock instanceof HTMLElement) {
-    navDock.classList.toggle("is-visible", show)
-    navDock.hidden = !show
-  }
-  postToNavDockEarth(show ? "resume" : "pause")
-}
-
-/** Animation du bouton Retour — synchronisée avec le warp arrière. */
-function playBackNavAnimation(onComplete) {
-  if (!(btnPrev instanceof HTMLButtonElement) || motionRef.reduced) {
-    onComplete()
-    return
-  }
-
-  const glyph = btnPrev.querySelector(".nav-dock__glyph")
-  const badge = btnPrev.querySelector(".nav-dock__glyph--badge")
-  const targets = [btnPrev, glyph, badge].filter(Boolean)
-  btnPrev.classList.add("is-animating")
-  gsap.killTweensOf(targets)
-
-  const tl = gsap.timeline({
-    onComplete: () => {
-      btnPrev.classList.remove("is-animating")
-      if (glyph) gsap.set(glyph, { clearProps: "transform,opacity,filter" })
-      if (badge instanceof HTMLElement) gsap.set(badge, { clearProps: "box-shadow,transform" })
-      onComplete()
-    },
-  })
-
-  tl.to(glyph, { x: -4, rotate: 52, opacity: 0.5, duration: 0.18, ease: MOTION.ease.in }, 0)
-  if (badge instanceof HTMLElement) {
-    tl.to(
-      badge,
-      {
-        boxShadow: "0 0 22px rgba(74, 158, 255, 0.55), 0 0 40px rgba(122, 184, 255, 0.25)",
-        scale: 1.08,
-        duration: 0.18,
-        ease: "sine.out",
-      },
-      0.04
-    )
-  }
-  tl.to(glyph, { x: 0, rotate: 0, opacity: 1, duration: MOTION.dur.navPulse, ease: MOTION.ease.settle }, 0.12)
-  if (badge instanceof HTMLElement) {
-    tl.to(
-      badge,
-      {
-        boxShadow: "0 0 0 rgba(74, 158, 255, 0)",
-        scale: 1,
-        duration: 0.42,
-        ease: "sine.inOut",
-      },
-      0.16
-    )
-  }
-  tl.to(btnPrev, { scale: 0.94, duration: 0.1, ease: "power2.in", yoyo: true, repeat: 1 }, 0.06)
-  postToNavDockEarth("rewind")
-}
-
-/** Animation légère vers le sommaire (globe). */
-function playHomeNavAnimation(onComplete) {
-  if (!(btnHome instanceof HTMLButtonElement) || motionRef.reduced) {
-    onComplete()
-    return
-  }
-
-  const glyph = btnHome.querySelector(".nav-dock__glyph")
-  btnHome.classList.add("is-animating")
-  gsap.killTweensOf([btnHome, glyph].filter(Boolean))
-
-  const tl = gsap.timeline({
-    onComplete: () => {
-      btnHome.classList.remove("is-animating")
-      if (glyph) gsap.set(glyph, { clearProps: "transform,opacity" })
-      onComplete()
-    },
-  })
-
-  tl.to(glyph, { scale: 1.14, rotate: 18, duration: 0.14, ease: "power2.out" }, 0)
-  tl.to(glyph, { scale: 1, rotate: 0, duration: 0.38, ease: "power2.out" }, 0.12)
-  tl.to(btnHome, { scale: 0.96, duration: 0.08, ease: "power2.in", yoyo: true, repeat: 1 }, 0)
 }
 
 bindViewportResizeDebounced(() => {
@@ -733,11 +668,11 @@ function applySlideForIndex(index, meta = {}) {
     slideStage.clear()
     hideSphereAplatieMedia()
     stageMediaWrap.setAttribute("aria-hidden", "true")
-    if (epilogueActions instanceof HTMLElement && !presentationEnded && !presentationEnding) {
+    if (epilogueActions instanceof HTMLElement && !presentationEndState.ended && !presentationEndState.ending) {
       show(epilogueActions)
     }
     if (btnEndPresentation instanceof HTMLButtonElement) {
-      btnEndPresentation.disabled = presentationEnded || presentationEnding
+      btnEndPresentation.disabled = presentationEndState.ended || presentationEndState.ending
     }
     return
   }
@@ -926,250 +861,21 @@ scrollApi = initScroll({
   onProgressUi: () => {},
 })
 
-const introStarsFrameEl = document.getElementById("intro-stars-frame")
-const introTapCatcherEl = document.getElementById("intro-tap-catcher")
 
-let introExited = false
-/** Tant que true, la navigation par swipe / clavier est bloquée (phase intro). */
-let introActive = introStarsFrameEl instanceof HTMLIFrameElement
-/** true quand l’iframe signale la fin de la séquence (idle + globes prêts). */
-let introReady = false
-let introStarsWireDone = false
-let introGlobesPrimed = false
-let introAutoExitTimer = 0
+const introOverlay = createIntroOverlay({
+  gsap,
+  motionRef,
+  state: introState,
+  introStarsFrameEl,
+  introTapCatcherEl,
+  introAutoExitMs: INTRO_AUTO_EXIT_MS,
+  setStarsBackgroundActive,
+  scrollToSection,
+  getScrollApi: () => scrollApi,
+  snapPageEnterLayerComplete,
+})
+const { initIntroStarsOverlay, exitIntro, primeIntroGlobesAndHint } = introOverlay
 
-function clearIntroAutoExitTimer() {
-  if (introAutoExitTimer) {
-    window.clearTimeout(introAutoExitTimer)
-    introAutoExitTimer = 0
-  }
-}
-
-function primeIntroGlobesAndHint() {
-  if (introGlobesPrimed) return
-  introGlobesPrimed = true
-  document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
-    if (!(el instanceof HTMLIFrameElement)) return
-    const ds = el.dataset.src
-    if (ds && (!el.src || el.src === "about:blank")) el.src = ds
-  })
-  const hintEl = document.getElementById("scroll-hint")
-  if (hintEl instanceof HTMLElement) gsap.set(hintEl, { opacity: 1 })
-}
-
-function onIntroWindowClick(e) {
-  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
-  if (
-    e.target instanceof Element &&
-    e.target.closest(
-      "#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item"
-    )
-  )
-    return
-  e.preventDefault()
-  e.stopPropagation()
-  exitIntro()
-}
-
-function onIntroTouchEnd() {
-  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
-  exitIntro()
-}
-
-function onIntroKeydown(e) {
-  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
-  const t = e.target
-  if (t && (t.isContentEditable || (t.closest && t.closest("input, textarea, select")))) return
-  const introKeysExit =
-    e.key === "Enter" || e.key === " " || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown"
-  if (!introKeysExit) return
-  e.preventDefault()
-  e.stopPropagation()
-  exitIntro()
-}
-
-function onIntroMessage(e) {
-  if (!(introStarsFrameEl instanceof HTMLIFrameElement) || e.source !== introStarsFrameEl.contentWindow) return
-  if (e.data === "intro-complete") {
-    primeIntroGlobesAndHint()
-    introReady = true
-    return
-  }
-  if (e.data === "intro-tap" || e.data === "intro-complete-tap") {
-    if (document.body.classList.contains("intro-stars-phase")) exitIntro()
-  }
-}
-
-function onIntroTapCatcherPointer(e) {
-  if (!document.body.classList.contains("intro-stars-phase") || introExited) return
-  if (
-    e.target instanceof Element &&
-    e.target.closest(
-      "#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item"
-    )
-  )
-    return
-  e.preventDefault()
-  e.stopPropagation()
-  exitIntro()
-}
-
-function attachIntroInteractionListeners() {
-  window.addEventListener("click", onIntroWindowClick, true)
-  window.addEventListener("touchend", onIntroTouchEnd, { passive: true })
-  window.addEventListener("keydown", onIntroKeydown, true)
-  window.addEventListener("message", onIntroMessage, false)
-  if (introTapCatcherEl instanceof HTMLElement) {
-    introTapCatcherEl.addEventListener("pointerdown", onIntroTapCatcherPointer, { passive: false })
-    introTapCatcherEl.addEventListener("click", onIntroTapCatcherPointer, true)
-  }
-}
-
-function detachIntroInteractionListeners() {
-  window.removeEventListener("click", onIntroWindowClick, true)
-  window.removeEventListener("touchend", onIntroTouchEnd, { passive: true })
-  window.removeEventListener("keydown", onIntroKeydown, true)
-  window.removeEventListener("message", onIntroMessage, false)
-  if (introTapCatcherEl instanceof HTMLElement) {
-    introTapCatcherEl.removeEventListener("pointerdown", onIntroTapCatcherPointer, { passive: false })
-    introTapCatcherEl.removeEventListener("click", onIntroTapCatcherPointer, true)
-  }
-}
-
-function exitIntro() {
-  if (introExited) return
-  introExited = true
-  clearIntroAutoExitTimer()
-  detachIntroInteractionListeners()
-
-  const frame = document.getElementById("intro-stars-frame")
-  if (!(frame instanceof HTMLIFrameElement)) {
-    introActive = false
-    document.body.classList.remove("intro-stars-phase")
-    document.body.style.overflow = ""
-    setStarsBackgroundActive(true)
-    const namesOnly = document.getElementById("persistent-names")
-    if (namesOnly instanceof HTMLElement) {
-      gsap.set(namesOnly, { opacity: 1 })
-      namesOnly.setAttribute("aria-hidden", "false")
-    }
-    return
-  }
-
-  try {
-    frame.contentWindow?.IntroStars?.exit?.()
-  } catch (e) {
-    if (import.meta.env?.DEV) console.warn(e)
-  }
-
-  document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
-    if (!(el instanceof HTMLIFrameElement)) return
-    const ds = el.dataset.src
-    if (ds && (!el.src || el.src === "about:blank")) el.src = ds
-  })
-
-  snapPageEnterLayerComplete()
-
-  const clipFrames = () =>
-    [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
-
-  const frames = clipFrames()
-  if (frames.length) {
-    gsap.set(frames, { transformOrigin: "center center", scale: 0.05 })
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        gsap.to(frames, { scale: 1, duration: 1.2, ease: "expo.out" })
-      })
-    })
-  }
-
-  const hint = document.getElementById("scroll-hint")
-  if (hint instanceof HTMLElement) gsap.to(hint, { opacity: 0, duration: 0.3, ease: "power1.out" })
-
-  gsap.to(frame, {
-    opacity: 0,
-    duration: 0.8,
-    ease: "power1.inOut",
-    delay: 0.1,
-    onComplete: () => {
-      frame.remove()
-      document.body.classList.remove("intro-stars-phase")
-      document.body.style.overflow = ""
-
-      setStarsBackgroundActive(true)
-      introActive = false
-
-      const names = document.getElementById("persistent-names")
-      if (names instanceof HTMLElement) {
-        gsap.to(names, { opacity: 1, duration: 0.4, ease: "power1.out" })
-        names.setAttribute("aria-hidden", "false")
-      }
-
-      const hintAfter = document.getElementById("scroll-hint")
-      if (hintAfter instanceof HTMLElement) {
-        gsap.to(hintAfter, { opacity: 1, duration: 0.4, ease: "power1.out" })
-      }
-    },
-  })
-
-  scrollToSection(0, motionRef.reduced, scrollApi)
-}
-
-function initIntroStarsOverlay() {
-  const frame = document.getElementById("intro-stars-frame")
-  if (!(frame instanceof HTMLIFrameElement)) {
-    introActive = false
-    introExited = true
-    return
-  }
-
-  introActive = true
-  introExited = false
-  introReady = false
-  introGlobesPrimed = false
-  document.body.classList.add("intro-stars-phase")
-  document.body.style.overflow = "hidden"
-
-  const clipFrames = () =>
-    [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
-
-  const initialFrames = clipFrames()
-  if (initialFrames.length) {
-    gsap.set(initialFrames, { transformOrigin: "center center", scale: 0.05 })
-  }
-
-  function wireIntroReady() {
-    if (introStarsWireDone) return
-    introStarsWireDone = true
-    const api = frame.contentWindow?.IntroStars
-    const scheduleAutoExit = () => {
-      clearIntroAutoExitTimer()
-      introAutoExitTimer = window.setTimeout(() => {
-        introAutoExitTimer = 0
-        if (!introExited) exitIntro()
-      }, INTRO_AUTO_EXIT_MS)
-    }
-    if (api && typeof api.onComplete === "function") {
-      let done = false
-      api.onComplete(() => {
-        if (done) return
-        done = true
-        primeIntroGlobesAndHint()
-        introReady = true
-        scheduleAutoExit()
-      })
-    } else {
-      primeIntroGlobesAndHint()
-      introReady = true
-      scheduleAutoExit()
-    }
-  }
-
-  if (frame.contentDocument?.readyState === "complete") queueMicrotask(wireIntroReady)
-  else frame.addEventListener("load", () => queueMicrotask(wireIntroReady), { once: true })
-
-  attachIntroInteractionListeners()
-}
 
 /** Registre des animations par index de section (`KEYFRAMES` / `scrollIndex`). */
 const STEP_ANIMATIONS = {
@@ -1233,28 +939,34 @@ function getCurrentKeyframe() {
   return KEYFRAMES[i]
 }
 
-function currentSectionUsesScrollTwoStep() {
-  const kf = getCurrentKeyframe()
-  return !!(kf?.sphereTwoStep || kf?.eratoTwoStep)
-}
-
-function goToNextStep() {
-  scrollApi?.stepBy(1)
-}
-
-function goToPrevStep() {
-  scrollApi?.stepBy(-1)
-}
-
-/** Sommaire (étape 0) : saut direct vers une partie. */
-function goToSectionIndex(index) {
-  if (introActive || presentationEnded || presentationEnding) return
-  if (!canNavigate(navState, NAV_DELAY_MS)) return
-  withNavLock(navState, NAV_DELAY_MS, () => {
-    resetSectionAnimClickIndex()
-    scrollToSection(index, motionRef.reduced, scrollApi)
-  })
-}
+const navController = createNavController({
+  navState,
+  navDelayMs: NAV_DELAY_MS,
+  motionRef,
+  KEYFRAMES,
+  STEP_ANIMATIONS,
+  presentationEndState,
+  getScrollApi: () => scrollApi,
+  getIntroActive: () => introState.active,
+  getCurrentKeyframe,
+  getSectionAnimClickIndex: () => sectionAnimClickIndex,
+  setSectionAnimClickIndex: (v) => {
+    sectionAnimClickIndex = v
+  },
+  resetSectionAnimClickIndex,
+  playBackNavAnimation,
+})
+const {
+  goToNextStep,
+  goToPrevStep,
+  goToSectionIndex,
+  tryAdvanceForwardFromUserGesture,
+  triggerBackwardNav,
+  handleNav,
+  onGlobalClickNav,
+  onTouchStartNav,
+  onTouchEndNav,
+} = navController
 
 function onSommaireItemActivate(e) {
   if (!(textOverlay instanceof HTMLElement)) return
@@ -1270,103 +982,6 @@ function onSommaireItemActivate(e) {
   e.preventDefault()
   e.stopPropagation()
   goToSectionIndex(idx)
-}
-
-/**
- * Avance d’une « unité » : soit l’animation suivante de l’étape, soit passage à l’étape suivante.
- * Intro (index 0) et panneaux `sphereTwoStep` / `eratoTwoStep` restent gérés comme avant (`stepBy`).
- */
-function tryAdvanceForwardFromUserGesture() {
-  if (!canNavigate(navState, NAV_DELAY_MS)) return
-  if (presentationEnded || presentationEnding) return
-
-  const idx = scrollApi?.getIndex?.() ?? 0
-
-  if (isEpilogueKeyframe(KEYFRAMES[idx])) return
-
-  if (idx === 0) {
-    withNavLock(navState, NAV_DELAY_MS, goToNextStep)
-    return
-  }
-
-  if (currentSectionUsesScrollTwoStep()) {
-    withNavLock(navState, NAV_DELAY_MS, goToNextStep)
-    return
-  }
-
-  const anims = STEP_ANIMATIONS[idx] || []
-
-  if (sectionAnimClickIndex < anims.length) {
-    withNavLock(navState, NAV_DELAY_MS, () => {
-      const fn = anims[sectionAnimClickIndex]
-      if (typeof fn === "function") fn()
-      sectionAnimClickIndex++
-    })
-    return
-  }
-
-  withNavLock(navState, NAV_DELAY_MS, () => {
-    sectionAnimClickIndex = 0
-    goToNextStep()
-  })
-}
-
-function triggerBackwardNav() {
-  if (introActive || presentationEnded || presentationEnding) return
-  if (!canNavigate(navState, NAV_DELAY_MS)) return
-  navState.locked = true
-  navState.lastTime = Date.now()
-  resetSectionAnimClickIndex()
-  playBackNavAnimation(() => {
-    goToPrevStep()
-    window.setTimeout(() => {
-      navState.locked = false
-    }, NAV_DELAY_MS)
-  })
-}
-
-function handleNav(direction = "forward") {
-  if (introActive) return
-  if (!canNavigate(navState, NAV_DELAY_MS)) return
-  if (direction === "backward") {
-    triggerBackwardNav()
-    return
-  }
-  tryAdvanceForwardFromUserGesture()
-}
-
-function targetExcludesGlobalNav(el) {
-  if (!(el instanceof Element)) return true
-  if (el.isContentEditable || el.closest("[contenteditable]")) return true
-  return !!el.closest(
-    "#nav-dock, #btn-home, #section-dots, #btn-prev, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
-  )
-}
-
-function onGlobalClickNav(e) {
-  if (targetExcludesGlobalNav(/** @type {EventTarget} */ (e.target))) return
-  handleNav("forward")
-}
-
-let touchNavStartX = 0
-let touchNavStartY = 0
-
-function onTouchStartNav(e) {
-  if (e.touches.length !== 1) return
-  touchNavStartX = e.touches[0].clientX
-  touchNavStartY = e.touches[0].clientY
-}
-
-function onTouchEndNav(e) {
-  if (!e.changedTouches.length) return
-  const t = e.changedTouches[0]
-  const dx = t.clientX - touchNavStartX
-  const dy = t.clientY - touchNavStartY
-  const dist = Math.sqrt(dx * dx + dy * dy)
-
-  if (dist >= 15) return
-  if (targetExcludesGlobalNav(/** @type {EventTarget} */ (t.target))) return
-  handleNav("forward")
 }
 
 window.addEventListener("click", onGlobalClickNav, true)
@@ -1408,135 +1023,36 @@ dots.forEach((btn) => {
 if (btnPrev instanceof HTMLButtonElement) {
   btnPrev.addEventListener("click", (e) => {
     e.stopPropagation()
-    if (introActive || navState.locked || btnPrev.classList.contains("is-animating")) return
+    if (introState.active || navState.locked || btnPrev.classList.contains("is-animating")) return
     triggerBackwardNav()
   })
 }
 
-function showPresentationEndSommaire() {
-  if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = true
-  if (navDockSep instanceof HTMLElement) navDockSep.hidden = true
-
-  if (navDock instanceof HTMLElement) {
-    navDock.hidden = false
-    navDock.classList.add("is-visible", "nav-dock--end-only")
-    navDock.setAttribute("aria-hidden", "false")
-
-    if (motionRef.reduced) {
-      gsap.set(navDock, { autoAlpha: 1, scale: 1, clearProps: "transform" })
-    } else {
-      gsap.fromTo(
-        navDock,
-        { autoAlpha: 0, scale: 0.85, y: 18 },
-        {
-          autoAlpha: 1,
-          scale: 1,
-          y: 0,
-          duration: 0.65,
-          delay: 0.15,
-          ease: MOTION.ease.settle,
-          clearProps: "transform",
-        }
-      )
-    }
-  }
-  postToNavDockEarth("resume")
-}
-
-function returnToSommaireFromEnd() {
-  if (!presentationEnded) return
-
-  presentationEnded = false
-  document.body.classList.remove("presentation-ended")
-
-  if (presentationBlackout instanceof HTMLElement) {
-    gsap.killTweensOf(presentationBlackout)
-    hide(presentationBlackout)
-    gsap.set(presentationBlackout, { clearProps: "opacity" })
-  }
-
-  if (navDock instanceof HTMLElement) {
-    gsap.killTweensOf(navDock)
-    navDock.classList.remove("nav-dock--end-only", "is-visible")
-    navDock.hidden = true
-    gsap.set(navDock, { clearProps: "all" })
-  }
-  if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = false
-  if (navDockSep instanceof HTMLElement) navDockSep.hidden = false
-  if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = false
-  if (epilogueActions instanceof HTMLElement) {
-    hide(epilogueActions)
-    gsap.set(epilogueActions, { clearProps: "all" })
-  }
-
-  restartStarsAfterFinale()
-
-  const kf = KEYFRAMES[0]
-  scrollApi?.jumpToIndex?.(0)
-  applySlideForIndex(0, {})
-  applyTextForSection(kf.textSection)
-  updateUi(0)
-  resetSectionAnimClickIndex()
-  if (!motionRef.reduced) primePageEnterHidden(0)
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => triggerPageEnterEffects())
-  })
-}
-
-/** Bouton « Terminer la présentation » → fondu au noir + grand bouton Sommaire. */
-async function revealPresentationEnd() {
-  if (presentationEnded || presentationEnding) return
-  const idx = scrollApi?.getIndex?.() ?? -1
-  if (!isEpilogueKeyframe(KEYFRAMES[idx])) return
-
-  presentationEnding = true
-  if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = true
-  document.body.classList.add("presentation-ending", "scroll-locked")
-
-  const fadeTargets = [textOverlay, epilogueActions].filter(Boolean)
-  gsap.killTweensOf(fadeTargets)
-  if (fadeTargets.length) {
-    if (motionRef.reduced) {
-      gsap.set(fadeTargets, { autoAlpha: 0 })
-    } else {
-      await new Promise((resolve) => {
-        gsap.to(fadeTargets, {
-          autoAlpha: 0,
-          duration: 0.4,
-          ease: MOTION.ease.in,
-          onComplete: resolve,
-        })
-      })
-    }
-  }
-
-  if (presentationBlackout instanceof HTMLElement) {
-    show(presentationBlackout)
-    if (motionRef.reduced) {
-      gsap.set(presentationBlackout, { opacity: 1 })
-    } else {
-      await new Promise((resolve) => {
-        gsap.fromTo(
-          presentationBlackout,
-          { opacity: 0 },
-          {
-            opacity: 1,
-            duration: 0.7,
-            ease: MOTION.ease.in,
-            onComplete: resolve,
-          }
-        )
-      })
-    }
-  }
-
-  presentationEnding = false
-  presentationEnded = true
-  document.body.classList.remove("presentation-ending", "scroll-locked")
-  document.body.classList.add("presentation-ended")
-  showPresentationEndSommaire()
-  updateScrollHint(idx)
-}
+const presentationEnd = createPresentationEnd({
+  gsap,
+  motionRef,
+  MOTION,
+  textOverlay,
+  epilogueActions,
+  btnEndPresentation,
+  presentationBlackout,
+  navDock,
+  navDockSep,
+  btnPrev,
+  KEYFRAMES,
+  state: presentationEndState,
+  postToNavDockEarth,
+  restartStarsAfterFinale,
+  getScrollApi: () => scrollApi,
+  applySlideForIndex,
+  applyTextForSection,
+  updateUi,
+  updateScrollHint,
+  resetSectionAnimClickIndex,
+  primePageEnterHidden,
+  triggerPageEnterEffects,
+})
+const { revealPresentationEnd, returnToSommaireFromEnd } = presentationEnd
 
 if (btnEndPresentation instanceof HTMLButtonElement) {
   btnEndPresentation.addEventListener("click", (e) => {
@@ -1549,8 +1065,8 @@ if (btnEndPresentation instanceof HTMLButtonElement) {
 if (btnHome instanceof HTMLButtonElement) {
   btnHome.addEventListener("click", (e) => {
     e.stopPropagation()
-    if (introActive || navState.locked || btnHome.classList.contains("is-animating")) return
-    if (presentationEnded) {
+    if (introState.active || navState.locked || btnHome.classList.contains("is-animating")) return
+    if (presentationEndState.ended) {
       playHomeNavAnimation(() => returnToSommaireFromEnd())
       return
     }
