@@ -62,7 +62,8 @@
       if (!(f instanceof HTMLIFrameElement)) return;
       f.addEventListener("load", function () {
         window.setTimeout(function () {
-          try { f.contentWindow?.postMessage("play", "*"); } catch (_) {}
+          const targetOrigin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "*";
+          try { f.contentWindow?.postMessage("play", targetOrigin); } catch (e) { if (import.meta.env?.DEV) console.warn(e); }
         }, 600);
       }, { once: true });
     })();

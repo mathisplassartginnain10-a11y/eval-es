@@ -28,6 +28,12 @@ import {
   setConclusionStarfieldEnabled,
   pulseConclusionWarp,
 } from "./src/starsBg.js"
+import { show, hide, escapeHtml } from "./src/domHelpers.js"
+import { postToFrame, postToFrameById } from "./src/iframeHelpers.js"
+import { NAV_DELAY_MS, INTRO_AUTO_EXIT_MS } from "./src/constants.js"
+import { createNavState, canNavigate, withNavLock } from "./src/navHelpers.js"
+
+const navState = createNavState()
 
 const motionRef = {
   reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -125,20 +131,13 @@ if (!stageMediaWrap) {
 }
 
 function postToSphereAplatieFrame(msg) {
-  const fr = document.getElementById("sphere-aplatie-frame")
-  try {
-    fr?.contentWindow?.postMessage(msg, "*")
-  } catch (_) {
-    /* iframe absente ou cross-origin */
-  }
+  postToFrameById("sphere-aplatie-frame", msg)
 }
 
 function hideSphereAplatieMedia() {
-  sphereAplatieWrap.hidden = true
-  sphereAplatieWrap.setAttribute("aria-hidden", "true")
+  hide(sphereAplatieWrap)
   if (stageSphereHost) {
-    stageSphereHost.hidden = true
-    stageSphereHost.setAttribute("aria-hidden", "true")
+    hide(stageSphereHost)
   }
 }
 
@@ -147,10 +146,8 @@ function applySphereAplatieStep(sphereSub) {
   stageTilesRoot.hidden = true
   stageSingle.hidden = true
   slideStage.clear()
-  eratoPromptWrap.hidden = true
-  eratoPromptWrap.setAttribute("aria-hidden", "true")
-  sphereAplatieWrap.hidden = false
-  sphereAplatieWrap.setAttribute("aria-hidden", "false")
+  hide(eratoPromptWrap)
+  show(sphereAplatieWrap)
   queueMicrotask(() => {
     if (!play) {
       postToSphereAplatieFrame("reset")
@@ -160,8 +157,8 @@ function applySphereAplatieStep(sphereSub) {
       postToSphereAplatieFrame("reset")
       try {
         document.getElementById("sphere-aplatie-frame")?.contentWindow?.SphereAplatieAnim?.seek(1)
-      } catch (_) {
-        /* iframe pas prête */
+      } catch (e) {
+        if (import.meta.env?.DEV) console.warn(e)
       }
       return
     }
@@ -216,27 +213,21 @@ const navDockSep = navDock?.querySelector(".nav-dock__sep") ?? null
 const btnHome = document.getElementById("btn-home")
 const btnPrev = document.getElementById("btn-prev")
 function postToNavDockEarth(msg) {
-  const fr = document.getElementById("nav-dock-earth-frame")
-  try {
-    fr?.contentWindow?.postMessage(msg, "*")
-  } catch (_) {
-    /* iframe absente */
-  }
+  postToFrameById("nav-dock-earth-frame", msg)
 }
 
 function updateScrollHint(sectionIndex) {
   if (!(scrollHintEl instanceof HTMLElement)) return
   if (document.body.classList.contains("intro-stars-phase") || presentationEnded || presentationEnding) {
-    scrollHintEl.hidden = true
-    scrollHintEl.style.opacity = "0"
-    scrollHintEl.setAttribute("aria-hidden", "true")
+    hide(scrollHintEl)
+    gsap.set(scrollHintEl, { opacity: 0 })
     return
   }
   const isEpilogue = isEpilogueKeyframe(KEYFRAMES[sectionIndex])
-  const show = !isEpilogue
-  scrollHintEl.hidden = !show
-  scrollHintEl.style.opacity = show ? "1" : "0"
-  scrollHintEl.setAttribute("aria-hidden", show ? "false" : "true")
+  const visible = !isEpilogue
+  if (visible) show(scrollHintEl)
+  else hide(scrollHintEl)
+  gsap.set(scrollHintEl, { opacity: visible ? 1 : 0 })
 }
 
 function updateNavDock(sectionIndex) {
@@ -337,14 +328,6 @@ setupFinePointerHoverNudges()
 let lastTextKey = null
 /** @type {ReturnType<initScroll> | null} */
 let scrollApi = null
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-}
 
 function fillTextContent(key) {
   const block = CONTENT[key]
@@ -639,22 +622,16 @@ function resetPuitsDualIframes() {
   if (puits instanceof HTMLIFrameElement) {
     gsap.killTweensOf(puits)
     gsap.set(puits, { clearProps: "opacity" })
-    puits.style.pointerEvents = "auto"
-    puits.style.opacity = "1"
+    gsap.set(puits, { pointerEvents: "auto", opacity: 1 })
   }
   if (earth instanceof HTMLIFrameElement) {
     gsap.killTweensOf(earth)
     gsap.set(earth, { clearProps: "opacity" })
-    earth.style.pointerEvents = "none"
-    earth.style.opacity = "0"
+    gsap.set(earth, { pointerEvents: "none", opacity: 0 })
   }
   queueMicrotask(() => {
-    try {
-      puits?.contentWindow?.postMessage("reset", "*")
-    } catch (_) {}
-    try {
-      earth?.contentWindow?.postMessage("reset", "*")
-    } catch (_) {}
+    postToFrame(puits, "reset")
+    postToFrame(earth, "reset")
   })
 }
 
@@ -663,69 +640,38 @@ function applySlideForIndex(index, meta = {}) {
 
   const sphereSub = meta.sphereSubStep
 
-  if (index !== 1) {
-    const pf = document.getElementById("puits-frame")
-    const ef = document.getElementById("earth-orbit-frame")
+  if (!kf?.puitsPrompt) {
     queueMicrotask(() => {
-      try {
-        pf?.contentWindow?.postMessage("reset", "*")
-      } catch (_) {
-        /* iframe absente ou cross-origin */
-      }
-      try {
-        ef?.contentWindow?.postMessage("reset", "*")
-      } catch (_) {
-        /* idem */
-      }
+      postToFrameById("puits-frame", "reset")
+      postToFrameById("earth-orbit-frame", "reset")
     })
   }
 
-  if (index !== 2) {
+  if (!kf?.sphereTwoStep) {
     queueMicrotask(() => postToSphereAplatieFrame("reset"))
   }
 
-  if (index !== 3) {
-    const gf = document.getElementById("page4-gravity-frame")
-    queueMicrotask(() => {
-      try {
-        gf?.contentWindow?.postMessage("reset", "*")
-      } catch (_) {
-        /* iframe absente ou cross-origin */
-      }
-    })
+  if (!kf?.gravitySpherePrompt) {
+    queueMicrotask(() => postToFrameById("page4-gravity-frame", "reset"))
   }
 
-  if (epilogueActions instanceof HTMLElement && !KEYFRAMES[index]?.epilogue) {
-    epilogueActions.hidden = true
-    epilogueActions.setAttribute("aria-hidden", "true")
+  if (!kf?.epilogue) {
+    hide(epilogueActions)
   }
 
-  if (index !== 5) {
+  if (!kf?.conclusionPrompt) {
     setConclusionStarfieldEnabled(false)
-    const cf = document.getElementById("conclusion-frame")
-    queueMicrotask(() => {
-      try {
-        cf?.contentWindow?.postMessage("reset", "*")
-      } catch (_) {
-        /* iframe absente ou cross-origin */
-      }
-    })
+    queueMicrotask(() => postToFrameById("conclusion-frame", "reset"))
   }
 
   if (index === 0) {
-    introClipsWrap.hidden = false
-    introClipsWrap.setAttribute("aria-hidden", "false")
+    show(introClipsWrap)
     stageMediaWrap.setAttribute("aria-hidden", "false")
-    eratoPromptWrap.hidden = true
-    eratoPromptWrap.setAttribute("aria-hidden", "true")
-    puitsPromptWrap.hidden = true
-    puitsPromptWrap.setAttribute("aria-hidden", "true")
-    topoPromptWrap.hidden = true
-    topoPromptWrap.setAttribute("aria-hidden", "true")
-    conclusionPromptWrap.hidden = true
-    conclusionPromptWrap.setAttribute("aria-hidden", "true")
-    page4AnimWrap.hidden = true
-    page4AnimWrap.setAttribute("aria-hidden", "true")
+    hide(eratoPromptWrap)
+    hide(puitsPromptWrap)
+    hide(topoPromptWrap)
+    hide(conclusionPromptWrap)
+    hide(page4AnimWrap)
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
@@ -733,52 +679,42 @@ function applySlideForIndex(index, meta = {}) {
     return
   }
 
-  introClipsWrap.hidden = true
-  introClipsWrap.setAttribute("aria-hidden", "true")
+  hide(introClipsWrap)
 
-  puitsPromptWrap.hidden = true
-  puitsPromptWrap.setAttribute("aria-hidden", "true")
+  hide(puitsPromptWrap)
 
-  topoPromptWrap.hidden = true
-  topoPromptWrap.setAttribute("aria-hidden", "true")
+  hide(topoPromptWrap)
 
-  conclusionPromptWrap.hidden = true
-  conclusionPromptWrap.setAttribute("aria-hidden", "true")
+  hide(conclusionPromptWrap)
 
-  page4AnimWrap.hidden = true
-  page4AnimWrap.setAttribute("aria-hidden", "true")
+  hide(page4AnimWrap)
 
   hideSphereAplatieMedia()
 
   if (kf.puitsPrompt) {
-    eratoPromptWrap.hidden = true
-    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    hide(eratoPromptWrap)
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
-    puitsPromptWrap.hidden = false
-    puitsPromptWrap.setAttribute("aria-hidden", "false")
+    show(puitsPromptWrap)
     resetPuitsDualIframes()
     return
   }
 
   if (kf.topoPrompt) {
-    eratoPromptWrap.hidden = true
-    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    hide(eratoPromptWrap)
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
-    conclusionPromptWrap.hidden = true
-    conclusionPromptWrap.setAttribute("aria-hidden", "true")
-    topoPromptWrap.hidden = false
-    topoPromptWrap.setAttribute("aria-hidden", "false")
+    hide(conclusionPromptWrap)
+    show(topoPromptWrap)
     queueMicrotask(() => {
       const fr = document.getElementById("topo-frame")
       if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
         try {
           fr.contentWindow.TopoAnim?.reset?.()
-        } catch (_) {
-          /* cross-origin ou script pas encore chargé */
+        } catch (e) {
+          if (import.meta.env?.DEV) console.warn(e)
         }
       }
     })
@@ -786,26 +722,19 @@ function applySlideForIndex(index, meta = {}) {
   }
 
   if (kf.epilogue) {
-    introClipsWrap.hidden = true
-    introClipsWrap.setAttribute("aria-hidden", "true")
-    eratoPromptWrap.hidden = true
-    eratoPromptWrap.setAttribute("aria-hidden", "true")
-    puitsPromptWrap.hidden = true
-    puitsPromptWrap.setAttribute("aria-hidden", "true")
-    topoPromptWrap.hidden = true
-    topoPromptWrap.setAttribute("aria-hidden", "true")
-    conclusionPromptWrap.hidden = true
-    conclusionPromptWrap.setAttribute("aria-hidden", "true")
-    page4AnimWrap.hidden = true
-    page4AnimWrap.setAttribute("aria-hidden", "true")
+    hide(introClipsWrap)
+    hide(eratoPromptWrap)
+    hide(puitsPromptWrap)
+    hide(topoPromptWrap)
+    hide(conclusionPromptWrap)
+    hide(page4AnimWrap)
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
     hideSphereAplatieMedia()
     stageMediaWrap.setAttribute("aria-hidden", "true")
     if (epilogueActions instanceof HTMLElement && !presentationEnded && !presentationEnding) {
-      epilogueActions.hidden = false
-      epilogueActions.setAttribute("aria-hidden", "false")
+      show(epilogueActions)
     }
     if (btnEndPresentation instanceof HTMLButtonElement) {
       btnEndPresentation.disabled = presentationEnded || presentationEnding
@@ -817,47 +746,29 @@ function applySlideForIndex(index, meta = {}) {
 
   if (kf.conclusionPrompt) {
     setConclusionStarfieldEnabled(true)
-    eratoPromptWrap.hidden = true
-    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    hide(eratoPromptWrap)
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
-    topoPromptWrap.hidden = true
-    topoPromptWrap.setAttribute("aria-hidden", "true")
-    conclusionPromptWrap.hidden = false
-    conclusionPromptWrap.setAttribute("aria-hidden", "false")
+    hide(topoPromptWrap)
+    show(conclusionPromptWrap)
     queueMicrotask(() => {
       const fr = document.getElementById("conclusion-frame")
-      if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
-        try {
-          fr.contentWindow.ConclusionAnim?.reset?.()
-          fr.contentWindow.postMessage("reset", "*")
-        } catch (_) {
-          /* cross-origin ou script pas encore chargé */
-        }
+      if (fr instanceof HTMLIFrameElement) {
+        fr.contentWindow?.ConclusionAnim?.reset?.()
+        postToFrame(fr, "reset")
       }
     })
     return
   }
 
   if (kf.gravitySpherePrompt) {
-    eratoPromptWrap.hidden = true
-    eratoPromptWrap.setAttribute("aria-hidden", "true")
+    hide(eratoPromptWrap)
     stageTilesRoot.hidden = true
     stageSingle.hidden = true
     slideStage.clear()
-    page4AnimWrap.hidden = false
-    page4AnimWrap.setAttribute("aria-hidden", "false")
-    queueMicrotask(() => {
-      const fr = document.getElementById("page4-gravity-frame")
-      if (fr instanceof HTMLIFrameElement && fr.contentWindow) {
-        try {
-          fr.contentWindow.postMessage("reset", "*")
-        } catch (_) {
-          /* cross-origin ou script pas encore chargé */
-        }
-      }
-    })
+    show(page4AnimWrap)
+    queueMicrotask(() => postToFrameById("page4-gravity-frame", "reset"))
     return
   }
 
@@ -865,21 +776,18 @@ function applySlideForIndex(index, meta = {}) {
     const showIframe = sphereSub === 1
     stageTilesRoot.hidden = true
     if (!showIframe) {
-      eratoPromptWrap.hidden = true
-      eratoPromptWrap.setAttribute("aria-hidden", "true")
+      hide(eratoPromptWrap)
       stageSingle.hidden = false
       slideStage.apply(keyframeToSlideMedia(kf))
     } else {
       slideStage.clear()
       stageSingle.hidden = true
-      eratoPromptWrap.hidden = false
-      eratoPromptWrap.setAttribute("aria-hidden", "false")
+      show(eratoPromptWrap)
     }
     return
   }
 
-  eratoPromptWrap.hidden = true
-  eratoPromptWrap.setAttribute("aria-hidden", "true")
+  hide(eratoPromptWrap)
 
   if (kf.sphereTwoStep) {
     applySphereAplatieStep(sphereSub ?? 0)
@@ -935,8 +843,7 @@ function updateUi(sectionIndex) {
     dotsNav.setAttribute("aria-hidden", isEpilogue ? "true" : "false")
   }
   if (textOverlay) {
-    textOverlay.hidden = false
-    textOverlay.setAttribute("aria-hidden", "false")
+    show(textOverlay)
   }
 
   const navIndex = keyframeToNavIndex(sectionIndex)
@@ -1019,7 +926,6 @@ scrollApi = initScroll({
   onProgressUi: () => {},
 })
 
-const INTRO_AUTO_EXIT_MS = 5000
 const introStarsFrameEl = document.getElementById("intro-stars-frame")
 const introTapCatcherEl = document.getElementById("intro-tap-catcher")
 
@@ -1048,7 +954,7 @@ function primeIntroGlobesAndHint() {
     if (ds && (!el.src || el.src === "about:blank")) el.src = ds
   })
   const hintEl = document.getElementById("scroll-hint")
-  if (hintEl instanceof HTMLElement) hintEl.style.opacity = "1"
+  if (hintEl instanceof HTMLElement) gsap.set(hintEl, { opacity: 1 })
 }
 
 function onIntroWindowClick(e) {
@@ -1144,7 +1050,7 @@ function exitIntro() {
     setStarsBackgroundActive(true)
     const namesOnly = document.getElementById("persistent-names")
     if (namesOnly instanceof HTMLElement) {
-      namesOnly.style.opacity = "1"
+      gsap.set(namesOnly, { opacity: 1 })
       namesOnly.setAttribute("aria-hidden", "false")
     }
     return
@@ -1152,8 +1058,8 @@ function exitIntro() {
 
   try {
     frame.contentWindow?.IntroStars?.exit?.()
-  } catch (_) {
-    /* iframe cross-origin ou API absente */
+  } catch (e) {
+    if (import.meta.env?.DEV) console.warn(e)
   }
 
   document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((el) => {
@@ -1167,28 +1073,25 @@ function exitIntro() {
   const clipFrames = () =>
     [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
 
-  for (const f of clipFrames()) {
-    f.style.transformOrigin = "center center"
-    f.style.transform = "scale(0.05)"
-    f.style.transition = "none"
+  const frames = clipFrames()
+  if (frames.length) {
+    gsap.set(frames, { transformOrigin: "center center", scale: 0.05 })
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        gsap.to(frames, { scale: 1, duration: 1.2, ease: "expo.out" })
+      })
+    })
   }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      for (const f of clipFrames()) {
-        f.style.transition = "transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)"
-        f.style.transform = "scale(1)"
-      }
-    })
-  })
-
   const hint = document.getElementById("scroll-hint")
-  if (hint instanceof HTMLElement) hint.style.opacity = "0"
+  if (hint instanceof HTMLElement) gsap.to(hint, { opacity: 0, duration: 0.3, ease: "power1.out" })
 
-  window.setTimeout(() => {
-    frame.style.transition = "opacity 0.8s ease"
-    frame.style.opacity = "0"
-    window.setTimeout(() => {
+  gsap.to(frame, {
+    opacity: 0,
+    duration: 0.8,
+    ease: "power1.inOut",
+    delay: 0.1,
+    onComplete: () => {
       frame.remove()
       document.body.classList.remove("intro-stars-phase")
       document.body.style.overflow = ""
@@ -1198,14 +1101,16 @@ function exitIntro() {
 
       const names = document.getElementById("persistent-names")
       if (names instanceof HTMLElement) {
-        names.style.opacity = "1"
+        gsap.to(names, { opacity: 1, duration: 0.4, ease: "power1.out" })
         names.setAttribute("aria-hidden", "false")
       }
 
       const hintAfter = document.getElementById("scroll-hint")
-      if (hintAfter instanceof HTMLElement) hintAfter.style.opacity = "1"
-    }, 800)
-  }, 100)
+      if (hintAfter instanceof HTMLElement) {
+        gsap.to(hintAfter, { opacity: 1, duration: 0.4, ease: "power1.out" })
+      }
+    },
+  })
 
   scrollToSection(0, motionRef.reduced, scrollApi)
 }
@@ -1228,9 +1133,9 @@ function initIntroStarsOverlay() {
   const clipFrames = () =>
     [...document.querySelectorAll("#intro-clips-wrap iframe.intro-clip-frame")]
 
-  for (const el of clipFrames()) {
-    el.style.transformOrigin = "center center"
-    el.style.transform = "scale(0.05)"
+  const initialFrames = clipFrames()
+  if (initialFrames.length) {
+    gsap.set(initialFrames, { transformOrigin: "center center", scale: 0.05 })
   }
 
   function wireIntroReady() {
@@ -1265,10 +1170,6 @@ function initIntroStarsOverlay() {
 
   attachIntroInteractionListeners()
 }
-
-const NAV_DELAY_MS = 500
-let lastNavTime = 0
-let navLocked = false
 
 /** Registre des animations par index de section (`KEYFRAMES` / `scrollIndex`). */
 const STEP_ANIMATIONS = {
@@ -1305,7 +1206,7 @@ const STEP_ANIMATIONS = {
         MOTION.dur.iframeCrossfade * 0.35
       )
       tl.add(() => {
-        earth.contentWindow?.postMessage("play", "*")
+        postToFrame(earth, "play")
       }, MOTION.dur.iframeCrossfade * 0.5)
     },
   ],
@@ -1317,8 +1218,7 @@ const STEP_ANIMATIONS = {
 }
 
 function triggerIframeAnim(iframeId) {
-  const f = document.getElementById(iframeId)
-  f?.contentWindow?.postMessage("play", "*")
+  postToFrameById(iframeId, "play")
 }
 
 /** Nombre d’animations déjà déclenchées sur la section courante (hors intro / hors panneaux two-step). */
@@ -1349,15 +1249,11 @@ function goToPrevStep() {
 /** Sommaire (étape 0) : saut direct vers une partie. */
 function goToSectionIndex(index) {
   if (introActive || presentationEnded || presentationEnding) return
-  const now = Date.now()
-  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
-  navLocked = true
-  lastNavTime = now
-  resetSectionAnimClickIndex()
-  scrollToSection(index, motionRef.reduced, scrollApi)
-  window.setTimeout(() => {
-    navLocked = false
-  }, NAV_DELAY_MS)
+  if (!canNavigate(navState, NAV_DELAY_MS)) return
+  withNavLock(navState, NAV_DELAY_MS, () => {
+    resetSectionAnimClickIndex()
+    scrollToSection(index, motionRef.reduced, scrollApi)
+  })
 }
 
 function onSommaireItemActivate(e) {
@@ -1380,8 +1276,8 @@ function onSommaireItemActivate(e) {
  * Avance d’une « unité » : soit l’animation suivante de l’étape, soit passage à l’étape suivante.
  * Intro (index 0) et panneaux `sphereTwoStep` / `eratoTwoStep` restent gérés comme avant (`stepBy`).
  */
-function tryAdvanceForwardFromUserGesture(now) {
-  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
+function tryAdvanceForwardFromUserGesture() {
+  if (!canNavigate(navState, NAV_DELAY_MS)) return
   if (presentationEnded || presentationEnding) return
 
   const idx = scrollApi?.getIndex?.() ?? 0
@@ -1389,72 +1285,54 @@ function tryAdvanceForwardFromUserGesture(now) {
   if (isEpilogueKeyframe(KEYFRAMES[idx])) return
 
   if (idx === 0) {
-    navLocked = true
-    lastNavTime = now
-    goToNextStep()
-    window.setTimeout(() => {
-      navLocked = false
-    }, NAV_DELAY_MS)
+    withNavLock(navState, NAV_DELAY_MS, goToNextStep)
     return
   }
 
   if (currentSectionUsesScrollTwoStep()) {
-    navLocked = true
-    lastNavTime = now
-    goToNextStep()
-    window.setTimeout(() => {
-      navLocked = false
-    }, NAV_DELAY_MS)
+    withNavLock(navState, NAV_DELAY_MS, goToNextStep)
     return
   }
 
   const anims = STEP_ANIMATIONS[idx] || []
 
   if (sectionAnimClickIndex < anims.length) {
-    navLocked = true
-    lastNavTime = now
-    const fn = anims[sectionAnimClickIndex]
-    if (typeof fn === "function") fn()
-    sectionAnimClickIndex++
-    window.setTimeout(() => {
-      navLocked = false
-    }, NAV_DELAY_MS)
+    withNavLock(navState, NAV_DELAY_MS, () => {
+      const fn = anims[sectionAnimClickIndex]
+      if (typeof fn === "function") fn()
+      sectionAnimClickIndex++
+    })
     return
   }
 
-  navLocked = true
-  lastNavTime = now
-  sectionAnimClickIndex = 0
-  goToNextStep()
-  window.setTimeout(() => {
-    navLocked = false
-  }, NAV_DELAY_MS)
+  withNavLock(navState, NAV_DELAY_MS, () => {
+    sectionAnimClickIndex = 0
+    goToNextStep()
+  })
 }
 
 function triggerBackwardNav() {
   if (introActive || presentationEnded || presentationEnding) return
-  const now = Date.now()
-  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
-  navLocked = true
-  lastNavTime = now
+  if (!canNavigate(navState, NAV_DELAY_MS)) return
+  navState.locked = true
+  navState.lastTime = Date.now()
   resetSectionAnimClickIndex()
   playBackNavAnimation(() => {
     goToPrevStep()
     window.setTimeout(() => {
-      navLocked = false
+      navState.locked = false
     }, NAV_DELAY_MS)
   })
 }
 
 function handleNav(direction = "forward") {
   if (introActive) return
-  const now = Date.now()
-  if (navLocked || now - lastNavTime < NAV_DELAY_MS) return
+  if (!canNavigate(navState, NAV_DELAY_MS)) return
   if (direction === "backward") {
     triggerBackwardNav()
     return
   }
-  tryAdvanceForwardFromUserGesture(now)
+  tryAdvanceForwardFromUserGesture()
 }
 
 function targetExcludesGlobalNav(el) {
@@ -1530,7 +1408,7 @@ dots.forEach((btn) => {
 if (btnPrev instanceof HTMLButtonElement) {
   btnPrev.addEventListener("click", (e) => {
     e.stopPropagation()
-    if (introActive || navLocked || btnPrev.classList.contains("is-animating")) return
+    if (introActive || navState.locked || btnPrev.classList.contains("is-animating")) return
     triggerBackwardNav()
   })
 }
@@ -1573,8 +1451,7 @@ function returnToSommaireFromEnd() {
 
   if (presentationBlackout instanceof HTMLElement) {
     gsap.killTweensOf(presentationBlackout)
-    presentationBlackout.hidden = true
-    presentationBlackout.setAttribute("aria-hidden", "true")
+    hide(presentationBlackout)
     gsap.set(presentationBlackout, { clearProps: "opacity" })
   }
 
@@ -1588,8 +1465,7 @@ function returnToSommaireFromEnd() {
   if (navDockSep instanceof HTMLElement) navDockSep.hidden = false
   if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = false
   if (epilogueActions instanceof HTMLElement) {
-    epilogueActions.hidden = true
-    epilogueActions.setAttribute("aria-hidden", "true")
+    hide(epilogueActions)
     gsap.set(epilogueActions, { clearProps: "all" })
   }
 
@@ -1635,8 +1511,7 @@ async function revealPresentationEnd() {
   }
 
   if (presentationBlackout instanceof HTMLElement) {
-    presentationBlackout.hidden = false
-    presentationBlackout.setAttribute("aria-hidden", "false")
+    show(presentationBlackout)
     if (motionRef.reduced) {
       gsap.set(presentationBlackout, { opacity: 1 })
     } else {
@@ -1674,7 +1549,7 @@ if (btnEndPresentation instanceof HTMLButtonElement) {
 if (btnHome instanceof HTMLButtonElement) {
   btnHome.addEventListener("click", (e) => {
     e.stopPropagation()
-    if (introActive || navLocked || btnHome.classList.contains("is-animating")) return
+    if (introActive || navState.locked || btnHome.classList.contains("is-animating")) return
     if (presentationEnded) {
       playHomeNavAnimation(() => returnToSommaireFromEnd())
       return

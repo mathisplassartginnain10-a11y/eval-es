@@ -1,0 +1,232 @@
+# Règles Cursor — Exposé ES « La Terre est-elle ronde ? »
+
+## Contexte du projet
+Présentation interactive web (exposé scolaire) composée de :
+- `index.html` : coque HTML, iframes d'animations, points de navigation
+- `main.js` : orchestrateur principal (nav, UI, transitions, intro, fin)
+- `src/sections.js` : définition des keyframes / étapes
+- `src/content.js` : textes par étape
+- `src/scroll.js`, `src/pageTransition.js`, `src/textAnimations.js`, `src/starsBg.js`, `src/motionDesign.js` : modules spécialisés
+- `src/slideStage.js` : gestion vidéo/image
+- `docs/prompts/*.html` : iframes d'animations autonomes
+
+---
+
+## Règle 0 — Fautes de contenu à corriger en priorité
+
+Dans `src/content.js`, corriger la faute dans le sommaire :
+```js
+// AVANT (faux)
+{ part: "Quatrième partie", titre: "Les modifications typographiques", scrollIndex: 4 }
+// APRÈS (correct)
+{ part: "Quatrième partie", titre: "Les modifications topographiques", scrollIndex: 4 }
+```
+
+---
+
+## Règle 1 — Helpers `show` / `hide` pour les éléments DOM
+
+Ne jamais écrire la paire `el.hidden = true/false` + `el.setAttribute("aria-hidden", ...)` en ligne.
+Utiliser exclusivement les helpers définis dans `src/domHelpers.js` :
+
+```js
+// src/domHelpers.js  (créer ce fichier)
+export function show(el) {
+  if (!(el instanceof HTMLElement)) return
+  el.hidden = false
+  el.setAttribute("aria-hidden", "false")
+}
+
+export function hide(el) {
+  if (!(el instanceof HTMLElement)) return
+  el.hidden = true
+  el.setAttribute("aria-hidden", "true")
+}
+```
+
+Importer dans `main.js` :
+```js
+import { show, hide } from "./src/domHelpers.js"
+```
+
+Remplacer chaque occurrence dans `applySlideForIndex` et ailleurs.
+
+---
+
+## Règle 2 — Helper `withNavLock` pour le throttle de navigation
+
+Ne jamais répliquer le pattern :
+```js
+navLocked = true
+lastNavTime = now
+// action
+window.setTimeout(() => { navLocked = false }, NAV_DELAY_MS)
+```
+
+Extraire dans `src/navHelpers.js` :
+
+```js
+// src/navHelpers.js
+export function withNavLock(navState, delayMs, fn) {
+  navState.locked = true
+  navState.lastTime = Date.now()
+  fn()
+  window.setTimeout(() => { navState.locked = false }, delayMs)
+}
+```
+
+`navState` est un objet `{ locked: boolean, lastTime: number }` passé par référence depuis `main.js`.
+Adapter `handleNav`, `tryAdvanceForwardFromUserGesture`, `triggerBackwardNav`, `goToSectionIndex` pour utiliser ce helper.
+
+---
+
+## Règle 3 — Supprimer les indices magiques dans `applySlideForIndex`
+
+Ne jamais écrire `if (index !== 1)`, `if (index !== 2)`, `if (index !== 3)`, `if (index !== 5)`.
+Tester les flags du keyframe courant ou d'un autre keyframe via `KEYFRAMES` :
+
+```js
+// AVANT (fragile — casse si on réordonne les étapes)
+if (index !== 1) { /* reset puits */ }
+
+// APRÈS (robuste — indexé sur la sémantique)
+const isOnPuitsStep = !!kf?.puitsPrompt
+if (!isOnPuitsStep) { /* reset puits */ }
+```
+
+Pour les resets croisés (ex. « reset puits sauf si on est sur l'étape puits »), construire un helper :
+```js
+function shouldResetFrame(currentKf, flag) {
+  return !currentKf?.[flag]
+}
+```
+
+---
+
+## Règle 4 — Animations : GSAP uniquement, pas de style inline
+
+Dans `exitIntro()` et partout dans `main.js`, ne jamais utiliser :
+```js
+frame.style.transition = "..."
+frame.style.transform = "..."
+el.style.opacity = "..."   // sauf pour lire une valeur
+```
+
+Utiliser exclusivement GSAP :
+```js
+// AVANT
+frame.style.transition = "opacity 0.8s ease"
+frame.style.opacity = "0"
+
+// APRÈS
+gsap.to(frame, { opacity: 0, duration: 0.8, ease: "power1.inOut" })
+```
+
+Exception tolérée : `gsap.set(el, { clearProps: "..." })` pour nettoyer après un tween.
+
+Pour les transforms CSS d'intro (scale 0.05 → 1), utiliser `gsap.set` + `gsap.to` :
+```js
+gsap.set(clipFrames, { transformOrigin: "center center", scale: 0.05 })
+// puis dans rAF :
+gsap.to(clipFrames, { scale: 1, duration: 1.2, ease: "expo.out" })
+```
+
+---
+
+## Règle 5 — Découpage de `main.js`
+
+`main.js` ne doit être qu'un orchestrateur. Chaque groupe de fonctions logiquement cohérent doit vivre dans son propre module sous `src/` :
+
+| Groupe de fonctions | Module cible |
+|---|---|
+| `initIntroStarsOverlay`, `exitIntro`, `attachIntroInteractionListeners`, `detachIntroInteractionListeners`, `primeIntroGlobesAndHint`, `onIntroWindowClick`, `onIntroTouchEnd`, `onIntroKeydown`, `onIntroMessage`, `onIntroTapCatcherPointer` | `src/introOverlay.js` |
+| `revealPresentationEnd`, `returnToSommaireFromEnd`, `showPresentationEndSommaire` | `src/presentationEnd.js` |
+| `handleNav`, `tryAdvanceForwardFromUserGesture`, `triggerBackwardNav`, `goToNextStep`, `goToPrevStep`, `goToSectionIndex`, `onGlobalClickNav`, `onTouchStartNav`, `onTouchEndNav`, `targetExcludesGlobalNav` | `src/navController.js` |
+| `playBackNavAnimation`, `playHomeNavAnimation`, `updateNavDock`, `postToNavDockEarth` | `src/navDock.js` |
+
+Chaque module exporte ses fonctions publiques et reçoit les dépendances partagées (`motionRef`, `scrollApi`, `gsap`, etc.) en paramètre d'initialisation ou via un appel `init(deps)`.
+
+---
+
+## Règle 6 — Dépendances externes en local (pas de CDN)
+
+Les imports CDN en importmap sont fragiles si la présentation est jouée hors connexion :
+```json
+// FRAGILE
+"gsap": "https://esm.sh/gsap@3.12.5",
+"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+```
+
+Télécharger les fichiers et les placer dans `src/vendor/` :
+```
+src/vendor/gsap.esm.js       (gsap@3.12.5 bundle ESM)
+src/vendor/three.module.js   (three@0.160.0)
+```
+
+Mettre à jour l'importmap dans `index.html` :
+```json
+{
+  "imports": {
+    "gsap": "./src/vendor/gsap.esm.js",
+    "three": "./src/vendor/three.module.js"
+  }
+}
+```
+
+---
+
+## Règle 7 — Organisation des CSS
+
+Tous les fichiers CSS doivent vivre dans `src/styles/`. Le `style.css` racine doit être déplacé vers `src/styles/main.css` et la référence dans `index.html` mise à jour :
+
+```html
+<!-- AVANT -->
+<link rel="stylesheet" href="./style.css" />
+
+<!-- APRÈS -->
+<link rel="stylesheet" href="./src/styles/main.css" />
+```
+
+Ordre de chargement dans `index.html` (ne pas modifier l'ordre) :
+1. `src/styles/ipad-text-scale.css`
+2. `src/styles/main.css`
+3. `src/styles/responsive-layout.css`
+
+---
+
+## Règle 8 — Constantes nommées, pas de magic numbers
+
+Les valeurs suivantes dans `main.js` doivent être des constantes exportées depuis `src/motionDesign.js` ou un fichier `src/constants.js` :
+
+```js
+// src/constants.js
+export const NAV_DELAY_MS = 500          // throttle entre deux navigations
+export const INTRO_AUTO_EXIT_MS = 5000   // délai d'auto-sortie de l'intro
+export const IFRAME_CROSSFADE_OVERLAP = 0.35  // chevauchement crossfade puits→globe
+```
+
+---
+
+## Règle 9 — `escapeHtml` : couvrir les apostrophes
+
+La fonction `escapeHtml` dans `main.js` ne protège pas `'`. Compléter :
+```js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")   // ← ajouter
+}
+```
+
+---
+
+## Règle 10 — Conventions générales
+
+- **Pas de commentaires** sauf pour un invariant non-évident ou un contournement de bug navigateur.
+- **Pas de `postMessage("*")`** si l'iframe est same-origin → utiliser `window.location.origin`.
+- **Pas de `try/catch` silencieux vides** (`catch (_) {}`). Si un bloc try/catch est nécessaire, logger au minimum en dev : `catch (e) { if (import.meta.env?.DEV) console.warn(e) }`.
+- **Pas de `removeEventListener` avec un objet options contenant `passive`** : seul `{ capture: boolean }` est pertinent pour identifier un listener.
+- **Toujours utiliser `queueMicrotask`** plutôt que `setTimeout(..., 0)` pour différer d'un tick sans délai artificiel.

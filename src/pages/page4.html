@@ -68,9 +68,12 @@
         "load",
         function () {
           window.setTimeout(function () {
+            const targetOrigin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "*";
             try {
-              f.contentWindow?.postMessage("play", "*");
-            } catch (_) {}
+              f.contentWindow?.postMessage("play", targetOrigin);
+            } catch (e) {
+              if (import.meta.env?.DEV) console.warn(e);
+            }
           }, 500);
         },
         { once: true }

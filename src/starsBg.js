@@ -723,8 +723,8 @@ export function initStarsBackground(opts = {}) {
     try {
       const ro = new ResizeObserver(() => resizeStars())
       ro.observe(starfieldRoot)
-    } catch (_) {
-      /* ResizeObserver indisponible : on garde les listeners window */
+    } catch (e) {
+      if (import.meta.env?.DEV) console.warn(e)
     }
   }
 

@@ -294,7 +294,8 @@
           entries.forEach((entry) => {
             const iframe = entry.target;
             if (!(iframe instanceof HTMLIFrameElement) || !iframe.contentWindow) return;
-            iframe.contentWindow.postMessage(entry.isIntersecting ? "resume" : "pause", "*");
+            const targetOrigin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "*";
+            iframe.contentWindow.postMessage(entry.isIntersecting ? "resume" : "pause", targetOrigin);
           });
         },
         { threshold: 0.1 }
