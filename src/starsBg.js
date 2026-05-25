@@ -58,18 +58,47 @@ let conclusionWarpTimeline = null
 /** @type {Star[]} */
 let stars = []
 
+/** Mesure la taille réelle du conteneur du fond étoilé (fallback : viewport). */
+function measureStarfield() {
+  let w = 0
+  let h = 0
+  if (starfieldRoot instanceof HTMLElement) {
+    const rect = starfieldRoot.getBoundingClientRect()
+    w = Math.round(rect.width)
+    h = Math.round(rect.height)
+  }
+  if (w < 2 || h < 2) {
+    w = window.innerWidth || document.documentElement.clientWidth || 0
+    h = window.innerHeight || document.documentElement.clientHeight || 0
+  }
+  return { w, h }
+}
+
 function resizeStars() {
   if (!canvas) return
-  const w = window.innerWidth
-  const h = window.innerHeight
+  const { w, h } = measureStarfield()
+  if (w < 1 || h < 1) return
+
   const prevW = canvas.width
   const prevH = canvas.height
   canvas.width = w
   canvas.height = h
-  if (w < 1 || h < 1) return
+  canvas.style.width = w + "px"
+  canvas.style.height = h + "px"
+
   if (!stars.length || prevW !== w || prevH !== h) {
     if (conclusionMode) initConclusionStars()
     else initStars()
+  }
+}
+
+/** Force la resynchro du canvas avec son conteneur (avant warp). */
+function ensureCanvasInSync() {
+  if (!canvas) return
+  const { w, h } = measureStarfield()
+  if (w < 1 || h < 1) return
+  if (canvas.width !== w || canvas.height !== h) {
+    resizeStars()
   }
 }
 
@@ -465,6 +494,7 @@ export function runHyperspaceWarp(opts = {}) {
   return new Promise((resolve) => {
     stopHyperspaceWarp()
     if (conclusionMode) setConclusionStarfieldEnabled(false)
+    ensureCanvasInSync()
 
     const finish = () => {
       const ww = canvas?.width ?? 0
@@ -550,6 +580,7 @@ export function runPresentationFinale(opts = {}) {
   return new Promise((resolve) => {
     stopHyperspaceWarp()
     if (conclusionMode) setConclusionStarfieldEnabled(false)
+    ensureCanvasInSync()
     blackoutAlpha = 0
 
     const finish = () => {
@@ -641,6 +672,7 @@ export function setConclusionStarfieldEnabled(on) {
 export function pulseConclusionWarp() {
   stopConclusionWarpPulse()
   if (reduced || !active || !conclusionMode || !ctx) return
+  ensureCanvasInSync()
 
   starfieldRoot?.classList.add("is-hyperspace")
   const state = { spd: 0 }
@@ -685,6 +717,17 @@ export function initStarsBackground(opts = {}) {
   if (!ctx) return
 
   window.addEventListener("resize", resizeStars, { passive: true })
+  window.addEventListener("orientationchange", resizeStars, { passive: true })
+
+  if (typeof ResizeObserver !== "undefined" && starfieldRoot instanceof HTMLElement) {
+    try {
+      const ro = new ResizeObserver(() => resizeStars())
+      ro.observe(starfieldRoot)
+    } catch (_) {
+      /* ResizeObserver indisponible : on garde les listeners window */
+    }
+  }
+
   resizeStars()
 }
 
