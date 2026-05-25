@@ -1031,93 +1031,6 @@ body {
   display: none !important;
 }
 
-.epilogue-actions {
-  position: fixed;
-  left: 50%;
-  bottom: max(env(safe-area-inset-bottom, 0px), clamp(1.5rem, 4vh, 2.75rem));
-  transform: translateX(-50%);
-  z-index: 48;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 0.75rem;
-  max-width: min(96vw, 36rem);
-  pointer-events: auto;
-}
-
-.epilogue-actions[hidden] {
-  display: none !important;
-  pointer-events: none;
-}
-
-.epilogue-actions__btn {
-  font-family: inherit;
-  font-size: clamp(0.88rem, 1.05vw, 1rem);
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  color: rgba(248, 250, 252, 0.94);
-  background: rgba(12, 18, 32, 0.72);
-  border: 1px solid rgba(180, 200, 255, 0.35);
-  border-radius: 999px;
-  padding: 0.72rem 1.55rem;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transition:
-    background 0.25s ease,
-    border-color 0.25s ease,
-    transform 0.2s ease;
-}
-
-.epilogue-actions__btn:hover,
-.epilogue-actions__btn:focus-visible {
-  background: rgba(24, 36, 58, 0.88);
-  border-color: rgba(200, 220, 255, 0.55);
-  outline: none;
-}
-
-.epilogue-actions__btn:active {
-  transform: scale(0.98);
-}
-
-.epilogue-actions__btn--primary {
-  border-color: rgba(200, 220, 255, 0.45);
-}
-
-.epilogue-actions__btn--secondary {
-  color: rgba(220, 228, 245, 0.82);
-  background: rgba(8, 12, 22, 0.55);
-  border-color: rgba(140, 160, 200, 0.28);
-}
-
-.epilogue-actions__btn--secondary:hover,
-.epilogue-actions__btn--secondary:focus-visible {
-  color: rgba(248, 250, 252, 0.96);
-  background: rgba(18, 26, 42, 0.78);
-  border-color: rgba(170, 190, 230, 0.42);
-}
-
-.presentation-end-actions {
-  position: fixed;
-  left: 50%;
-  top: calc(50% + 4.25rem);
-  transform: translateX(-50%);
-  z-index: 26002;
-  display: flex;
-  justify-content: center;
-  pointer-events: auto;
-}
-
-.presentation-end-actions[hidden] {
-  display: none !important;
-  pointer-events: none;
-}
-
-body.presentation-ended .presentation-end-actions {
-  visibility: visible;
-}
-
 /* Bandes au-dessus de l’iframe : le swipe remonte au document parent (l’iframe ne le transmet pas). */
 #app .stage-media-wrap .erato-swipe-rail {
   position: absolute;
@@ -1868,7 +1781,7 @@ body.presentation-ending #starfield-bg.is-hyperspace {
   pointer-events: none;
 }
 
-/* Fin de présentation : écran noir + bouton Sommaire centré */
+/* Fin de présentation : écran noir + bouton Sommaire centré (grand format) */
 body.presentation-ended #nav-dock.nav-dock--end-only {
   visibility: visible;
   pointer-events: auto;
@@ -1879,6 +1792,14 @@ body.presentation-ended #nav-dock.nav-dock--end-only {
   z-index: 26001;
   transform: translate(-50%, -50%);
   opacity: 1;
+  padding: clamp(0.65rem, 1.6vmin, 0.95rem);
+  border-radius: 22px;
+  background: rgba(6, 10, 18, 0.86);
+  border-color: rgba(122, 184, 255, 0.32);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 24px 64px rgba(0, 0, 0, 0.72),
+    0 0 36px rgba(74, 158, 255, 0.12);
 }
 
 body.presentation-ended #nav-dock.nav-dock--end-only #btn-prev,
@@ -1887,8 +1808,30 @@ body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__sep {
 }
 
 body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__item--home {
-  min-width: 10.5rem;
-  padding: 0.65rem 1.35rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.7rem, 1.6vmin, 1.05rem);
+  min-width: 0;
+  padding: clamp(1.1rem, 2.6vmin, 1.7rem) clamp(1.4rem, 3.4vmin, 2.2rem);
+  border-radius: 18px;
+}
+
+body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__glyph--earth {
+  width: clamp(5.5rem, 16vmin, 9.5rem);
+  height: clamp(5.5rem, 16vmin, 9.5rem);
+  border-width: 1.5px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 0 28px rgba(74, 158, 255, 0.18);
+}
+
+body.presentation-ended #nav-dock.nav-dock--end-only .nav-dock__label {
+  font-size: clamp(0.95rem, 2.4vmin, 1.25rem);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 245, 224, 0.94);
 }
 
 /* ——— Transition de page (rideau cosmique) ——— */

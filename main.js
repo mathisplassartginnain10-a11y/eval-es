@@ -23,7 +23,6 @@ import { CONTENT, SECTION_LABELS } from "./src/content.js"
 import {
   initStarsBackground,
   restartStarsAfterFinale,
-  runPresentationFinale,
   setStarsBackgroundActive,
   setStarsBackgroundReducedMotion,
   setConclusionStarfieldEnabled,
@@ -66,11 +65,6 @@ const eratoPromptWrap = document.getElementById("erato-prompt-wrap")
 const puitsPromptWrap = document.getElementById("puits-prompt-wrap")
 const topoPromptWrap = document.getElementById("topo-prompt-wrap")
 const conclusionPromptWrap = document.getElementById("conclusion-prompt-wrap")
-const epilogueActions = document.getElementById("epilogue-actions")
-const btnEndPresentation = document.getElementById("btn-end-presentation")
-const btnQuitPage = document.getElementById("btn-quit-page")
-const presentationEndActions = document.getElementById("presentation-end-actions")
-const btnQuitAfterEnd = document.getElementById("btn-quit-after-end")
 const presentationBlackout = document.getElementById("presentation-blackout")
 const scrollHintEl = document.getElementById("scroll-hint")
 
@@ -699,10 +693,6 @@ function applySlideForIndex(index, meta = {}) {
     })
   }
 
-  if (epilogueActions instanceof HTMLElement) {
-    epilogueActions.hidden = true
-    epilogueActions.setAttribute("aria-hidden", "true")
-  }
 
   if (index !== 5) {
     setConclusionStarfieldEnabled(false)
@@ -807,13 +797,6 @@ function applySlideForIndex(index, meta = {}) {
     slideStage.clear()
     hideSphereAplatieMedia()
     stageMediaWrap.setAttribute("aria-hidden", "true")
-    if (epilogueActions instanceof HTMLElement) {
-      epilogueActions.hidden = false
-      epilogueActions.setAttribute("aria-hidden", "false")
-    }
-    if (btnEndPresentation instanceof HTMLButtonElement && !presentationEnded) {
-      btnEndPresentation.disabled = false
-    }
     return
   }
 
@@ -1016,9 +999,12 @@ scrollApi = initScroll({
       isIpadLike,
     })
   },
-  onTransitionComplete: (_idx, _kf, meta = {}) => {
+  onTransitionComplete: (_idx, kf, meta = {}) => {
     if (meta.subStepOnly) return
     resetSectionAnimClickIndex()
+    if (isEpilogueKeyframe(kf)) {
+      revealPresentationEnd()
+    }
   },
   onProgressUi: () => {},
 })
@@ -1060,7 +1046,7 @@ function onIntroWindowClick(e) {
   if (
     e.target instanceof Element &&
     e.target.closest(
-      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #presentation-end-actions, #btn-end-presentation, #btn-quit-page, #btn-quit-after-end, .section-dot, .nav-dock__item"
+      "#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item"
     )
   )
     return
@@ -1103,7 +1089,7 @@ function onIntroTapCatcherPointer(e) {
   if (
     e.target instanceof Element &&
     e.target.closest(
-      "#nav-dock, #btn-prev, #btn-home, #section-dots, #epilogue-actions, #presentation-end-actions, #btn-end-presentation, #btn-quit-page, #btn-quit-after-end, .section-dot, .nav-dock__item"
+      "#nav-dock, #btn-prev, #btn-home, #section-dots, .section-dot, .nav-dock__item"
     )
   )
     return
@@ -1465,7 +1451,7 @@ function targetExcludesGlobalNav(el) {
   if (!(el instanceof Element)) return true
   if (el.isContentEditable || el.closest("[contenteditable]")) return true
   return !!el.closest(
-    "#nav-dock, #btn-home, #section-dots, #btn-prev, #epilogue-actions, #presentation-end-actions, #btn-end-presentation, #btn-quit-page, #btn-quit-after-end, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
+    "#nav-dock, #btn-home, #section-dots, #btn-prev, .nav-dock__item, .nav-dock__earth-frame, .section-dot, .nav-dot, .nav-btn, button[data-nav], a, button, [role=\"button\"], input, textarea, select, label, iframe, #quiz-frame"
   )
 }
 
@@ -1539,69 +1525,9 @@ if (btnPrev instanceof HTMLButtonElement) {
   })
 }
 
-function getQuitExitUrl() {
-  try {
-    return new URL("exit.html", document.baseURI).href
-  } catch (_) {
-    return "exit.html"
-  }
-}
-
-/** Quitter l’exposé : site d’origine (referrer), fermeture popup, ou page exit.html. */
-function quitPresentationPage() {
-  try {
-    const ref = document.referrer
-    if (ref) {
-      const refUrl = new URL(ref)
-      const here = new URL(location.href)
-      const sameDoc =
-        refUrl.origin === here.origin &&
-        refUrl.pathname === here.pathname &&
-        refUrl.search === here.search
-      if (!sameDoc) {
-        window.location.replace(ref)
-        return
-      }
-    }
-  } catch (_) {
-    /* referrer invalide */
-  }
-
-  if (window.opener && !window.opener.closed) {
-    window.close()
-    window.setTimeout(() => {
-      if (!window.closed) window.location.replace(getQuitExitUrl())
-    }, 120)
-    return
-  }
-
-  window.location.replace(getQuitExitUrl())
-}
-
 function showPresentationEndSommaire() {
   if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = true
   if (navDockSep instanceof HTMLElement) navDockSep.hidden = true
-
-  if (presentationEndActions instanceof HTMLElement) {
-    presentationEndActions.hidden = false
-    presentationEndActions.setAttribute("aria-hidden", "false")
-    if (motionRef.reduced) {
-      gsap.set(presentationEndActions, { autoAlpha: 1, y: 0, clearProps: "transform" })
-    } else {
-      gsap.fromTo(
-        presentationEndActions,
-        { autoAlpha: 0, y: 10 },
-        {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.5,
-          delay: 0.12,
-          ease: MOTION.ease.settle,
-          clearProps: "transform",
-        }
-      )
-    }
-  }
 
   if (navDock instanceof HTMLElement) {
     navDock.hidden = false
@@ -1613,12 +1539,13 @@ function showPresentationEndSommaire() {
     } else {
       gsap.fromTo(
         navDock,
-        { autoAlpha: 0, scale: 0.9, y: 12 },
+        { autoAlpha: 0, scale: 0.85, y: 18 },
         {
           autoAlpha: 1,
           scale: 1,
           y: 0,
-          duration: 0.55,
+          duration: 0.65,
+          delay: 0.15,
           ease: MOTION.ease.settle,
           clearProps: "transform",
         }
@@ -1647,15 +1574,8 @@ function returnToSommaireFromEnd() {
     navDock.hidden = true
     gsap.set(navDock, { clearProps: "all" })
   }
-  if (presentationEndActions instanceof HTMLElement) {
-    gsap.killTweensOf(presentationEndActions)
-    presentationEndActions.hidden = true
-    presentationEndActions.setAttribute("aria-hidden", "true")
-    gsap.set(presentationEndActions, { clearProps: "all" })
-  }
   if (btnPrev instanceof HTMLButtonElement) btnPrev.hidden = false
   if (navDockSep instanceof HTMLElement) navDockSep.hidden = false
-  if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = false
 
   restartStarsAfterFinale()
 
@@ -1671,50 +1591,46 @@ function returnToSommaireFromEnd() {
   })
 }
 
-async function playPresentationEnd() {
+/** Auto-déclenché à l’arrivée sur l’épilogue : fond noir + grand bouton Sommaire. */
+async function revealPresentationEnd() {
   if (presentationEnded || presentationEnding) return
   const idx = scrollApi?.getIndex?.() ?? -1
   if (!isEpilogueKeyframe(KEYFRAMES[idx])) return
 
   presentationEnding = true
-  if (btnEndPresentation instanceof HTMLButtonElement) btnEndPresentation.disabled = true
   document.body.classList.add("presentation-ending", "scroll-locked")
 
-  const fadeTargets = [textOverlay, epilogueActions].filter(Boolean)
-  gsap.killTweensOf(fadeTargets)
-  if (fadeTargets.length) {
-    await new Promise((resolve) => {
-      gsap.to(fadeTargets, {
-        autoAlpha: 0,
-        duration: motionRef.reduced ? 0.1 : 0.35,
-        ease: MOTION.ease.in,
-        onComplete: resolve,
-      })
+  const textTargets = textOverlay ? [textOverlay] : []
+  gsap.killTweensOf(textTargets)
+  if (textTargets.length && !motionRef.reduced) {
+    gsap.to(textTargets, {
+      autoAlpha: 0,
+      duration: 0.45,
+      ease: MOTION.ease.in,
     })
+  } else if (textTargets.length) {
+    gsap.set(textTargets, { autoAlpha: 0 })
   }
 
   if (presentationBlackout instanceof HTMLElement) {
     presentationBlackout.hidden = false
     presentationBlackout.setAttribute("aria-hidden", "false")
-    gsap.set(presentationBlackout, { opacity: 0 })
-  }
-
-  await runPresentationFinale({ durationSec: motionRef.reduced ? 0.01 : 1.85 })
-
-  if (presentationBlackout instanceof HTMLElement) {
     if (motionRef.reduced) {
       gsap.set(presentationBlackout, { opacity: 1 })
     } else {
-      await new Promise((resolve) => {
-        gsap.to(presentationBlackout, {
+      gsap.fromTo(
+        presentationBlackout,
+        { opacity: 0 },
+        {
           opacity: 1,
-          duration: 0.4,
+          duration: 0.7,
           ease: MOTION.ease.in,
-          onComplete: resolve,
-        })
-      })
+        }
+      )
     }
   }
+
+  await new Promise((resolve) => window.setTimeout(resolve, motionRef.reduced ? 50 : 720))
 
   presentationEnding = false
   presentationEnded = true
@@ -1722,29 +1638,6 @@ async function playPresentationEnd() {
   document.body.classList.add("presentation-ended")
   showPresentationEndSommaire()
   updateScrollHint(idx)
-}
-
-if (btnEndPresentation instanceof HTMLButtonElement) {
-  btnEndPresentation.addEventListener("click", (e) => {
-    e.stopPropagation()
-    e.preventDefault()
-    playPresentationEnd()
-  })
-}
-
-function onQuitPageClick(e) {
-  e.stopPropagation()
-  e.preventDefault()
-  if (presentationEnding) return
-  quitPresentationPage()
-}
-
-if (btnQuitPage instanceof HTMLButtonElement) {
-  btnQuitPage.addEventListener("click", onQuitPageClick)
-}
-
-if (btnQuitAfterEnd instanceof HTMLButtonElement) {
-  btnQuitAfterEnd.addEventListener("click", onQuitPageClick)
 }
 
 if (btnHome instanceof HTMLButtonElement) {

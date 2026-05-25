@@ -15,7 +15,6 @@
   --text-col-wide: min(42vw, 38rem);
   --media-stack-h: clamp(12rem, min(48vh, 72vw), 28rem);
   --nav-clearance: calc(var(--sa-bottom) + clamp(4.25rem, 11vh, 5.25rem));
-  --epilogue-clearance: calc(var(--sa-bottom) + clamp(5.75rem, 15vh, 7.5rem));
   --header-clearance: calc(var(--sa-top) + clamp(3.75rem, 9vh, 4.75rem));
 }
 
@@ -276,73 +275,6 @@ body {
     min-height: min(48vh, 26rem);
   }
 
-  .epilogue-actions {
-    bottom: max(var(--sa-bottom), 0.85rem);
-    width: min(96vw, 24rem);
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .epilogue-actions__btn {
-    width: 100%;
-    text-align: center;
-  }
-
-  #app[data-layout="epilogue"] > #text-overlay.text-overlay--apple,
-  #app.app--epilogue > #text-overlay.text-overlay--apple {
-    padding-bottom: var(--epilogue-clearance);
-  }
-}
-
-/* ——— Épilogue : titre centré, boutons au-dessus du dock ——— */
-#app[data-layout="epilogue"] > #text-overlay.text-overlay--apple,
-#app.app--epilogue > #text-overlay.text-overlay--apple {
-  padding-top: max(var(--sa-top), 1.5rem);
-  padding-right: max(var(--sa-right), var(--page-pad-x));
-  padding-bottom: var(--epilogue-clearance);
-  padding-left: max(var(--sa-left), var(--page-pad-x));
-}
-
-.epilogue-actions {
-  bottom: max(var(--sa-bottom), clamp(1rem, 3vh, 1.75rem));
-  width: min(96vw, 28rem);
-  max-width: calc(100vw - var(--sa-left) - var(--sa-right) - 1.5rem);
-}
-
-/* ——— Fin de présentation : Sommaire + Quitter empilés ——— */
-@media (max-width: 600px) {
-  body.presentation-ended #nav-dock.nav-dock--end-only {
-    top: auto;
-    bottom: calc(var(--sa-bottom) + clamp(3.5rem, 10vh, 4.5rem));
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-  }
-
-  body.presentation-ended .presentation-end-actions {
-    top: auto;
-    bottom: max(var(--sa-bottom), 0.85rem);
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(92vw, 18rem);
-  }
-
-  body.presentation-ended .presentation-end-actions .epilogue-actions__btn {
-    width: 100%;
-  }
-}
-
-@media (min-width: 601px) and (max-width: 900px) {
-  body.presentation-ended #nav-dock.nav-dock--end-only {
-    top: 42%;
-    bottom: auto;
-    transform: translate(-50%, -50%);
-  }
-
-  body.presentation-ended .presentation-end-actions {
-    top: calc(42% + 3.75rem);
-    bottom: auto;
-  }
 }
 
 /* ——— iPad paysage : colonnes un peu plus serrées ——— */
@@ -390,11 +322,5 @@ body {
     height: var(--media-stack-h) !important;
     max-height: 58vh !important;
     margin-bottom: var(--nav-clearance) !important;
-  }
-
-  .epilogue-actions {
-    flex-direction: row;
-    width: auto;
-    max-width: min(96vw, 36rem);
   }
 }
