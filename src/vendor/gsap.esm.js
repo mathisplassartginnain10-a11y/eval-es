@@ -24,4 +24,3 @@ gsap/CSSPlugin.js:
    * @author: Jack Doyle, jack@greensock.com
   *)
 */
-//# sourceMappingURL=gsap.bundle.mjs.map
