@@ -385,10 +385,24 @@ window.addEventListener('touchstart', () => {
   if(animDone && !schemaShown) { schemaShown=true; showSchema(); }
 }, {passive:true});
 
-/* Reset */
+/* Pilotage par le parent (nav globale) :
+   'play'   → lance l'animation principale (équivalent au 1er clic sur l'iframe).
+   'schema' → affiche le schéma Ératosthène (équivalent au 2e clic).
+   'reset'  → remise à zéro complète. */
 window.addEventListener('message', e => {
-  if(e.data === 'reset'){ hideSchema(); schemaShown=false; animDone=false;
-    setTimeout(()=>{animDone=true;},5500); }
+  if(e.data === 'play'){
+    if(!started) startAnim();
+    return;
+  }
+  if(e.data === 'schema'){
+    if(!schemaShown){ schemaShown = true; animDone = true; showSchema(); }
+    return;
+  }
+  if(e.data === 'reset'){
+    hideSchema(); schemaShown=false; animDone=false;
+    window.PuitsAnim?.reset?.();
+    setTimeout(()=>{animDone=true;},5500);
+  }
 });
 </script>
 

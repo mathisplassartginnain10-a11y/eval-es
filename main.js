@@ -883,7 +883,11 @@ const { initIntroStarsOverlay, exitIntro, primeIntroGlobesAndHint } = introOverl
 const STEP_ANIMATIONS = {
   0: [],
   1: [
-    () => triggerIframeAnim("puits-frame"),
+    /* Sub-étape 1 : animation principale des deux puits (Syène + Alexandrie). */
+    () => postToFrameById("puits-frame", "play"),
+    /* Sub-étape 2 : schéma Ératosthène plein cadre à l'intérieur de l'iframe puits. */
+    () => postToFrameById("puits-frame", "schema"),
+    /* Sub-étape 3 : crossfade vers la Terre orbitale + fil méridien. */
     () => {
       const puits = document.getElementById("puits-frame")
       const earth = document.getElementById("earth-orbit-frame")
