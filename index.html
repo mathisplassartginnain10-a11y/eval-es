@@ -64,6 +64,7 @@
             class="intro-clip-frame"
             title="Les trois Terres — sphère, aplatie, cône"
             data-src="docs/prompts/three-globes.html"
+            data-webgl="1"
           ></iframe>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--start" aria-hidden="true"></div>
           <div class="intro-clip-swipe-rail intro-clip-swipe-rail--end" aria-hidden="true"></div>
@@ -86,8 +87,10 @@
           id="sphere-aplatie-frame"
           class="sphere-aplatie-frame"
           title="Sphère → sphéroïde oblate"
-          src="docs/prompts/sph%C3%A8re%20aplatie.html"
+          data-src="docs/prompts/sph%C3%A8re%20aplatie.html"
+          data-webgl="1"
           scrolling="no"
+          loading="lazy"
         ></iframe>
       </div>
       <div class="stage-tiles" id="stage-tiles">
@@ -109,7 +112,8 @@
           id="erato-prompt-frame"
           class="erato-prompt-frame"
           title="Animation Ératosthène"
-          src="docs/prompts/eratosthene-animation.html"
+          data-src="docs/prompts/eratosthene-animation.html"
+          data-webgl="1"
           loading="lazy"
         ></iframe>
         <div class="erato-swipe-rail erato-swipe-rail--start" aria-hidden="true"></div>
@@ -121,15 +125,19 @@
             id="puits-frame"
             class="puits-prompt-frame"
             title="Animation des deux puits — Syène et Alexandrie"
-            src="docs/prompts/puits-animation.html"
+            data-src="docs/prompts/puits-animation.html"
+            data-webgl="1"
             scrolling="no"
+            loading="lazy"
           ></iframe>
           <iframe
             id="earth-orbit-frame"
             class="earth-orbit-prompt-frame"
             title="Terre — orbite et fil méridien (500 000 stades)"
-            src="docs/prompts/earth-orbit_avec_fil.html"
+            data-src="docs/prompts/earth-orbit_avec_fil.html"
+            data-webgl="1"
             scrolling="no"
+            loading="lazy"
           ></iframe>
         </div>
       </div>
@@ -140,8 +148,10 @@
             id="page4-gravity-frame"
             class="page4-gravity-frame"
             title="Gravité — formation sphérique"
-            src="docs/prompts/gravity-sphere-formation.html"
+            data-src="docs/prompts/gravity-sphere-formation.html"
+            data-webgl="1"
             scrolling="no"
+            loading="lazy"
           ></iframe>
         </div>
       </div>
@@ -153,8 +163,10 @@
               id="topo-frame"
               class="topo-prompt-frame"
               title="Animation topographie — mer, relief, fosse"
-              src="docs/prompts/topographie-animation.html"
+              data-src="docs/prompts/topographie-animation.html"
+              data-webgl="1"
               scrolling="no"
+              loading="lazy"
             ></iframe>
           </div>
         </div>
@@ -167,8 +179,10 @@
               id="conclusion-frame"
               class="conclusion-prompt-frame"
               title="Conclusion — la vraie Terre"
-              src="docs/prompts/conclusion-animation.html"
+              data-src="docs/prompts/conclusion-animation.html"
+              data-webgl="1"
               scrolling="no"
+              loading="lazy"
             ></iframe>
           </div>
         </div>
@@ -272,6 +286,10 @@
 
   <script>
     (function () {
+      const targetOrigin = window.location.origin && window.location.origin !== "null"
+        ? window.location.origin
+        : "*";
+
       const iframeObserver = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
@@ -294,16 +312,17 @@
           entries.forEach((entry) => {
             const iframe = entry.target;
             if (!(iframe instanceof HTMLIFrameElement) || !iframe.contentWindow) return;
-            const targetOrigin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "*";
             iframe.contentWindow.postMessage(entry.isIntersecting ? "resume" : "pause", targetOrigin);
           });
         },
-        { threshold: 0.1 }
+        { threshold: 0.05 }
       );
 
-      function wireIntroIframes() {
-        document.querySelectorAll("#intro-clips-wrap iframe[data-src]").forEach((f) => {
+      function observeLazyAndPauseable() {
+        document.querySelectorAll("iframe[data-src]").forEach((f) => {
           iframeObserver.observe(f);
+        });
+        document.querySelectorAll("iframe[data-webgl]").forEach((f) => {
           pauseObserver.observe(f);
         });
       }
@@ -320,15 +339,15 @@
         });
       }
 
-      function wireIntroAndGlobesNav() {
-        wireIntroIframes();
+      function bootObservers() {
+        observeLazyAndPauseable();
         wireThreeGlobesNavSync();
       }
 
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", wireIntroAndGlobesNav);
+        document.addEventListener("DOMContentLoaded", bootObservers);
       } else {
-        wireIntroAndGlobesNav();
+        bootObservers();
       }
     })();
   </script>

@@ -3151,3 +3151,21 @@ body.scroll-locked {
     scroll-behavior: auto !important;
   }
 }
+
+/* Désactive les filtres GPU coûteux (backdrop-filter, blur, mix-blend) sur tactile / iPad.
+   Sur Safari iPad ces compositions sont les chemins GPU les plus lents et causent du jank. */
+:root.is-touch *,
+:root.is-ipad * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+:root.is-touch .page-transition__wipe,
+:root.is-ipad .page-transition__wipe,
+:root.is-touch .page-transition__flare,
+:root.is-ipad .page-transition__flare,
+:root.is-touch .page-transition__beam,
+:root.is-ipad .page-transition__beam {
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}

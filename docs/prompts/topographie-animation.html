@@ -316,8 +316,21 @@ function startAnim(){
   rafId   = requestAnimationFrame(animLoop);
 }
 
+let _topoPaused = false;
 window.addEventListener('message', (e) => {
   if (e.data === 'play') startAnim();
+  if (e.data === 'pause') {
+    _topoPaused = true;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; playing = false; }
+  }
+  if (e.data === 'resume') {
+    if (_topoPaused && started) {
+      _topoPaused = false;
+      playing = true;
+      startTs = null;
+      rafId = requestAnimationFrame(animLoop);
+    }
+  }
 });
 
 /* ── API publique ── */

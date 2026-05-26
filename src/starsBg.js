@@ -5,8 +5,12 @@
 import gsap from "gsap"
 import { smoothstep } from "./motionDesign.js"
 
-const STAR_COUNT = 280
-const CONCLUSION_STAR_COUNT = 460
+const IS_TOUCH_DEVICE =
+  typeof window !== "undefined" &&
+  (window.matchMedia?.("(pointer: coarse)")?.matches ||
+    (typeof navigator !== "undefined" && navigator.maxTouchPoints > 1))
+const STAR_COUNT = IS_TOUCH_DEVICE ? 180 : 280
+const CONCLUSION_STAR_COUNT = IS_TOUCH_DEVICE ? 280 : 460
 /** Dérive lente permanente (alignée sur conclusion-animation.html : z += 0.003). */
 const CONCLUSION_BASE_DRIFT = 0.004
 const CONCLUSION_WARP_ACCEL_SEC = 0.7

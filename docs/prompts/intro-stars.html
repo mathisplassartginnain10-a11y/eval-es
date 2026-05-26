@@ -224,6 +224,7 @@ function drawStars(elapsed, ga){
   });
 }
 
+let _lastIdleDraw = 0;
 function loop(ts){
   requestAnimationFrame(loop);
   if(!startTs) startTs = ts;
@@ -235,6 +236,11 @@ function loop(ts){
     ga = 1 - ease(cl((ts-exitStart)/800));
     canvas.style.opacity = ga;
     if(ga <= 0) return;
+  }
+
+  if(phase4Done && !isExiting){
+    if(ts - _lastIdleDraw < 66) return;
+    _lastIdleDraw = ts;
   }
 
   drawStars(elapsed, ga);

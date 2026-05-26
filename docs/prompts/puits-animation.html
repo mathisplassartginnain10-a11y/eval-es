@@ -305,8 +305,14 @@ const sStars = Array.from({length:180},()=>({
   sp:Math.random()*.005+.002,
 }));
 let sFr=0, sRaf=null;
+function _resizeSCanvas(){
+  const w=window.innerWidth, h=window.innerHeight;
+  if(sCanvas.width!==w) sCanvas.width=w;
+  if(sCanvas.height!==h) sCanvas.height=h;
+}
+_resizeSCanvas();
+window.addEventListener('resize',_resizeSCanvas,{passive:true});
 function drawSStars(){
-  sCanvas.width=window.innerWidth;sCanvas.height=window.innerHeight;
   const W=sCanvas.width,H=sCanvas.height;
   sctx.clearRect(0,0,W,H);
   sFr++;
@@ -389,7 +395,21 @@ window.addEventListener('touchstart', () => {
    'play'   → lance l'animation principale (équivalent au 1er clic sur l'iframe).
    'schema' → affiche le schéma Ératosthène (équivalent au 2e clic).
    'reset'  → remise à zéro complète. */
+let _puitsPaused = false;
+function _puitsPause(){
+  _puitsPaused = true;
+  try { if (typeof rafId !== 'undefined' && rafId) { cancelAnimationFrame(rafId); rafId = 0; } } catch(_){}
+  try { if (typeof sRaf !== 'undefined' && sRaf) { cancelAnimationFrame(sRaf); sRaf = null; } } catch(_){}
+}
+function _puitsResume(){
+  if (!_puitsPaused) return;
+  _puitsPaused = false;
+  try { if (typeof started !== 'undefined' && started && typeof animLoop === 'function' && !rafId) rafId = requestAnimationFrame(animLoop); } catch(_){}
+  try { if (typeof schemaShown !== 'undefined' && schemaShown && typeof drawSStars === 'function' && !sRaf) sRaf = requestAnimationFrame(drawSStars); } catch(_){}
+}
 window.addEventListener('message', e => {
+  if(e.data === 'pause'){ _puitsPause(); return; }
+  if(e.data === 'resume'){ _puitsResume(); return; }
   if(e.data === 'play'){
     if(!started) startAnim();
     return;

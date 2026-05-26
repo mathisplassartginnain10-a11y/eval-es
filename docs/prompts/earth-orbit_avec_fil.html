@@ -30,8 +30,8 @@ Pas de GLB — texture appliquée directement sur SphereGeometry.
 import * as THREE from 'three';
 
 const canvas   = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({canvas, antialias:false, powerPreference:'low-power'});
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 1);
 
@@ -192,6 +192,17 @@ function resetAnimFromParent() {
 window.addEventListener('message', (e) => {
   if (e.data === 'play') startAnimFromParent();
   if (e.data === 'reset') resetAnimFromParent();
+  if (e.data === 'pause') {
+    paused = true;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    loopRunning = false;
+  }
+  if (e.data === 'resume') {
+    if (paused) {
+      paused = false;
+      if (!loopRunning) { loopRunning = true; rafId = requestAnimationFrame(animate); }
+    }
+  }
 });
 
 /* État initial figé — la boucle démarre sur message « play » depuis le parent */

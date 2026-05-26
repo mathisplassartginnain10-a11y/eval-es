@@ -48,6 +48,15 @@ configureGsapPerformance({ reducedMotion: motionRef.reduced, isIpad: isIpadLike 
 if (isIpadLike && !motionRef.reduced) {
   gsap.globalTimeline.timeScale(1.06)
 }
+if (isIpadLike) {
+  document.documentElement.classList.add("is-ipad")
+}
+const isCoarsePointer =
+  window.matchMedia?.("(pointer: coarse)")?.matches ||
+  navigator.maxTouchPoints > 1
+if (isCoarsePointer) {
+  document.documentElement.classList.add("is-touch")
+}
 
 window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => {
   motionRef.reduced = e.matches
@@ -884,9 +893,9 @@ const STEP_ANIMATIONS = {
   0: [],
   1: [
     /* Sub-étape 1 : animation principale des deux puits (Syène + Alexandrie). */
-    () => postToFrameById("puits-frame", "play"),
+    () => ensureAndPost("puits-frame", "play"),
     /* Sub-étape 2 : schéma Ératosthène plein cadre à l'intérieur de l'iframe puits. */
-    () => postToFrameById("puits-frame", "schema"),
+    () => ensureAndPost("puits-frame", "schema"),
     /* Sub-étape 3 : crossfade vers la Terre orbitale + fil méridien. */
     () => {
       const puits = document.getElementById("puits-frame")
@@ -929,8 +938,33 @@ const STEP_ANIMATIONS = {
   6: [],
 }
 
+function ensureIframeLoaded(iframeId) {
+  const fr = document.getElementById(iframeId)
+  if (!(fr instanceof HTMLIFrameElement)) return null
+  const ds = fr.dataset.src
+  if (ds && (!fr.src || fr.src === "about:blank")) {
+    fr.src = ds
+  }
+  return fr
+}
+
+function ensureAndPost(iframeId, msg) {
+  const fr = ensureIframeLoaded(iframeId)
+  if (!fr) return
+  const send = () => {
+    postToFrame(fr, "resume")
+    postToFrame(fr, msg)
+  }
+  if (fr.contentDocument && fr.contentDocument.readyState === "complete") {
+    send()
+    return
+  }
+  fr.addEventListener("load", send, { once: true })
+  send()
+}
+
 function triggerIframeAnim(iframeId) {
-  postToFrameById(iframeId, "play")
+  ensureAndPost(iframeId, "play")
 }
 
 /** Nombre d’animations déjà déclenchées sur la section courante (hors intro / hors panneaux two-step). */
@@ -997,14 +1031,6 @@ window.addEventListener("touchend", onTouchEndNav, { passive: true })
 if (textBody instanceof HTMLElement) {
   textBody.addEventListener("click", onSommaireItemActivate)
 }
-
-window.addEventListener(
-  "scroll",
-  (e) => {
-    e.preventDefault()
-  },
-  { passive: false, capture: true }
-)
 
 document.addEventListener(
   "touchmove",

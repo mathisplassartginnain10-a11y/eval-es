@@ -322,12 +322,13 @@ function tick(ts) {
   if (!loopRunning) return;
 
   if (paused || !ready) {
-    rafId = requestAnimationFrame(tick);
+    rafId = null;
     return;
   }
 
+  rafId = requestAnimationFrame(tick);
+
   if (ts - lastFrame < FRAME_MS) {
-    rafId = requestAnimationFrame(tick);
     return;
   }
   lastFrame = ts;
@@ -396,7 +397,13 @@ window.addEventListener('message', (e) => {
   if (e.data === 'play') playAnim();
   if (e.data === 'reset') resetAnim();
   if (e.data === 'pause') paused = true;
-  if (e.data === 'resume') paused = false;
+  if (e.data === 'resume') {
+    paused = false;
+    if (loopRunning && rafId == null && ready) {
+      lastFrame = performance.now();
+      rafId = requestAnimationFrame(tick);
+    }
+  }
 });
 
 new THREE.TextureLoader().load('./textures/earth-texture.jpg', (earthTex) => {

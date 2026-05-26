@@ -268,8 +268,8 @@ let lastFrame  = 0;
 let cameraAngle = 0;
 
 function tick(ts){
+  if(paused || !playing){ rafId = null; return; }
   rafId = requestAnimationFrame(tick);
-  if(paused || !playing) return;
   if(ts - lastFrame < FRAME_MS) return;
   const dt = Math.min(ts - lastFrame, 50);
   lastFrame = ts;
@@ -424,7 +424,10 @@ window.GravitySphereAnim = {
 window.addEventListener('message', e => {
   if(e.data==='play')   playAnim();
   if(e.data==='pause')  paused = true;
-  if(e.data==='resume') paused = false;
+  if(e.data==='resume'){
+    paused = false;
+    if(playing && rafId == null){ lastFrame = performance.now(); rafId = requestAnimationFrame(tick); }
+  }
   if(e.data==='reset')  resetAnim();
 });
 
