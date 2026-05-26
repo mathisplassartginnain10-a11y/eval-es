@@ -165,6 +165,14 @@ function runPageWarpTransition({
 
         const textIn = getTextTargets().filter((el) => el instanceof HTMLElement)
 
+        /* `applySection()` peut remplacer le contenu du `textOverlay` (nouveaux <p>),
+           mais le tween d'`exit` tourne encore sur les éléments-parents partagés
+           (kicker / title / subtitle / body / credit). On kill ces tweens-là
+           avant de poser l'état de départ du reveal pour éviter qu'ils n'écrasent
+           le `gsap.set` ci-dessous (texte qui retomberait à `autoAlpha: dim`). */
+        if (media) gsap.killTweensOf(media)
+        if (textIn.length) gsap.killTweensOf(textIn)
+
         if (media) {
           gsap.set(media, {
             visibility: "visible",
@@ -284,6 +292,9 @@ function runMiniTransition({
   tl.add(() => {
     applySection()
     const textIn = getTextTargets().filter((el) => el instanceof HTMLElement)
+    /* Idem warp : on kill les tweens d'exit avant de poser l'état de départ du reveal. */
+    if (media) gsap.killTweensOf(media)
+    if (textIn.length) gsap.killTweensOf(textIn)
     if (textIn.length) {
       gsap.set(textIn, { autoAlpha: MOTION.alpha.reveal, y: shift.textY * 0.45, force3D: true })
     }

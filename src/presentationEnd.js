@@ -39,16 +39,22 @@ export function createPresentationEnd({
       navDock.classList.add("is-visible", "nav-dock--end-only")
       navDock.setAttribute("aria-hidden", "false")
 
+      /* Le `nav-dock--end-only` est centré via `left:50%; top:50%; transform:translate(-50%,-50%)`.
+         Si on anime avec `y` / `scale` sans préserver `xPercent:-50, yPercent:-50`, GSAP
+         écrase la transform de centrage et le bouton « tombe » dans le coin haut-gauche
+         pendant l'animation. On garde donc le centrage tout au long via `xPercent/yPercent`,
+         puis on `clearProps: "transform"` pour rendre la main au CSS. */
       if (motionRef.reduced) {
-        gsap.set(navDock, { autoAlpha: 1, scale: 1, clearProps: "transform" })
+        gsap.set(navDock, { autoAlpha: 1, clearProps: "transform" })
       } else {
         gsap.fromTo(
           navDock,
-          { autoAlpha: 0, scale: 0.85, y: 18 },
+          { autoAlpha: 0, xPercent: -50, yPercent: -50, scale: 0.92 },
           {
             autoAlpha: 1,
+            xPercent: -50,
+            yPercent: -50,
             scale: 1,
-            y: 0,
             duration: 0.65,
             delay: 0.15,
             ease: MOTION.ease.settle,
@@ -84,6 +90,15 @@ export function createPresentationEnd({
     if (epilogueActions instanceof HTMLElement) {
       hide(epilogueActions)
       gsap.set(epilogueActions, { clearProps: "all" })
+    }
+
+    /* Le finale a posé `autoAlpha:0` (opacity:0 + visibility:hidden) en inline sur
+       le `textOverlay`. Sans ce reset, le texte reste invisible au retour au sommaire,
+       même si la classe `presentation-ended` est retirée du body. */
+    if (textOverlay instanceof HTMLElement) {
+      gsap.killTweensOf(textOverlay)
+      gsap.set(textOverlay, { clearProps: "opacity,visibility,transform" })
+      textOverlay.classList.add("is-visible")
     }
 
     restartStarsAfterFinale()
