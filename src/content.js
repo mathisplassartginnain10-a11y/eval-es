@@ -77,7 +77,7 @@ export const CONTENT = {
     {
       partTitle: true,
       bodyHtml: `
-<p class="text-overlay__p text-overlay__p--formula text-overlay__p--formula-inline">U(r) = −GMm / r</p>
+<p class="text-overlay__p text-overlay__p--formula text-overlay__p--formula-inline">U = mgh</p>
 <p class="text-overlay__p">Formule de l'énergie potentielle gravitationnelle :</p>
 <p class="text-overlay__p">cause → rapprochement de la matière.</p>
 <p class="text-overlay__p">conséquence → uniquement la forme sphérique est possible.</p>`.trim(),
